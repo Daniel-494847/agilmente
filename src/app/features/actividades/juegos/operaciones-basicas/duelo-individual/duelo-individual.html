@@ -1,0 +1,121 @@
+@if (!iniciado()) {
+<div class="start-page">
+  <div class="container-xl">
+    <a [routerLink]="rutaVolver" class="btn btn-link text-decoration-none fw-semibold px-0 align-self-start">
+      <i class="bi bi-arrow-left me-1"></i> {{ textoVolver }}
+    </a>
+    <section class="start-content mx-auto text-center">
+      <span class="badge rounded-pill text-bg-primary px-3 py-2">MODO INDIVIDUAL</span>
+      <h1 class="fw-bold">Operaciones Básicas</h1>
+      <p class="lead text-secondary">Completa {{ total }} ejercicios en solitario</p>
+
+      <div class="start-settings w-100">
+        <div class="start-setting">
+          <p class="small text-uppercase fw-bold text-secondary">Selecciona un nivel</p>
+          <div class="btn-group" role="group" aria-label="Seleccionar nivel">
+            @for (n of niveles; track n) {
+              <button type="button" class="btn" [class.btn-success]="nivel() === n" [class.btn-light]="nivel() !== n" [attr.aria-pressed]="nivel() === n" (click)="selNivel(n)">{{ n }}</button>
+            }
+          </div>
+          <p class="text-success fw-semibold">Nivel {{ nivel() }} · {{ nombres[nivel() - 1] }}</p>
+        </div>
+
+        <div class="start-setting">
+          <p class="small text-uppercase fw-bold text-secondary">¿Cuánto tiempo quieres jugar?</p>
+          <div class="btn-group" role="group" aria-label="Elegir duración">
+            @for (m of duraciones; track m) {
+              <button type="button" class="btn" [class.btn-warning]="duracion() === m" [class.btn-light]="duracion() !== m" [attr.aria-pressed]="duracion() === m" (click)="selDur(m)">{{ m }} min</button>
+            }
+          </div>
+          <p class="hint text-secondary small">El contador empieza al pulsar Jugar.</p>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-lg px-5 btn-jugar" (click)="jugar()">
+        <i class="bi bi-play-fill me-2"></i>Jugar
+      </button>
+    </section>
+  </div>
+</div>
+}
+
+@if (iniciado()) {
+<div class="duelo-page">
+  <div class="duelo-wrap container-xl mx-auto">
+    <header class="duelo-header">
+      <a [routerLink]="rutaVolver" class="btn btn-link back-link p-0 text-decoration-none fw-semibold">
+        <i class="bi bi-arrow-left"></i><span>{{ textoVolver }}</span>
+      </a>
+      <div class="duelo-heading text-center">
+        <span class="eyebrow d-block">MODO INDIVIDUAL</span>
+        <h1>{{ titulo }}</h1>
+      </div>
+      <button type="button" class="btn btn-outline-dark reset-button p-0 lh-1" (click)="salir()" aria-label="Salir del juego" title="Salir del juego">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </header>
+
+    <nav class="level-selector" aria-label="Seleccionar nivel">
+      <span>NIVEL</span>
+      @for (n of niveles; track n) {
+        <button type="button" class="btn" [class.btn-success]="nivel() === n" [class.btn-light]="nivel() !== n" [attr.aria-pressed]="nivel() === n" (click)="selNivel(n)">{{ n }}</button>
+      }
+      <strong>{{ nombres[nivel() - 1] }}</strong>
+    </nav>
+
+    <div class="timer-display badge rounded-pill text-bg-warning mx-auto" [class.timer-low]="tiempo() <= 10" role="timer" aria-label="Tiempo restante">
+      <i class="bi bi-stopwatch me-1"></i>{{ tiempoFmt }}
+    </div>
+
+    @if (completo() || agotado()) {
+      <div class="alert alert-warning text-center fw-bold duel-alert m-0" role="status">{{ resultado() }}</div>
+    }
+
+    <section class="duelo-board individual">
+      @if (jugador(); as j) {
+        <article class="player-panel player-individual w-100">
+          <header class="player-header">
+            <span class="player-avatar d-grid"><i class="bi bi-person-fill"></i></span>
+            <div class="player-name">
+              <span class="d-block">JUGADOR</span>
+              <h2>{{ j.nombre }}</h2>
+            </div>
+            <div class="player-score lh-1" aria-label="Puntaje">{{ j.puntos }}<small>/ {{ total }}</small></div>
+          </header>
+
+          <div class="player-progress" [attr.aria-label]="j.puntos + ' de ' + total + ' ejercicios resueltos'">
+            @for (p of puntosMeta; track p) {
+              <span class="w-100" [class.earned]="j.puntos >= p"></span>
+            }
+          </div>
+
+          <div class="question-box text-center">
+            <span class="d-block">RESUELVE</span>
+            <strong>{{ j.expresion }} <span>= ?</span></strong>
+          </div>
+
+          <output class="answer-display" aria-label="Tu respuesta">{{ j.respuesta || 'Tu respuesta' }}</output>
+
+          <div class="number-pad" aria-label="Teclado numérico">
+            @for (d of digitos; track d) {
+              <button type="button" class="btn btn-light number-key p-0 lh-1" [disabled]="completo() || agotado()" (click)="add(d)">{{ d }}</button>
+            }
+            <button type="button" class="btn btn-outline-danger number-key p-0 lh-1" [disabled]="completo() || agotado()" (click)="del()" aria-label="Borrar último dígito">
+              <i class="bi bi-backspace"></i>
+            </button>
+          </div>
+
+          <button type="button" class="btn check-button w-100 py-0" [disabled]="completo() || agotado()" (click)="ver()">Comprobar respuesta</button>
+          <p class="player-message text-center" aria-live="polite">{{ j.mensaje }}</p>
+        </article>
+      }
+
+      <section class="arena text-center" aria-label="Zona de práctica individual">
+        <span class="arena-label">Nivel {{ nivel() }} · {{ nombres[nivel() - 1] }}</span>
+        <img class="arena-art d-block h-auto" src="images/ninos-cuerda.webp" alt="Práctica matemática individual">
+        <p class="m-0">Completa {{ total }} ejercicios lo más rápido que puedas</p>
+      </section>
+    </section>
+  </div>
+</div>
+}

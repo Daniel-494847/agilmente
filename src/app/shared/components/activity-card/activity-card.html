@@ -1,0 +1,31 @@
+<a
+  class="card h-100 text-decoration-none border-2 rounded-4 p-3 position-relative"
+  [class]="clasesTema()"
+  [routerLink]="actividad.ruta"
+  [attr.aria-label]="'Comenzar actividad ' + actividad.titulo"
+>
+  <span class="badge rounded-circle position-absolute top-0 start-0 translate-middle-y ms-3 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; font-size: 13px">
+    {{ numero }}
+  </span>
+
+  @if (actividad.imagen) {
+    <img
+      class="mb-2 rounded"
+      [src]="actividad.imagen"
+      [alt]="actividad.titulo"
+      width="73"
+      height="73"
+      style="object-fit: contain"
+      loading="lazy"
+    />
+  } @else {
+    <i class="bi {{ actividad.icono }} display-5 mb-2" aria-hidden="true"></i>
+  }
+
+  <h3 class="fs-6 fw-bold mb-1">{{ actividad.titulo }}</h3>
+  <p class="text-secondary small mb-3" style="min-height: 34px">{{ actividad.descripcion }}</p>
+
+  <span class="btn btn-sm rounded-pill align-self-start px-3 fw-bold text-white" [class]="claseBoton()">
+    Comenzar
+  </span>
+</a>

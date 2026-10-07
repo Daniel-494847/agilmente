@@ -1,0 +1,26 @@
+<main class="bg-light p-4 p-lg-5 min-vh-100">
+  <header class="mb-4" style="max-width: 760px">
+    <a routerLink="/inicio" class="small fw-semibold text-decoration-none">
+      <i class="bi bi-arrow-left me-1"></i> Volver al inicio
+    </a>
+    <p class="text-primary text-uppercase fw-bold small mb-2 mt-4">Práctica guiada</p>
+    <h1 class="display-6 fw-bold mb-2">Actividades de razonamiento lógico</h1>
+    <p class="text-secondary mb-0">Elige un desafío y fortalece tus habilidades paso a paso.</p>
+  </header>
+
+  <section aria-label="Actividades disponibles">
+    @if (cargando()) {
+      <p class="text-secondary">Cargando actividades...</p>
+    } @else if (actividades().length === 0) {
+      <p class="text-secondary">No hay actividades disponibles.</p>
+    } @else {
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-4">
+        @for (actividad of actividades(); track actividad.id; let i = $index) {
+          <div class="col">
+            <app-activity-card [actividad]="actividad" [numero]="i + 1" />
+          </div>
+        }
+      </div>
+    }
+  </section>
+</main>

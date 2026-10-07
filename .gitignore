@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.angular/
+
+.env
+.env.*
+
+firebase-debug.log
+
+# Archivos temporales
+_dash.txt
+build-err.txt
+err.txt
+status.txt
+tmp.txt
+tsc.err
+tsc-check.txt
+tsc-check5.txt
+tsc-errors.txt

@@ -1,0 +1,121 @@
+/* Ancho fijo en desktop; en móvil se adapta con Bootstrap */
+.sidebar {
+  width: 250px;
+  min-width: 250px;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Botones del menú: azul suave en reposo (tokens "subtle" de Bootstrap vía
+   variables --bs-btn-*) y `btn-primary` en la sección activa.
+   Aquí solo variables de Bootstrap, movimiento y la marca. */
+.menu-item {
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.menu-item:not(.menu-item--activo) {
+  --bs-btn-color: var(--bs-primary-text-emphasis);
+  --bs-btn-bg: var(--bs-primary-bg-subtle);
+  --bs-btn-border-color: var(--bs-primary-border-subtle);
+  --bs-btn-hover-color: var(--bs-primary-text-emphasis);
+  --bs-btn-hover-bg: var(--bs-primary-border-subtle);
+  --bs-btn-hover-border-color: var(--bs-primary-border-subtle);
+  --bs-btn-active-color: var(--bs-primary-text-emphasis);
+  --bs-btn-active-bg: var(--bs-primary-border-subtle);
+  --bs-btn-active-border-color: var(--bs-primary-border-subtle);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  transform: translateX(3px);
+}
+
+/* Botón seleccionado: además del color, se marca con la barra amarilla */
+.menu-item--activo,
+.menu-item--activo:hover {
+  transform: translateX(4px);
+}
+
+.menu-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.menu-item--activo::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 18%;
+  bottom: 18%;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: #fbbf24;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    border-right: none !important;
+    border-bottom: 1px solid #eef0f4;
+  }
+
+  .sidebar-panel {
+    display: none;
+  }
+
+  .sidebar-panel--open {
+    display: flex !important;
+    flex-direction: column;
+  }
+}
+
+/* Modo juego: solo logo + botón menú flotante */
+:host(.menu-juego-host) {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1050;
+  width: auto;
+}
+
+.sidebar--modo-juego {
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible;
+}
+
+.sidebar--modo-juego .brand-block > :not(.brand-icon):not(.menu-toggle) {
+  display: none;
+}
+
+.sidebar--modo-juego .menu-toggle {
+  display: inline-flex !important;
+}
+
+.sidebar--modo-juego .sidebar-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  display: none;
+  width: min(18rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 5rem);
+  padding: 0.75rem;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.sidebar--modo-juego .sidebar-panel--open {
+  display: flex !important;
+  flex-direction: column;
+}

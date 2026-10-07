@@ -1,0 +1,18 @@
+/* Solo layout de modo juego a pantalla completa */
+:host .game-active {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+:host .game-active > div {
+  height: 100%;
+  min-height: 0;
+}
+
+:host .game-active main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}

@@ -1,0 +1,50 @@
+<div class="container-fluid p-4">
+  <header class="mb-4">
+    <a routerLink="/unidad-educativa" class="small text-decoration-none">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    <h1 class="fs-4 fw-bold mt-2 mb-1"><i class="bi bi-building me-2"></i>Editar Unidad Educativa</h1>
+    <p class="text-secondary mb-0">Actualiza la información institucional que verá la comunidad.</p>
+  </header>
+
+  <section class="card border-0 shadow-sm rounded-4 p-3 p-md-4" style="max-width: 760px">
+    @if (cargando()) {
+      <p class="text-secondary mb-0">
+        <span class="spinner-border spinner-border-sm me-2"></span>Cargando información...
+      </p>
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="tituloUnidad">Título</label>
+          <input id="tituloUnidad" class="form-control" formControlName="titulo" maxlength="100" placeholder="Unidad Educativa" />
+          @if (form.controls.titulo.touched && form.controls.titulo.invalid) {
+            <div class="text-danger small mt-1">El título es obligatorio.</div>
+          }
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="badgeUnidad">Etiqueta</label>
+          <input id="badgeUnidad" class="form-control" formControlName="badge" maxlength="40" placeholder="Institución" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label fw-semibold" for="descripcionUnidad">Descripción</label>
+          <textarea id="descripcionUnidad" class="form-control" rows="5" formControlName="descripcion" maxlength="500" placeholder="Conoce nuestra comunidad educativa..."></textarea>
+          @if (form.controls.descripcion.touched && form.controls.descripcion.invalid) {
+            <div class="text-danger small mt-1">La descripción es obligatoria.</div>
+          }
+        </div>
+        @if (mensaje()) {
+          <div class="alert alert-success py-2" role="status">{{ mensaje() }}</div>
+        }
+        @if (error()) {
+          <div class="alert alert-danger py-2" role="alert">{{ error() }}</div>
+        }
+        <button type="submit" class="btn btn-primary fw-bold" [disabled]="guardando()">
+          @if (guardando()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+          }
+          Guardar cambios
+        </button>
+      </form>
+    }
+  </section>
+</div>

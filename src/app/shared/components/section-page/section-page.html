@@ -1,0 +1,28 @@
+<main class="min-vh-100 bg-light p-3 p-md-5">
+  <div class="container">
+    <header class="text-center mb-4">
+      <span class="badge text-bg-primary">{{ badge }}</span>
+      <h1 class="h2 fw-bold mt-3 mb-2">{{ title }}</h1>
+      <p class="text-secondary mb-0">{{ description }}</p>
+    </header>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+      @for (item of items; track item.route) {
+        <div class="col">
+          <article class="card border-0 shadow-sm h-100 p-4">
+            <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center mb-3" style="width: 58px; height: 58px">
+              <i class="bi {{ item.icon }} fs-3"></i>
+            </div>
+            <h2 class="h5 fw-bold">{{ item.title }}</h2>
+            <p class="text-secondary flex-grow-1">{{ item.description }}</p>
+            @if (item.externalUrl) {
+              <a [href]="item.externalUrl" class="btn btn-primary align-self-start">Abrir enlace</a>
+            } @else if (item.route !== '#') {
+              <a [routerLink]="item.route" class="btn btn-primary align-self-start">Ir</a>
+            }
+          </article>
+        </div>
+      }
+    </div>
+  </div>
+</main>

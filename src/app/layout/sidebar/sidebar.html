@@ -1,0 +1,60 @@
+<aside
+  class="sidebar d-flex flex-column position-sticky top-0 border-end bg-white p-3"
+  [class.sidebar--modo-juego]="esModoJuego()"
+>
+  <div class="d-flex align-items-center gap-2 mb-4 brand-block">
+    <div class="brand-icon" aria-hidden="true">
+      <img src="/images/agilmente.webp" alt="" width="48" height="48" class="rounded" />
+    </div>
+    @if (!enRutaJuego()) {
+      <div class="d-flex flex-column lh-sm">
+        <span class="fw-bold text-primary">ÁGILMENTE</span>
+        <span class="text-secondary small">Aprendo, pienso y resuelvo</span>
+      </div>
+    }
+    <button
+      type="button"
+      class="btn btn-success d-lg-none ms-auto menu-toggle"
+      (click)="alternarMenu()"
+      [attr.aria-expanded]="menuAbierto()"
+      aria-controls="sidebar-menu"
+      [attr.aria-label]="menuAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+    >
+      <i class="bi" [class.bi-list]="esModoJuego() || !menuAbierto()" [class.bi-x-lg]="!esModoJuego() && menuAbierto()"></i>
+    </button>
+  </div>
+
+  <div class="sidebar-panel flex-grow-1" [class.d-none]="!menuAbierto() && false" [class.sidebar-panel--open]="menuAbierto()">
+    <nav id="sidebar-menu" class="nav flex-column gap-2">
+      @for (item of menu; track item.ruta) {
+        <button
+          type="button"
+          class="btn menu-item d-flex align-items-center gap-2 text-start rounded-3 fw-semibold"
+          [class.btn-primary]="esActivo(item)"
+          [class.menu-item--activo]="esActivo(item)"
+          (click)="navegar(item)"
+          [attr.aria-current]="esActivo(item) ? 'page' : null"
+        >
+          <span class="menu-icon d-inline-flex align-items-center justify-content-center rounded-2 bg-white text-primary flex-shrink-0">
+            <i class="bi {{ item.icono }}"></i>
+          </span>
+          <span class="menu-label">{{ item.etiqueta }}</span>
+          @if (esModoAdmin() && item.rutaAdmin) {
+            <i class="bi bi-pencil-square ms-auto small" aria-hidden="true"></i>
+          }
+        </button>
+      }
+    </nav>
+
+    @if (sesionIniciada()) {
+      <button
+        type="button"
+        class="btn btn-outline-danger d-flex align-items-center gap-2 mt-4 w-100"
+        (click)="cerrarSesion()"
+      >
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Cerrar Sesión</span>
+      </button>
+    }
+  </div>
+</aside>

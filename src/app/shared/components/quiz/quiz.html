@@ -1,0 +1,236 @@
+<main class="quiz-page position-fixed top-0 start-0 end-0 bottom-0 overflow-auto p-2 p-md-3" [attr.data-theme]="vista.colorTema" style="z-index: 1040">
+  @if (vista.mostrarConfeti) {
+    <div class="confeti" aria-hidden="true">
+      @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
+        <span class="confeti-piece" [style.--i]="i"></span>
+      }
+    </div>
+  }
+
+  <div class="container-xl h-100 d-flex flex-column">
+    <header class="d-flex align-items-center justify-content-between flex-wrap">
+      <button type="button" class="btn btn-outline-dark fw-semibold px-3 rounded-4" (click)="volver.emit()">
+        <i class="bi bi-arrow-left"></i> Volver
+      </button>
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge rounded-pill text-bg-warning px-3 py-2 fw-semibold">
+          <i class="bi bi-star-fill"></i> {{ vista.resultado.puntaje }} pts
+        </span>
+
+        @if (vista.config.tiempoLimiteSegundos && vista.estado === 'jugando') {
+          <span class="badge rounded-pill px-3 py-2 fw-semibold font-monospace"
+                [class.text-bg-light]="vista.segundosRestantes > 5"
+                [class.border]="vista.segundosRestantes > 5"
+                [class.text-bg-danger]="vista.segundosRestantes <= 5"
+                [class.qz-timer-urgent]="vista.segundosRestantes <= 5">
+            <i class="bi bi-alarm"></i> {{ vista.segundosRestantes }}s
+          </span>
+        }
+
+        <button
+          type="button"
+          class="btn btn-outline-dark rounded-circle p-0 d-inline-flex align-items-center justify-content-center qz-boton-icono"
+          (click)="alternarSonido.emit()"
+          [attr.aria-label]="vista.sonidosActivos ? 'Silenciar' : 'Activar sonido'"
+          [attr.aria-pressed]="vista.sonidosActivos"
+        >
+          <i class="bi" [class.bi-volume-up-fill]="vista.sonidosActivos" [class.bi-volume-mute-fill]="!vista.sonidosActivos"></i>
+        </button>
+      </div>
+    </header>
+
+    @if (vista.estado === 'intro') {
+      <section class="card qz-intro-card border-0 shadow-sm rounded-4 text-center p-4 p-md-5 mx-auto">
+        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-3 overflow-hidden border border-2" style="width: 100px; height: 100px">
+          <img src="/images/agilmente.webp" alt="Ágilmente" class="w-100 h-100" style="object-fit: cover" />
+        </div>
+
+        <p class="text-uppercase small fw-bold mb-1">¡A jugar y aprender!</p>
+        <h1 class="qz-titulo fw-bold mb-2">{{ vista.config.titulo }}</h1>
+
+        @if (vista.config.descripcion) {
+          <p class="text-secondary mb-0">{{ vista.config.descripcion }}</p>
+        }
+
+        <div class="d-flex flex-wrap justify-content-center gap-2 my-4">
+          <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+            <i class="bi bi-list-ol"></i> {{ vista.total }} preguntas
+          </span>
+          <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+            <i class="bi bi-star"></i> ¡Gana puntos!
+          </span>
+        </div>
+
+        @if ((vista.config.niveles ?? 1) > 1) {
+          <div class="row row-cols-1 row-cols-sm-3 g-2 mb-4" role="group" aria-label="Selecciona un nivel">
+            @for (etiqueta of vista.etiquetasNiveles; track $index; let i = $index) {
+              <div class="col">
+                <button
+                  type="button"
+                  class="btn w-100 h-100 d-flex align-items-center justify-content-center gap-2 fw-semibold"
+                  [class.btn-primary]="i + 1 === vista.nivelSeleccionado"
+                  [class.btn-outline-dark]="i + 1 !== vista.nivelSeleccionado"
+                  [attr.aria-pressed]="i + 1 === vista.nivelSeleccionado"
+                  (click)="nivelElegido.emit(i + 1)"
+                >
+                  <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center qz-level-index">{{ i + 1 }}</span>
+                  {{ etiqueta }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        <button type="button" class="btn btn-primary py-3 px-4 rounded-pill fw-bold" (click)="empezar.emit()">
+          <i class="bi bi-play-fill"></i> ¡Empezar!
+        </button>
+      </section>
+    }
+
+    @if ((vista.estado === 'jugando' || vista.estado === 'feedback') && vista.preguntaActual; as pregunta) {
+      <section class="card qz-question-card border-0 shadow-sm rounded-4 p-3 p-md-4 flex-grow-1 d-flex flex-column">
+        <div>
+          <span class="badge rounded-pill text-bg-primary px-3 py-2 fw-semibold">
+            <i class="bi bi-patch-question"></i> Pregunta {{ vista.indice + 1 }} de {{ vista.total }}
+          </span>
+        </div>
+
+        @if (pregunta.secuenciaNumerica?.length) {
+          <p class="qz-serie fw-bold text-center text-dark mb-0">{{ pregunta.secuenciaNumerica.join(', ') }}, ...</p>
+        }
+
+        @if (pregunta.rejilla; as rejilla) {
+          <div class="qz-rejilla" role="group" [attr.aria-label]="rejilla.descripcion ?? 'Rejilla del ejercicio'"
+               [style.--qz-columnas]="rejilla.lado">
+            @for (celda of rejilla.celdas; track $index) {
+              <div class="qz-rejilla-celda {{ celda.clase ?? '' }}" [attr.aria-label]="celda.ariaLabel">
+                {{ celda.texto }}
+              </div>
+            }
+          </div>
+        }
+
+        @if (pregunta.secuenciaVisual?.length) {
+          <p class="qz-serie qz-sequence-visual fw-bold text-center text-dark mb-0" aria-label="Secuencia visual">
+            @for (figura of pregunta.secuenciaVisual; track $index) {
+              <span [attr.aria-label]="figura.descripcion">{{ figura.simbolo }}</span>
+            }
+          </p>
+        }
+
+        <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
+
+        @if (pregunta.tipo === 'personalizado') {
+          <div class="qz-custom-content flex-grow-1 mt-3 d-flex flex-column">
+            <ng-content select="[quiz-custom]"></ng-content>
+            @if (pregunta.contenidoHtml) {
+              <div [innerHTML]="pregunta.contenidoHtml"></div>
+            }
+          </div>
+        } @else {
+          <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:
+               sin eso las opciones se pegaban al enunciado. -->
+          <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0" role="listbox">
+            @for (op of pregunta.opciones; track op.id; let i = $index) {
+              <div class="col">
+                <button
+                  type="button"
+                  class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start p-3 fw-semibold rounded-3"
+                  [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
+                  [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
+                  [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
+                  [class.btn-danger]="vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId"
+                  [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
+                  [attr.aria-selected]="vista.seleccionada === op.id"
+                  [disabled]="vista.estado === 'feedback'"
+                  (click)="respuestaSeleccionada.emit(op.id)"
+                >
+                  <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
+                  <span class="flex-grow-1">{{ op.texto }}</span>
+                  @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
+                    <i class="bi bi-check-circle-fill"></i>
+                  }
+                  @if (vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId) {
+                    <i class="bi bi-x-circle-fill"></i>
+                  }
+                </button>
+              </div>
+            }
+          </div>
+        }
+
+        @if (vista.estado === 'feedback') {
+          <div class="alert mt-auto mb-0 text-center border-0 rounded-4" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
+            <p class="fw-bold mb-1">
+              @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
+              @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! Sigue intentando }
+            </p>
+
+            @if (pregunta.explicacion) {
+              <p class="small mb-3">{{ pregunta.explicacion }}</p>
+            }
+
+            <button type="button" class="btn fw-semibold px-4 py-2 rounded-4" [class.btn-primary]="vista.esCorrecta" [class.btn-outline-dark]="!vista.esCorrecta" (click)="avanzar.emit()">
+              {{ vista.indice + 1 >= vista.total ? 'Ver resultados' : 'Siguiente' }}
+              <i class="bi" [class.bi-trophy]="vista.indice + 1 >= vista.total" [class.bi-arrow-right]="vista.indice + 1 < vista.total"></i>
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (vista.estado === 'resultado') {
+      <section class="card qz-result-card border-0 shadow-sm rounded-4 text-center p-4 p-md-5 mx-auto">
+        <div class="qz-estrellas mb-3">
+          <span class="visually-hidden">{{ vista.estrellas }} de 3 estrellas</span>
+          @for (s of [1, 2, 3]; track s) {
+            <i class="bi" [class.bi-star-fill]="s <= vista.estrellas" [class.text-warning]="s <= vista.estrellas" [class.bi-star]="s > vista.estrellas" [class.text-secondary]="s > vista.estrellas"></i>
+          }
+        </div>
+
+        <h2 class="qz-titulo fw-bold mb-0">
+          @if (vista.resultado.porcentaje >= 80) { ¡Increíble! }
+          @else if (vista.resultado.porcentaje >= 50) { ¡Buen trabajo! }
+          @else { ¡Sigue practicando! }
+        </h2>
+
+        <div class="row row-cols-2 row-cols-md-4 g-3 my-4">
+          <div class="col">
+            <div class="rounded-4 border p-3 bg-success-subtle border-success-subtle h-100">
+              <span class="qz-stat-num fw-bold text-success-emphasis d-block">{{ vista.resultado.correctas }}</span>
+              <small class="qz-stat-label text-body-secondary text-uppercase fw-bold">Correctas</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="rounded-4 border p-3 bg-danger-subtle border-danger-subtle h-100">
+              <span class="qz-stat-num fw-bold text-danger-emphasis d-block">{{ vista.resultado.incorrectas }}</span>
+              <small class="qz-stat-label text-body-secondary text-uppercase fw-bold">A mejorar</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="rounded-4 border p-3 bg-warning-subtle border-warning-subtle h-100">
+              <span class="qz-stat-num fw-bold text-warning-emphasis d-block">{{ vista.resultado.puntaje }}</span>
+              <small class="qz-stat-label text-body-secondary text-uppercase fw-bold">Puntos</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="rounded-4 border p-3 bg-primary-subtle border-primary-subtle h-100">
+              <span class="qz-stat-num fw-bold text-primary-emphasis d-block">{{ vista.resultado.porcentaje }}%</span>
+              <small class="qz-stat-label text-body-secondary text-uppercase fw-bold">Acierto</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+          <button type="button" class="btn btn-primary py-3 px-4 rounded-pill fw-bold" (click)="reiniciar.emit()">
+            <i class="bi bi-arrow-repeat"></i> Jugar otra vez
+          </button>
+          <a [routerLink]="rutaVolver" class="btn btn-outline-dark py-3 px-4 rounded-pill fw-bold">
+            <i class="bi bi-grid"></i> Más actividades
+          </a>
+        </div>
+      </section>
+    }
+  </div>
+</main>

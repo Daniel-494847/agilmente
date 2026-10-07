@@ -1,0 +1,50 @@
+<section class="min-vh-100 d-flex align-items-center justify-content-center bg-light p-3">
+  <div class="card shadow-sm border-0 w-100" style="max-width: 420px">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <span class="bg-primary text-white rounded-3 d-inline-flex align-items-center justify-content-center fw-bold" style="width: 52px; height: 52px; font-size: 1.5rem">A</span>
+        <div>
+          <p class="text-primary text-uppercase small fw-bold mb-1">Agilmente</p>
+          <h1 class="h4 mb-0">{{ modoRegistro() ? 'Regístrate' : 'Inicia sesión' }}</h1>
+        </div>
+      </div>
+      <p class="text-secondary mb-4">
+        {{ modoRegistro() ? 'Crea tu cuenta para comenzar.' : 'Accede a tu cuenta para continuar.' }}
+      </p>
+
+      <div class="btn-group w-100 mb-4" role="group">
+        <button type="button" class="btn" [class.btn-primary]="tipoUsuario() === 'estudiante'" [class.btn-outline-primary]="tipoUsuario() !== 'estudiante'" (click)="seleccionarTipo('estudiante')">Estudiante</button>
+        <button type="button" class="btn" [class.btn-primary]="tipoUsuario() === 'docente'" [class.btn-outline-primary]="tipoUsuario() !== 'docente'" (click)="seleccionarTipo('docente')">Docente</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="modoRegistro() ? registrarUsuario() : iniciarSesion()" novalidate>
+        @if (modoRegistro()) {
+          <div class="mb-3">
+            <label class="form-label" for="nombreCompleto">Nombre completo</label>
+            <input id="nombreCompleto" type="text" class="form-control form-control-lg" formControlName="nombreCompleto" placeholder="Juan Pérez" />
+          </div>
+        }
+        <div class="mb-3">
+          <label class="form-label" for="email">Correo electrónico</label>
+          <input id="email" type="email" class="form-control form-control-lg" formControlName="email" placeholder="correo@ejemplo.com" />
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="password">Contraseña</label>
+          <input id="password" type="password" class="form-control form-control-lg" formControlName="password" placeholder="••••••••" />
+        </div>
+        @if (errorMessage()) {
+          <div class="alert alert-danger">{{ errorMessage() }}</div>
+        }
+        <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Espera...' : (modoRegistro() ? 'Crear cuenta' : 'Iniciar sesión') }}
+        </button>
+        <button type="button" class="btn btn-outline-dark btn-lg w-100 mt-3" (click)="iniciarConGoogle()" [disabled]="isSubmitting()">
+          <i class="bi bi-google me-2"></i> {{ modoRegistro() ? 'Registrarse' : 'Iniciar' }} con Google
+        </button>
+        <button type="button" class="btn btn-link w-100 mt-3" (click)="toggleModo()">
+          {{ modoRegistro() ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</section>

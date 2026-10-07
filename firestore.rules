@@ -1,0 +1,81 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function esAdministrador() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
+    }
+
+    match /usuarios/{uid} {
+      allow read: if autenticado() && (request.auth.uid == uid || esAdministrador());
+      allow create: if autenticado()
+        && request.auth.uid == uid
+        && request.resource.data.rol in ['estudiante', 'docente'];
+      allow update: if esAdministrador()
+        || (autenticado()
+          && request.auth.uid == uid
+          && request.resource.data.rol == resource.data.rol);
+      allow delete: if esAdministrador();
+    }
+
+    match /actividades/{id} {
+      allow read: if true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /biblioteca/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /comunicados/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true || resource.data.destacado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /fotosGaleria/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /unidad-educativa/{id} {
+      allow read: if true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /contenidoSecciones/{id} {
+      allow read: if true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    match /intentos/{id} {
+      allow create: if autenticado()
+        && request.resource.data.estudianteUid == request.auth.uid
+        && request.resource.data.estado == 'en_progreso'
+        && !request.resource.data.keys().hasAny(['puntaje', 'nivel', 'horaFinalizacion'])
+        && request.resource.data.actividadId is string;
+
+      allow read: if esAdministrador()
+        || (autenticado() && resource.data.estudianteUid == request.auth.uid);
+
+      allow update: if esAdministrador()
+        || (autenticado()
+          && resource.data.estudianteUid == request.auth.uid
+          && request.resource.data.estudianteUid == resource.data.estudianteUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'actividadId', 'puntaje', 'nivel',
+                 'respuestasCorrectas', 'respuestasIncorrectas',
+                 'estado', 'horaFinalizacion', 'duracionSegundos'
+               ]));
+
+      allow delete: if esAdministrador();
+    }
+  }
+}

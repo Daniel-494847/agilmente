@@ -1,0 +1,257 @@
+/* ============================================================================
+   Quiz — escala tipográfica, tamaños y fondos con paleta Bootstrap 5.
+
+   El color de TODOS los botones (incluidos sus estados y el hover) lo ponen las
+   variantes de Bootstrap (btn-outline-dark, btn-primary, btn-success…). Aquí
+   solo hay medidas: nada de background/color/border de botones.
+
+   Escala: --qz-base manda en todo el juego y de él salen enunciado, serie,
+   títulos y cifras. Así el tamaño de letra crece con la pantalla sin que cada
+   texto lleve su propio parche.
+   ========================================================================== */
+
+.quiz-page {
+  --qz-base: clamp(1rem, 0.5vw + 0.85rem, 1.2rem);
+  --qz-enunciado: calc(var(--qz-base) * 1.15);
+  --qz-serie: calc(var(--qz-base) * 1.35);
+  --qz-titulo: calc(var(--qz-base) * 2);
+
+  --qz-soft: var(--bs-primary-bg-subtle);
+
+  font-size: var(--qz-base);
+  color: var(--bs-emphasis-color);
+  background-color: var(--bs-tertiary-bg);
+  background-image:
+    radial-gradient(ellipse at 88% 0%, var(--qz-soft), transparent 55%),
+    radial-gradient(ellipse at 6% 100%, var(--bs-info-bg-subtle), transparent 48%);
+  background-attachment: fixed;
+}
+
+.quiz-page[data-theme='purple'] {
+  --qz-soft: #e9d5ff;
+}
+
+.quiz-page[data-theme='green'] {
+  --qz-soft: var(--bs-success-bg-subtle);
+}
+
+.quiz-page[data-theme='amber'] {
+  --qz-soft: var(--bs-warning-bg-subtle);
+}
+
+.quiz-page[data-theme='blue'] {
+  --qz-soft: var(--bs-primary-bg-subtle);
+}
+
+.quiz-page[data-theme='pink'] {
+  --qz-soft: #fce7f3;
+}
+
+.quiz-page[data-theme='orange'] {
+  --qz-soft: #ffedd5;
+}
+
+/* ----------------------------------------------------------------------------
+   Anchos: la lectura no se estira en pantallas grandes y las tarjetas de
+   intro y resultado comparten caja para que la pantalla no "salte" al empezar.
+   -------------------------------------------------------------------------- */
+/* `safe center` centra la tarjeta de intro y de resultado en pantallas altas y,
+   cuando el contenido no cabe (móvil pequeño), vuelve arriba: con un `center` a
+   secas la parte superior quedaría cortada y sin poder desplazarse. */
+.quiz-page .container-xl {
+  width: 100%;
+  max-width: 1240px;
+  padding-inline: clamp(0.5rem, 3vw, 3rem);
+  justify-content: safe center;
+}
+
+.quiz-page .qz-intro-card,
+.quiz-page .qz-result-card {
+  width: min(100%, 44rem);
+}
+
+.quiz-page header {
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Bootstrap fija `--bs-btn-font-size: 1rem` en cada .btn, así que sin esto los
+   botones del juego se quedan en 16px mientras el texto crece con la pantalla.
+   `1em` los iguala al texto que los rodea. */
+.quiz-page .btn {
+  font-size: 1em;
+}
+
+.quiz-page .badge {
+  font-size: 0.85em;
+}
+
+/* Rótulos y cifras del resultado: el número manda y el rótulo acompaña. */
+.quiz-page .qz-titulo {
+  font-size: var(--qz-titulo);
+  line-height: 1.2;
+}
+
+.quiz-page .qz-estrellas {
+  font-size: calc(var(--qz-base) * 1.8);
+  line-height: 1.2;
+}
+
+.quiz-page .qz-stat-num {
+  font-size: calc(var(--qz-base) * 1.55);
+  line-height: 1.25;
+}
+
+.quiz-page .qz-stat-label {
+  font-size: 0.75em;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+}
+
+/* Pregunta: la serie es lo importante, luego el enunciado y por último las
+   opciones, que heredan --qz-base. */
+.quiz-page .qz-question-card {
+  gap: 1rem;
+}
+
+.quiz-page .qz-serie {
+  font-size: var(--qz-serie);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.quiz-page .qz-enunciado {
+  font-size: var(--qz-enunciado);
+  line-height: 1.3;
+}
+
+.quiz-page .qz-sequence-visual {
+  line-height: 1.8;
+}
+
+/* ----------------------------------------------------------------------------
+   Rejilla de casilleros (cuadrados mágicos, sudokus, tablas…)
+
+   Solo medidas: las celdas llevan su color en las clases de Bootstrap que el
+   juego pasa en `celda.clase`. `--qz-columnas` lo fija el propio enunciado.
+   -------------------------------------------------------------------------- */
+.quiz-page .qz-rejilla {
+  --qz-celda: clamp(2.6rem, 9vw, 4.4rem);
+
+  display: grid;
+  grid-template-columns: repeat(var(--qz-columnas, 3), var(--qz-celda));
+  gap: 0.35em;
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.quiz-page .qz-rejilla-celda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--qz-celda);
+  height: var(--qz-celda);
+  font-size: var(--qz-serie);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ----------------------------------------------------------------------------
+   Medidas propias (Bootstrap no da un botón cuadrado ni un círculo centrado)
+
+   Los círculos de letra se dibujan aquí (no con `.border`) porque `.border` de
+   Bootstrap declara su borde con `!important` y pisaría `currentColor`: así el
+   círculo toma el color de la variante del botón —negro en btn-outline-dark,
+   blanco en btn-primary/success/danger y negro en btn-light— sin código extra.
+
+   Todas las medidas van en `em` y con el prefijo `.quiz-page` para que manden
+   sobre `--bs-btn-font-size` y `.badge` de Bootstrap, que son medidas fijas.
+   -------------------------------------------------------------------------- */
+.quiz-page .qz-boton-icono {
+  width: 2.4em;
+  height: 2.4em;
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.quiz-page .qz-level-index {
+  width: 1.55em;
+  height: 1.55em;
+  padding: 0;
+  border: 2px solid currentColor;
+  color: inherit;
+  font-size: 0.72em;
+  font-weight: 800;
+}
+
+.quiz-page .qz-option-letter {
+  width: 1.6em;
+  height: 1.6em;
+  padding: 0;
+  border: 2px solid currentColor;
+  color: inherit;
+  font-size: 0.8em;
+  font-weight: 800;
+}
+
+/* Bootstrap atenúa a 0.65 los botones :disabled; en el acertijo eso dejaría el
+   verde y el rojo casi ilegibles, así que aquí solo manda el color que pone
+   la variante. */
+.quiz-page .qz-answer:disabled {
+  opacity: 1;
+}
+
+/* Aviso del tiempo: late cuando quedan 5 segundos o menos. */
+.qz-timer-urgent {
+  animation: qz-pulse 1s ease-in-out infinite;
+}
+
+@keyframes qz-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Confeti
+   -------------------------------------------------------------------------- */
+.confeti {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.confeti-piece {
+  position: absolute;
+  top: -12px;
+  left: calc(var(--i) * 8%);
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: hsl(calc(var(--i) * 40), 85%, 55%);
+  animation: confeti-fall 1.1s ease-out forwards;
+  animation-delay: calc(var(--i) * 0.04s);
+}
+
+@keyframes confeti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(70vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Accesibilidad — respeta a quien desactivó las animaciones
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .qz-timer-urgent,
+  .confeti-piece {
+    animation: none;
+  }
+}

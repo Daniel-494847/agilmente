@@ -1,0 +1,89 @@
+<main class="container-fluid p-4 p-lg-5">
+  <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+    <div>
+      <p class="text-uppercase text-primary fw-bold small mb-2">Administración</p>
+      <h1 class="h2 fw-bold mb-2">Gestionar actividades</h1>
+      <p class="text-secondary mb-0">Añade, modifica o elimina las actividades visibles en el proyecto.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a routerLink="/biblioteca/administrar" class="btn btn-outline-primary"><i class="bi bi-book me-1"></i> Biblioteca</a>
+      <button type="button" class="btn btn-outline-primary" (click)="cargarIniciales()">
+        <i class="bi bi-cloud-upload me-1"></i> Guardar iniciales
+      </button>
+    </div>
+  </header>
+
+  @if (mensaje()) {
+    <div class="alert alert-info" role="alert">{{ mensaje() }}</div>
+  }
+
+  <div class="row g-4">
+    <section class="col-12 col-xl-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">{{ editando ? 'Editar' : 'Nueva' }} actividad</h2>
+            @if (editando) {
+              <button type="button" class="btn btn-sm btn-link" (click)="nueva()">Cancelar</button>
+            }
+          </div>
+          <form (ngSubmit)="guardar()">
+            <label class="form-label" for="titulo">Título</label>
+            <input id="titulo" class="form-control mb-3" [(ngModel)]="actividad.titulo" name="titulo" required />
+            <label class="form-label" for="descripcion">Descripción</label>
+            <textarea id="descripcion" class="form-control mb-3" rows="3" [(ngModel)]="actividad.descripcion" name="descripcion" required></textarea>
+            <label class="form-label" for="icono">Icono Bootstrap</label>
+            <input id="icono" class="form-control mb-3" [(ngModel)]="actividad.icono" name="icono" placeholder="bi-lightbulb" />
+            <label class="form-label" for="colorTema">Color</label>
+            <select id="colorTema" class="form-select mb-3" [(ngModel)]="actividad.colorTema" name="colorTema">
+              <option value="purple">Morado</option>
+              <option value="green">Verde</option>
+              <option value="amber">Amarillo</option>
+              <option value="blue">Azul</option>
+              <option value="pink">Rosado</option>
+              <option value="orange">Naranja</option>
+            </select>
+            <label class="form-label" for="ruta">Ruta</label>
+            <input id="ruta" class="form-control mb-4" [(ngModel)]="actividad.ruta" name="ruta" required />
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-save me-1"></i> {{ editando ? 'Guardar cambios' : 'Añadir' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-12 col-xl-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <h2 class="h5 mb-3">Actividades del proyecto</h2>
+          @if (cargando()) {
+            <p class="text-secondary">Cargando...</p>
+          } @else if (actividades().length === 0) {
+            <p class="text-secondary">No hay actividades.</p>
+          } @else {
+            <div class="list-group list-group-flush">
+              @for (item of actividades(); track item.id) {
+                <article class="list-group-item px-0 d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                  <div class="d-flex align-items-center gap-3">
+                    <span class="bg-primary-subtle text-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 2.5rem; height: 2.5rem">
+                      <i class="bi {{ item.icono }}"></i>
+                    </span>
+                    <div>
+                      <h3 class="h6 mb-1">{{ item.titulo }}</h3>
+                      <p class="small text-secondary mb-0">{{ item.descripcion }}</p>
+                    </div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" (click)="editar(item)"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminar(item)"><i class="bi bi-trash"></i></button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+</main>

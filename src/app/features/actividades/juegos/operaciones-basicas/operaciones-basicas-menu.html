@@ -1,0 +1,46 @@
+<main class="juego-page container-fluid px-3">
+  <router-outlet #operationOutlet="outlet"></router-outlet>
+  @if (!operationOutlet.isActivated) {
+    <section class="operation-menu container-xl mx-auto text-center">
+      <a routerLink="/razonamiento-logico" class="btn btn-link text-decoration-none fw-semibold px-0 back-link align-self-start d-inline-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Volver a actividades
+      </a>
+      <p class="menu-eyebrow text-uppercase fw-bold">Practica en solitario</p>
+      <h1 class="menu-title fw-bold">Operaciones Básicas</h1>
+      <p class="lead text-secondary menu-subtitle">Elige tu próximo reto</p>
+
+      <nav class="operation-grid" aria-label="Operaciones básicas">
+        <a routerLink="./sumas" class="operation-card card text-decoration-none" data-operation="sumas">
+          <span class="operation-icon"><i class="bi bi-plus-lg"></i></span>
+          <span class="operation-text"><strong>Sumas</strong><small>¡Junta cantidades!</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="./restas" class="operation-card card text-decoration-none" data-operation="restas">
+          <span class="operation-icon"><i class="bi bi-dash-lg"></i></span>
+          <span class="operation-text"><strong>Restas</strong><small>Descubre cuánto queda</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="./multiplicacion" class="operation-card card text-decoration-none" data-operation="multiplicacion">
+          <span class="operation-icon"><i class="bi bi-x-lg"></i></span>
+          <span class="operation-text"><strong>Multiplicación</strong><small>Cuenta grupos iguales</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="./division" class="operation-card card text-decoration-none" data-operation="division">
+          <span class="operation-icon"><i class="bi bi-slash-lg"></i></span>
+          <span class="operation-text"><strong>División</strong><small>Reparte en partes iguales</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="./combinadas" class="operation-card card text-decoration-none" data-operation="combinadas">
+          <span class="operation-icon"><i class="bi bi-calculator"></i></span>
+          <span class="operation-text"><strong>Operaciones combinadas</strong><small>¡Resuelve el reto completo!</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="./mezcladas" class="operation-card card text-decoration-none" data-operation="mezcladas">
+          <span class="operation-icon"><i class="bi bi-shuffle"></i></span>
+          <span class="operation-text"><strong>Operaciones mezcladas</strong><small>Todos los retos a la vez</small></span>
+          <i class="bi bi-arrow-up-right operation-arrow" aria-hidden="true"></i>
+        </a>
+      </nav>
+    </section>
+  }
+</main>

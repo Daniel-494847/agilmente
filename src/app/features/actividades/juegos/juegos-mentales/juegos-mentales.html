@@ -1,0 +1,375 @@
+﻿<!-- ============================================================
+     AJUSTES DE LA RONDA
+     ============================================================ -->
+@if (fase() === 'intro') {
+  <main class="jm-intro">
+    <div class="container-xl d-flex flex-column min-vh-100">
+      <a
+        [routerLink]="rutaVolver"
+        class="btn btn-link text-decoration-none fw-semibold px-0 align-self-start jm-volver"
+      >
+        <i class="bi bi-arrow-left me-1"></i> Volver a actividades
+      </a>
+
+      <header class="jm-hero text-center mx-auto">
+        <span class="badge rounded-pill text-bg-primary px-3 py-2 jm-chip">ENTRENAMIENTO MENTAL</span>
+        <h1 class="fw-bold mt-3 mb-2">Juegos Mentales</h1>
+        <p class="lead text-secondary mb-0">
+          Memoriza los {{ totalEjercicios() }} ejercicios y después escribe todos sus resultados.
+        </p>
+      </header>
+
+      <section class="card border-0 shadow-sm rounded-4 jm-card mx-auto w-100">
+        <div class="card-body p-4">
+          <h2 class="h6 text-uppercase text-secondary fw-bold mb-3">1 · Tipo de operación</h2>
+
+          <div class="jm-modos" role="group" aria-label="Tipo de operación">
+            @for (m of modos; track m.id) {
+              <button
+                type="button"
+                [class]="
+                  'btn jm-modo ' +
+                  (modo() === m.id ? 'btn-' + m.variante : 'jm-modo-apagado jm-modo-' + m.variante)
+                "
+                [attr.aria-pressed]="modo() === m.id"
+                (click)="elegirModo(m.id)"
+              >
+                <i class="bi {{ m.icono }} jm-modo-icono" aria-hidden="true"></i>
+                <span class="jm-modo-nombre">{{ m.nombre }}</span>
+              </button>
+            }
+          </div>
+
+          <p class="jm-nota mb-0 mt-3">
+            <i class="bi bi-lightbulb me-1" aria-hidden="true"></i>{{ modoActual().nota }}
+          </p>
+        </div>
+
+        <hr class="my-0" />
+
+        <div class="card-body p-4">
+          <h2 class="h6 text-uppercase text-secondary fw-bold mb-3">2 · Ajustes de la ronda</h2>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label" for="jm-ejercicios">Número de ejercicios</label>
+              <input
+                id="jm-ejercicios"
+                type="number"
+                class="form-control jm-campo-cantidad"
+                min="2"
+                max="20"
+                step="1"
+                inputmode="numeric"
+                [value]="ejerciciosTexto()"
+                (input)="escribirEjercicios($event)"
+                (change)="normalizarEjercicios()"
+                (blur)="normalizarEjercicios()"
+                aria-describedby="jm-ejercicios-ayuda"
+              />
+              <small id="jm-ejercicios-ayuda" class="form-text">Elige cuántos quieres hacer: de 2 a 20.</small>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-3">
+              <span class="form-label d-block" id="jm-etiqueta-cantidad">Números por ejercicio</span>
+              <div class="btn-group w-100" role="group" aria-labelledby="jm-etiqueta-cantidad">
+                <button
+                  type="button"
+                  class="btn btn-primary jm-paso"
+                  (click)="cambiarCantidad(-1)"
+                  [disabled]="cantidad() <= 2"
+                  aria-label="Quitar un número"
+                >
+                  <i class="bi bi-dash-lg"></i>
+                </button>
+                <span class="btn jm-cantidad" aria-live="polite">{{ cantidad() }}</span>
+                <button
+                  type="button"
+                  class="btn btn-primary jm-paso"
+                  (click)="cambiarCantidad(1)"
+                  [disabled]="cantidad() >= 20"
+                  aria-label="Añadir un número"
+                >
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-3">
+              <span class="form-label d-block" id="jm-etiqueta-cifras">Cifras de cada número</span>
+              <div class="btn-group w-100" role="group" aria-labelledby="jm-etiqueta-cifras">
+                @for (c of [1, 2, 3]; track c) {
+                  <button
+                    type="button"
+                    class="btn"
+                    [class.btn-primary]="cifras() === c"
+                    [class.btn-outline-primary]="cifras() !== c"
+                    [attr.aria-pressed]="cifras() === c"
+                    (click)="elegirCifras(c)"
+                  >
+                    {{ c }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label" for="jm-tiempo">
+                Tiempo por número <strong>{{ tiempo().toFixed(1) }} s</strong>
+              </label>
+              <input
+                id="jm-tiempo"
+                type="range"
+                class="form-range"
+                min="0.3"
+                max="3"
+                step="0.1"
+                [value]="tiempo()"
+                (input)="cambiarTiempo($event)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4 bg-light rounded-bottom-4 jm-cierre">
+          @if (ejerciciosSesion() > 0) {
+            <p class="text-center text-secondary mb-3">
+              Sesión: <strong>{{ aciertosSesion() }}/{{ ejerciciosSesion() }}</strong> ejercicios
+              correctos
+            </p>
+          }
+
+          <button
+            type="button"
+            [class]="'btn btn-lg w-100 jm-iniciar btn-' + modoActual().variante"
+            (click)="iniciar()"
+          >
+            <i class="bi bi-play-fill me-2"></i>Iniciar {{ totalEjercicios() }} ejercicios
+            @if (soportado()) {
+              <i class="bi bi-fullscreen ms-2" aria-hidden="true"></i>
+            }
+          </button>
+
+          <p class="text-center text-secondary small mt-2 mb-0">
+            @if (soportado()) {
+              Verás los {{ totalEjercicios() }} ejercicios uno a uno y al final te pediré los resultados.
+              La partida se abrirá en pantalla completa.
+            } @else {
+              Verás los {{ totalEjercicios() }} ejercicios uno a uno y al final te pediré los resultados.
+            }
+          </p>
+        </div>
+      </section>
+
+      <footer class="text-center text-secondary small mt-auto pt-4 pb-3">
+        Multiplicación: hasta 4 números de 2 cifras · Combinadas: se resuelve de izquierda a derecha
+      </footer>
+    </div>
+  </main>
+}
+
+<!-- ============================================================
+     PARTIDA A PANTALLA COMPLETA
+     ============================================================ -->
+@if (fase() !== 'intro') {
+  <section
+    class="jm-juego"
+    [class.jm-juego-ok]="fase() === 'resultado' && aciertosRonda() === totalEjercicios()"
+    [class.jm-juego-error]="fase() === 'resultado' && aciertosRonda() < totalEjercicios() * 0.6"
+  >
+    <header class="jm-cabecera">
+      <span [class]="'badge rounded-pill jm-chip text-bg-' + modoActual().variante">
+        {{ modoActual().nombre }}
+      </span>
+
+      <div class="jm-acciones">
+        <button
+          type="button"
+          class="btn btn-sm btn-info"
+          (click)="alternarSonido()"
+          [attr.aria-pressed]="sonidoActivo()"
+          [attr.aria-label]="sonidoActivo() ? 'Silenciar' : 'Activar sonido'"
+        >
+          <i class="bi" [class.bi-volume-up]="sonidoActivo()" [class.bi-volume-mute]="!sonidoActivo()"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-danger" (click)="salir()">
+          <i class="bi bi-x-lg me-1"></i>Salir
+        </button>
+      </div>
+    </header>
+
+    <!-- Mostrando los ejercicios, uno a uno -->
+    @if (fase() === 'reproduciendo') {
+      <div
+        class="jm-progreso"
+        [attr.aria-label]="'Ejercicio ' + (indiceEjercicio() + 1) + ' de ' + totalEjercicios()"
+      >
+        @for (ejercicio of serie(); track $index) {
+          <span [class.hecho]="$index < indiceEjercicio()" [class.actual]="$index === indiceEjercicio()"></span>
+        }
+      </div>
+
+      <div class="jm-tablero">
+        <span class="jm-contador">
+          Ejercicio {{ indiceEjercicio() + 1 }} de {{ totalEjercicios() }} ·
+          número {{ indiceNumero() + 1 }} de {{ numerosEjercicio() }}
+        </span>
+        <output class="jm-numero" [class.jm-numero-rotulo]="rotulo()" aria-live="assertive">
+          {{ pantalla() }}
+        </output>
+        <p class="jm-mensaje mb-0">{{ mensaje() }}</p>
+      </div>
+    }
+
+    <!-- Escribiendo los resultados de todos los ejercicios -->
+    @if (fase() === 'respondiendo') {
+      <div class="jm-panel">
+        <div class="jm-barra-huecos">
+          <span class="jm-contador">{{ respondidos() }} de {{ totalEjercicios() }} respondidos</span>
+          <div class="btn-group jm-nav-huecos" role="group" aria-label="Elegir otro ejercicio">
+            <button
+              type="button"
+              class="btn btn-sm btn-secondary"
+              (click)="moverHueco(-1)"
+              [disabled]="!hayHuecoAnterior()"
+              aria-label="Ejercicio anterior"
+            >
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              (click)="moverHueco(1)"
+              [disabled]="!hayHuecoSiguiente()"
+              aria-label="Ejercicio siguiente"
+            >
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+        <h2 class="jm-pregunta">Dame los resultados</h2>
+
+        <ol class="jm-huecos" aria-label="Resultados por escribir">
+          @for (respuesta of respuestas(); track $index) {
+            <li>
+              <button
+                type="button"
+                class="btn jm-hueco"
+                [class.activo]="huecoActivo() === $index"
+                [class.completo]="respuesta !== ''"
+                (click)="seleccionarHueco($index)"
+                [attr.aria-label]="
+                  'Ejercicio ' + ($index + 1) + ': ' + (respuesta === '' ? 'sin responder' : respuesta)
+                "
+              >
+                <span class="jm-hueco-num">Ejercicio {{ $index + 1 }}</span>
+                <span class="jm-hueco-valor">{{ respuesta === '' ? '?' : respuesta }}</span>
+              </button>
+            </li>
+          }
+        </ol>
+
+        <div class="jm-teclado" role="group" aria-label="Teclado numérico">
+          @for (d of digitos; track d) {
+            <button
+              type="button"
+              class="btn btn-primary jm-tecla"
+              (click)="agregarDigito(huecoActivo(), d.toString())"
+            >
+              {{ d }}
+            </button>
+          }
+          <button
+            type="button"
+            class="btn btn-danger jm-tecla jm-tecla-borrar"
+            (click)="borrarDigito(huecoActivo())"
+            aria-label="Borrar el último dígito del ejercicio seleccionado"
+          >
+            <i class="bi bi-backspace"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-success jm-tecla"
+            (click)="agregarDigito(huecoActivo(), '0')"
+          >
+            0
+          </button>
+          <button
+            type="button"
+            class="btn btn-warning jm-tecla jm-tecla-signo"
+            (click)="agregarDigito(huecoActivo(), '-')"
+            aria-label="Signo menos"
+          >
+            −
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-lg w-100 jm-comprobar"
+          [class.btn-warning]="pendientes() > 0"
+          [class.btn-success]="pendientes() === 0"
+          [disabled]="!puedeComprobar()"
+          (click)="comprobar()"
+        >
+          @if (pendientes() > 0) {
+            Faltan {{ pendientes() }}
+          } @else {
+            <i class="bi bi-check-lg me-2"></i>Comprobar resultados
+          }
+        </button>
+        <p class="jm-mensaje text-center">
+          Escribe el resultado y pulsa la flecha para pasar al siguiente.
+        </p>
+      </div>
+    }
+
+    <!-- Resultado de la ronda -->
+    @if (fase() === 'resultado') {
+      <div class="jm-panel jm-panel-resultado">
+        <div class="jm-resumen">
+          <i class="bi {{ iconoResultado() }} jm-icono-resultado" aria-hidden="true"></i>
+          <div>
+            <h2 class="jm-titulo-resultado">{{ tituloResultado() }}</h2>
+            <p class="jm-marcador mb-0">
+              {{ aciertosRonda() }} de {{ totalEjercicios() }} correctos ·
+              <strong>{{ puntosRonda() }}</strong> puntos
+            </p>
+          </div>
+        </div>
+
+        <ol class="jm-detalle" aria-label="Resultado de cada ejercicio">
+          @for (fila of detalle(); track $index) {
+            <li class="jm-detalle-fila" [class.ok]="fila.acierto">
+              <span class="jm-detalle-num">{{ $index + 1 }}</span>
+              <span class="jm-detalle-expresion">{{ fila.expresion }}</span>
+              <span class="jm-detalle-tus">
+                {{ fila.respuesta }}
+                @if (!fila.acierto) {
+                  <small>= {{ fila.resultado }}</small>
+                }
+              </span>
+              <i
+                class="bi jm-detalle-icono"
+                [class.bi-check-circle-fill]="fila.acierto"
+                [class.bi-x-circle-fill]="!fila.acierto"
+              ></i>
+            </li>
+          }
+        </ol>
+
+        <div class="d-grid gap-2 w-100 jm-acciones-fin">
+          <button type="button" class="btn btn-warning btn-lg jm-iniciar" (click)="iniciar()">
+            <i class="bi bi-arrow-repeat me-2"></i>Otra ronda
+          </button>
+          <button type="button" class="btn btn-info btn-lg" (click)="salir()">
+            <i class="bi bi-sliders me-2"></i>Cambiar ajustes
+          </button>
+          <button type="button" class="btn btn-link text-white-50" (click)="volver()">
+            Volver a actividades
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+}

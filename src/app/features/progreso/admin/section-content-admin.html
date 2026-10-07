@@ -1,0 +1,30 @@
+<main class="container py-4 py-lg-5">
+  <header class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+    <div>
+      <a routerLink="/progreso" class="small text-decoration-none">Volver a Mi Progreso</a>
+      <h1 class="h3 fw-bold mt-2 mb-1">Editar Mi Progreso</h1>
+      <p class="text-secondary mb-0">Modifica el título y la descripción visibles.</p>
+    </div>
+  </header>
+  @if (message()) { <div class="alert alert-success">{{ message() }}</div> }
+  @if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
+  <form class="row g-3" [formGroup]="form" (ngSubmit)="guardar()">
+    <div class="col-12 col-md-4">
+      <label class="form-label" for="badge">Etiqueta</label>
+      <input id="badge" class="form-control" formControlName="badge" required />
+    </div>
+    <div class="col-12">
+      <label class="form-label" for="title">Título</label>
+      <input id="title" class="form-control" formControlName="title" required />
+    </div>
+    <div class="col-12">
+      <label class="form-label" for="description">Descripción</label>
+      <textarea id="description" class="form-control" rows="4" formControlName="description" required></textarea>
+    </div>
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </form>
+</main>
