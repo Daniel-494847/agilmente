@@ -1,8 +1,15 @@
-import { Component, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AttemptsService } from '../../../../core/services/attempts.service';
 import { GameUiService } from '../../../../core/services/game-ui.service';
+import { Quiz } from '../../../../shared/components/quiz/quiz';
+import type {
+  ConfiguracionQuiz,
+  PreguntaQuiz,
+  QuizViewModel,
+  ResultadoQuiz
+} from '../../../../shared/components/quiz/quiz.model';
 
 // ====================== GENERADOR DE CUADRADOS MÁGICOS ======================
 // En un cuadrado mágico, todas las filas, columnas y diagonales suman lo mismo
@@ -89,9 +96,6 @@ function lineas(n: number): { nombre: string; celdas: [number, number][] }[] {
 }
 
 // Las líneas que conviene sumar para resolver el ejercicio, usadas como pista visual.
-// Si se busca un casillero: todas las líneas que lo contienen (fila, columna y, si toca,
-// las diagonales). Si se busca el número mágico: la línea completa que lo revela (si no
-// la hay no hay línea que sumar, porque sale de 3 × centro en los cuadrados de orden 3).
 function lineasPista(dados: boolean[][], meta: Meta): [number, number][][] {
   const ls = lineas(dados.length);
   if (meta !== 'S') {
@@ -121,9 +125,6 @@ function celdasDe(v: number[][], dados: boolean[][], meta: Meta | null, revelar:
 }
 
 // ---------------------- RESOLVER COMO UNA PERSONA ----------------------
-// Reglas: 1) línea completa → da el número mágico; 2) línea con 1 vacío → número mágico
-// menos los demás; 3) (solo orden 3) número mágico = 3 × centro, y centro = número mágico ÷ 3.
-// Devuelve los pasos necesarios para llegar a la meta, o null si no se puede.
 function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta): string[] | null {
   const n = v.length, S = suma(v[0]);
   const sabe: (number | null)[][] = v.map((f, r) => f.map((x, c) => (dados[r][c] ? x : null)));
@@ -137,7 +138,7 @@ function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta)
   while (cambio) {
     cambio = false;
     if (s === null) {
-      for (const l of ls) { // número mágico a partir de una línea completa
+      for (const l of ls) {
         const vals = l.celdas.map(([r, c]) => sabe[r][c]);
         if (vals.every((x) => x !== null)) {
           s = suma(vals as number[]);
@@ -146,14 +147,14 @@ function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta)
           break;
         }
       }
-      if (s === null && n === 3 && sabe[1][1] !== null) { // 3 × centro
+      if (s === null && n === 3 && sabe[1][1] !== null) {
         s = 3 * (sabe[1][1] as number);
         razon.set('S', { paso: `Número mágico = 3 × centro = 3 × ${sabe[1][1]} = ${s}`, deps: [k(1, 1)] });
         cambio = true;
       }
     }
     if (s !== null) {
-      for (const l of ls) { // un solo vacío en la línea
+      for (const l of ls) {
         const vacios = l.celdas.filter(([r, c]) => sabe[r][c] === null);
         if (vacios.length !== 1) continue;
         const conocidos = l.celdas.filter(([r, c]) => sabe[r][c] !== null);
@@ -166,7 +167,7 @@ function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta)
         });
         cambio = true;
       }
-      if (n === 3 && sabe[centro][centro] === null) { // centro = número mágico ÷ 3
+      if (n === 3 && sabe[centro][centro] === null) {
         sabe[1][1] = s / 3;
         razon.set(k(1, 1), { paso: `Centro = ${s} ÷ 3 = ${s / 3}`, deps: ['S'] });
         cambio = true;
@@ -177,7 +178,6 @@ function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta)
   const clave = meta === 'S' ? 'S' : k(meta[0], meta[1]);
   if (meta === 'S' ? s === null : sabe[meta[0]][meta[1]] === null) return null;
 
-  // Solo los pasos que hacen falta, en orden
   const pasos: string[] = [];
   const visto = new Set<string>();
   const visitar = (c: string) => {
@@ -196,11 +196,11 @@ function resolver(v: number[][], dados: boolean[][], sDada: boolean, meta: Meta)
 
 interface Receta {
   n: 3 | 4;
-  vacios: [number, number]; // cuántos casilleros vacíos
-  objetivo: 'celda' | 'suma'; // se pregunta un casillero o el número mágico
-  sDada: boolean; // ¿se dice cuál es el número mágico?
-  minPasos: number; // pasos mínimos para que no sea trivial
-  c?: [number, number]; // rango del centro (orden 3)
+  vacios: [number, number];
+  objetivo: 'celda' | 'suma';
+  sDada: boolean;
+  minPasos: number;
+  c?: [number, number];
 }
 
 const RECETAS: Record<number, Receta[]> = {
@@ -262,8 +262,6 @@ function crearCuadrado(rc: Receta): Cuadrado | null {
   return null;
 }
 
-// Crea los 25 ejercicios de un nivel: reparte las recetas por turnos (para combinar
-// actividades), sin repetir, y los mezcla en orden al azar
 function crearNivel(nivel: number): Cuadrado[] {
   const recetas = RECETAS[nivel];
   const vistos = new Set<string>();
@@ -279,106 +277,22 @@ function crearNivel(nivel: number): Cuadrado[] {
   return mezclar(lista);
 }
 
-// Ejemplo de la pantalla de inicio (el de la lección: suma 15)
-const EJEMPLO_V = [[4, 9, 2], [3, 5, 7], [8, 1, 6]];
-const EJEMPLO = celdasDe(EJEMPLO_V, EJEMPLO_V.map((f) => f.map(() => true)), null, false);
-
-// ====================== CUADRÍCULA GRÁFICA (Bootstrap) ======================
-// Las líneas-pista se trazan encima de la cuadrícula con un SVG; para que pasen por el
-// centro de las casillas, el separación (HUECO) tiene que ser la misma que la del CSS
-// (.cm-grilla y .cm-fila usan gap: 4px).
-const HUECO = 4;
-
-@Component({
-  selector: 'app-cuadricula-grafica',
-  standalone: true,
-  styleUrl: './cuadrados-magicos.css',
-  template: `
-    <div class="d-flex justify-content-center py-2">
-      <div class="cm-grilla">
-        <svg class="cm-lineas" [attr.width]="ancho()" [attr.height]="alto()"
-             [attr.role]="pista() ? 'img' : null" [attr.aria-label]="pista()"
-             [attr.aria-hidden]="pista() ? null : 'true'">
-          @for (t of trazos(); track $index) {
-            <line class="cm-linea" [attr.x1]="t.x1" [attr.y1]="t.y1" [attr.x2]="t.x2" [attr.y2]="t.y2" />
-          }
-        </svg>
-        @for (fila of celdas(); track $index) {
-          <div class="cm-fila">
-            @for (c of fila; track $index) {
-              <div class="cm-celda border border-2 rounded-2 d-flex align-items-center justify-content-center fw-bold fs-4 {{ c.c }}"
-                   [style.width.px]="lado()" [style.height.px]="altoCelda()">{{ c.t }}</div>
-            }
-          </div>
-        }
-      </div>
-    </div>
-  `
-})
-export class CuadriculaGrafica {
-  celdas = input.required<Celda[][]>();
-  /** Filas, columnas o diagonales marcadas como pista (cada línea: sus casillas). */
-  lineas = input<[number, number][][]>([]);
-
-  lado = computed(() => (this.celdas().length === 3 ? 66 : 56)); // orden 3 o 4
-  altoCelda = computed(() => this.lado() - 6);
-  ancho = computed(() => this.medida(this.lado()));
-  alto = computed(() => this.medida(this.altoCelda()));
-
-  /** Coordenadas en píxeles de cada trazo: del centro de la primera casilla al de la última. */
-  readonly trazos = computed(() => {
-    const cx = (c: number) => c * (this.lado() + HUECO) + this.lado() / 2;
-    const cy = (r: number) => r * (this.altoCelda() + HUECO) + this.altoCelda() / 2;
-    return this.lineas().map((celdas) => {
-      const [r1, c1] = celdas[0];
-      const [r2, c2] = celdas[celdas.length - 1];
-      return { x1: cx(c1), y1: cy(r1), x2: cx(c2), y2: cy(r2) };
-    });
-  });
-
-  /** Descripción de las líneas marcadas para los lectores de pantalla. */
-  readonly pista = computed(() => {
-    const nombres = this.lineas().map((celdas) => {
-      const r = celdas[0][0];
-      const c = celdas[0][1];
-      if (celdas.every(([f]) => f === r)) return `fila ${r + 1}`;
-      if (celdas.every(([, col]) => col === c)) return `columna ${c + 1}`;
-      return 'diagonal';
-    });
-    return nombres.length ? `Pista: sumar la ${nombres.join(' y la ')}` : null;
-  });
-
-  /** Tamaño de la cuadrícula: `n` casillas de `casilla` píxeles con huecos de HUECO. */
-  private medida(casilla: number): number {
-    const n = this.celdas().length;
-    return n * casilla + (n - 1) * HUECO;
-  }
-}
-
 // ====================== COMPONENTE ======================
 
 @Component({
   selector: 'app-cuadrados-magicos',
   standalone: true,
-  imports: [CuadriculaGrafica],
+  imports: [Quiz],
   template: `
-    <div class="container py-4" style="max-width: 760px">
-      <!-- Cabecera -->
-      <div class="d-flex align-items-center gap-3 mb-3">
-        <button class="btn btn-outline-secondary btn-sm" (click)="volver()">
-          <i class="bi bi-arrow-left"></i> Volver
-        </button>
-        <div>
-          <h2 class="h4 mb-0"><i class="bi bi-grid-3x3 text-warning me-2"></i>Cuadrados Mágicos</h2>
-          <small class="text-muted">Completa cuadrados donde todas las líneas suman lo mismo.</small>
-        </div>
-      </div>
-
-      <!-- 1) INICIO: explicación + elegir nivel -->
-      @if (estado() === 'intro') {
-        <div class="card shadow-sm mb-4">
-          <div class="card-body">
-           <app-cuadricula-grafica [celdas]="ejemplo" />
+    @if (vista().estado === 'intro') {
+      <section class="container py-4" style="max-width: 760px">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <button class="btn btn-outline-secondary btn-sm" (click)="volver()">
+            <i class="bi bi-arrow-left"></i> Volver
+          </button>
+          <div>
+            <h2 class="h4 mb-0"><i class="bi bi-grid-3x3 text-warning me-2"></i>Cuadrados Mágicos</h2>
+            <small class="text-muted">Completa cuadrados donde todas las líneas suman lo mismo.</small>
           </div>
         </div>
 
@@ -390,110 +304,62 @@ export class CuadriculaGrafica {
         <div class="row g-3">
           @for (n of niveles; track n.n) {
             <div class="col-12 col-md-4">
-              <div class="card h-100 shadow-sm border-{{ n.color }}" role="button" tabindex="0"
-                   style="cursor: pointer" (click)="empezar(n.n)" (keydown.enter)="empezar(n.n)">
-                <div class="card-body">
-                  <span class="badge text-bg-{{ n.color }} mb-2">Nivel {{ n.n }}</span>
-                  <h5 class="card-title">{{ n.nombre }}</h5>
-                  <p class="text-muted small mb-0">{{ n.detalle }}</p>
-                </div>
-              </div>
+              <button type="button" class="btn w-100 h-100" [class.btn-success]="n.n === 1"
+                      [class.btn-warning]="n.n === 2" [class.btn-danger]="n.n === 3"
+                      (click)="elegirNivel(n.n)">Nivel {{ n.nombre }}</button>
             </div>
           }
         </div>
-
-      <!-- 3) RESULTADOS -->
-      } @else if (estado() === 'resultado') {
-        <div class="card shadow-sm text-center mb-3">
-          <div class="card-body">
-            <span class="badge text-bg-{{ colorNivel() }} mb-2">{{ nombreNivel() }}</span>
-            <div class="fs-1 mb-1">
-              @for (s of [1, 2, 3]; track s) {
-                <i class="bi text-warning" [class.bi-star-fill]="s <= estrellas()" [class.bi-star]="s > estrellas()"></i>
-              }
+      </section>
+    } @else {
+      <app-quiz
+        [vista]="vista()"
+        rutaVolver="/razonamiento-logico"
+        (volver)="volver()"
+        (empezar)="empezar()"
+        (respuestaSeleccionada)="seleccionar($event)"
+        (avanzar)="siguiente()"
+        (reiniciar)="reiniciar()"
+      >
+        <ng-container quiz-custom>
+          @if (actual(); as q) {
+            <div class="text-center mb-2">
+              <span class="badge text-bg-primary fs-6">{{ q.cabecera }}</span>
             </div>
-            <h3>{{ aciertos() }} de {{ lista().length }} correctas</h3>
-            <p class="fs-5 mb-1">{{ porcentaje() }}% · {{ puntaje() }} puntos</p>
-            <p class="text-muted">{{ mensaje() }}</p>
-            <div class="d-flex gap-2 justify-content-center">
-              <button class="btn btn-primary" (click)="empezar(nivel()!)">Repetir nivel</button>
-              <button class="btn btn-outline-secondary" (click)="estado.set('intro')">Elegir otro nivel</button>
-            </div>
-          </div>
-        </div>
-
-        @if (fallos().length) {
-          <h4 class="h5">Repasa lo que fallaste</h4>
-          @for (f of fallos(); track $index) {
-            <div class="card mb-2">
-              <div class="card-body py-2">
-                <p class="mb-0 text-center fw-semibold">{{ f.q.cabecera }}</p>
-                <app-cuadricula-grafica [celdas]="f.q.completo" [lineas]="f.q.lineas" />
-                <p class="mb-1 text-center">
-                  <span class="text-danger">Tu respuesta: {{ f.elegida }}</span> ·
-                  <span class="text-success">Correcta: {{ f.q.correcta }}</span>
-                </p>
-                <p class="small text-muted mb-0 text-center">{{ f.q.pasos.join('  →  ') }}</p>
-              </div>
-            </div>
-          }
-        }
-
-      <!-- 2) JUGAR -->
-      } @else {
-        @if (actual(); as e) {
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="badge text-bg-{{ colorNivel() }}">{{ nombreNivel() }}</span>
-            <small>Ejercicio {{ indice() + 1 }} de {{ lista().length }}</small>
-            <span class="badge text-bg-success"><i class="bi bi-check-lg"></i> {{ aciertos() }}</span>
-          </div>
-          <div class="progress mb-3" style="height: 8px">
-            <div class="progress-bar bg-warning" [style.width.%]="avance()"></div>
-          </div>
-
-          <div class="card shadow-sm">
-            <div class="card-body">
-              <p class="fs-5 mb-2">{{ e.pregunta }}</p>
-              <div class="text-center mb-1">
-                <span class="badge text-bg-primary fs-6">{{ e.cabecera }}</span>
-              </div>
-
-              <!-- Cuadrado: con vacíos mientras juegas, completo al responder;
-                   las líneas amarillas señalan qué casillas hay que sumar -->
-              <app-cuadricula-grafica [celdas]="elegida() === null ? e.oculto : e.completo" [lineas]="e.lineas" />
-
-              <!-- Opciones -->
-              <div class="row g-2 mt-2">
-                @for (op of e.opciones; track op) {
-                  <div class="col-6">
-                    <button class="btn btn-lg w-100" [class]="claseBoton(op, e)"
-                            [disabled]="elegida() !== null" (click)="elegir(op, e)">{{ op }}</button>
-                  </div>
-                }
-              </div>
-
-              <!-- Retroalimentación -->
-              @if (elegida() !== null) {
-                <div class="alert mt-3 mb-2" [class.alert-success]="elegida() === e.correcta"
-                     [class.alert-danger]="elegida() !== e.correcta">
-                  @if (elegida() === e.correcta) { <strong>¡Correcto!</strong> }
-                  @else { <strong>La respuesta correcta es {{ e.correcta }}.</strong> }
-                  {{ e.texto }}
-                  <ol class="mb-0 mt-2">
-                    @for (p of e.pasos; track $index) { <li>{{ p }}</li> }
-                  </ol>
+            <div class="cm-grilla mx-auto">
+              @for (fila of (vista().estado === 'feedback' ? q.completo : q.oculto); track $index) {
+                <div class="cm-fila">
+                  @for (c of fila; track $index) {
+                    <div class="cm-celda border border-2 rounded-2 d-flex align-items-center justify-content-center fw-bold fs-4 {{ c.c }}">
+                      {{ c.t }}
+                    </div>
+                  }
                 </div>
-                <button class="btn btn-primary" (click)="siguiente()">
-                  {{ esUltimo() ? 'Ver resultados' : 'Siguiente' }} <i class="bi bi-arrow-right"></i>
-                </button>
               }
             </div>
-          </div>
-          <button class="btn btn-link text-muted px-0 mt-2" (click)="estado.set('intro')">Salir del nivel</button>
-        }
-      }
-    </div>
-  `
+            @if (vista().estado === 'feedback' && q.pasos.length) {
+              <ol class="cm-pasos small text-secondary mb-0 mt-3">
+                @for (p of q.pasos; track $index) { <li>{{ p }}</li> }
+              </ol>
+            }
+          }
+        </ng-container>
+      </app-quiz>
+    }
+  `,
+  styles: [`
+    .cm-grilla {
+      display: inline-grid;
+      gap: 4px;
+      padding: 4px;
+      background: #f3f8f4;
+      border-radius: 10px;
+      border: 1px solid #e0e8e2;
+    }
+    .cm-fila { display: grid; grid-template-columns: repeat(var(--cm-lado, 3), 64px); gap: 4px; }
+    .cm-celda { width: 64px; height: 64px; background: #fff; }
+    .cm-pasos { padding-inline-start: 1.2rem; }
+  `]
 })
 export class CuadradosMagicos implements OnInit, OnDestroy {
   private readonly router = inject(Router);
@@ -504,40 +370,35 @@ export class CuadradosMagicos implements OnInit, OnDestroy {
   private intentoInicio = 0;
 
   readonly cantidad = CANTIDAD;
-  readonly ejemplo = EJEMPLO;
   readonly niveles = [
-    { n: 1, nombre: 'Básico', color: 'success',
-      detalle: 'Cuadrados de orden 3 con un casillero vacío (o completos). Se pide el casillero o el número mágico.' },
-    { n: 2, nombre: 'Intermedio', color: 'warning',
-      detalle: 'Cuadrados de orden 3 con 2 o 3 vacíos. El número mágico puede estar dado o hay que descubrirlo.' },
-    { n: 3, nombre: 'Avanzado', color: 'danger',
-      detalle: 'Orden 3 con muchos vacíos (usa que el número mágico es 3 × el centro) y cuadrados de orden 4.' },
+    { n: 1, nombre: 'Inicial', color: 'success' },
+    { n: 2, nombre: 'Intermedio', color: 'warning' },
+    { n: 3, nombre: 'Difícil', color: 'danger' }
   ];
 
-  readonly estado = signal<'intro' | 'jugando' | 'resultado'>('intro');
-  readonly nivel = signal<number | null>(null);
-  readonly lista = signal<Cuadrado[]>([]);
-  readonly indice = signal(0);
-  readonly elegida = signal<number | null>(null);
-  readonly aciertos = signal(0);
-  readonly fallos = signal<{ q: Cuadrado; elegida: number }[]>([]);
+  /** Banco de cuadrados por nivel; se regenera cada partida. */
+  private banco: Record<number, Cuadrado[]> = { 1: [], 2: [], 3: [] };
 
-  readonly actual = computed(() => this.lista()[this.indice()]);
-  readonly esUltimo = computed(() => this.indice() + 1 >= this.lista().length);
-  readonly avance = computed(
-    () => ((this.indice() + (this.elegida() !== null ? 1 : 0)) / Math.max(1, this.lista().length)) * 100
-  );
-  readonly porcentaje = computed(() => Math.round((this.aciertos() / Math.max(1, this.lista().length)) * 100));
-  readonly puntaje = computed(() => this.aciertos() * (PUNTOS[this.nivel() ?? 1] ?? 10));
-  readonly estrellas = computed(() => (this.porcentaje() >= 80 ? 3 : this.porcentaje() >= 50 ? 2 : 1));
-  readonly nombreNivel = computed(() => this.niveles.find((n) => n.n === this.nivel())?.nombre ?? '');
-  readonly colorNivel = computed(() => this.niveles.find((n) => n.n === this.nivel())?.color ?? 'secondary');
-  readonly mensaje = computed(() => {
-    const p = this.porcentaje();
-    if (p >= 90) return '¡Excelente! Dominas los cuadrados mágicos.';
-    if (p >= 70) return '¡Muy bien!';
-    if (p >= 50) return 'Vas bien, sigue practicando.';
-    return 'Repasa los errores y vuelve a intentarlo.';
+  private readonly config: ConfiguracionQuiz = {
+    titulo: 'Cuadrados Mágicos',
+    descripcion: 'Completa cuadrados donde todas las líneas suman lo mismo.',
+    icono: 'bi-grid-3x3',
+    colorTema: 'amber',
+    niveles: 3,
+    etiquetasNiveles: this.niveles.map((n) => n.nombre),
+    tiempoLimiteSegundos: 0,
+    preguntas: []
+  };
+
+  readonly vista = signal<QuizViewModel>(this.crearVistaInicial(1));
+
+  // Acceso de la plantilla al cuadrado en juego
+  readonly actual = computed<Cuadrado | null>(() => {
+    const v = this.vista();
+    if (v.estado === 'jugando' || v.estado === 'feedback') {
+      return this.banco[v.nivelSeleccionado][v.indice] ?? null;
+    }
+    return null;
   });
 
   ngOnInit(): void {
@@ -553,56 +414,139 @@ export class CuadradosMagicos implements OnInit, OnDestroy {
     void this.router.navigateByUrl('/razonamiento-logico');
   }
 
-  async empezar(nivel: number): Promise<void> {
-    this.nivel.set(nivel);
-    this.lista.set(crearNivel(nivel)); // 25 ejercicios nuevos al azar
-    this.indice.set(0);
-    this.elegida.set(null);
-    this.aciertos.set(0);
-    this.fallos.set([]);
-    this.estado.set('jugando');
+  elegirNivel(nivel: number): void {
+    if (this.vista().estado !== 'intro') return;
+    this.vista.set(this.crearVistaInicial(nivel));
+  }
+
+  async empezar(): Promise<void> {
+    const nivel = this.vista().nivelSeleccionado;
+    this.banco[nivel] = crearNivel(nivel);
+    const preguntas = this.banco[nivel].map((c, i) => this.aPregunta(c, nivel, i + 1));
+    if (preguntas.length === 0) return;
+
     const sesion = await this.attempts.iniciar('cuadrados-magicos');
     this.intentoId = sesion?.id ?? null;
     this.intentoInicio = sesion?.inicio ?? Date.now();
+
+    this.vista.update((v) => ({
+      ...v,
+      estado: 'jugando',
+      indice: 0,
+      total: preguntas.length,
+      preguntaActual: preguntas[0],
+      resultado: { ...v.resultado, total: preguntas.length },
+      seleccionada: null,
+      esCorrecta: null,
+      mostrarConfeti: false
+    }));
   }
 
-  elegir(op: number, q: Cuadrado): void {
-    this.elegida.set(op);
-    if (op === q.correcta) this.aciertos.update((x) => x + 1);
-    else this.fallos.update((f) => [...f, { q, elegida: op }]);
+  seleccionar(opcionId: string): void {
+    const v = this.vista();
+    if (v.estado !== 'jugando' || !v.preguntaActual) return;
+    const correcta = opcionId === v.preguntaActual.respuestaCorrectaId;
+    const puntos = correcta ? (v.preguntaActual.puntos ?? 10) : 0;
+    const resultado: ResultadoQuiz = {
+      ...v.resultado,
+      correctas: v.resultado.correctas + (correcta ? 1 : 0),
+      incorrectas: v.resultado.incorrectas + (correcta ? 0 : 1),
+      puntaje: v.resultado.puntaje + puntos,
+      respuestas: [
+        ...v.resultado.respuestas,
+        { preguntaId: v.preguntaActual.id, opcionId, correcta }
+      ]
+    };
+    resultado.porcentaje = v.total > 0 ? Math.round((resultado.correctas / v.total) * 100) : 0;
+
+    this.vista.set({
+      ...v,
+      estado: 'feedback',
+      seleccionada: opcionId,
+      esCorrecta: correcta,
+      mostrarConfeti: correcta,
+      resultado
+    });
   }
 
   async siguiente(): Promise<void> {
-    if (this.esUltimo()) {
-      await this.terminar();
+    const v = this.vista();
+    const preguntas = this.banco[v.nivelSeleccionado].map((c, i) => this.aPregunta(c, v.nivelSeleccionado, i + 1));
+    const next = v.indice + 1;
+    if (next >= preguntas.length) {
+      await this.terminarPartida(v.resultado.porcentaje, v.resultado);
       return;
     }
-    this.indice.update((i) => i + 1);
-    this.elegida.set(null);
+    this.vista.set({
+      ...v,
+      estado: 'jugando',
+      indice: next,
+      preguntaActual: preguntas[next],
+      seleccionada: null,
+      esCorrecta: null,
+      mostrarConfeti: false
+    });
   }
 
-  private async terminar(): Promise<void> {
-    this.estado.set('resultado');
-    if (!this.intentoId) return;
-    try {
-      await this.attempts.finalizar(this.intentoId, this.intentoInicio, {
-        actividadId: 'cuadrados-magicos',
-        puntaje: this.puntaje(),
-        nivel: this.nivel() ?? 1,
-        respuestasCorrectas: this.aciertos(),
-        respuestasIncorrectas: this.lista().length - this.aciertos()
-      });
-    } catch (e) {
-      console.error('No se pudo guardar el intento:', e);
-    }
+  reiniciar(): void {
     this.intentoId = null;
+    this.vista.set(this.crearVistaInicial(this.vista().nivelSeleccionado));
   }
 
-  // Color del botón según la respuesta
-  claseBoton(op: number, q: Cuadrado): string {
-    if (this.elegida() === null) return 'btn-outline-dark';
-    if (op === q.correcta) return 'btn-success';
-    if (op === this.elegida()) return 'btn-danger';
-    return 'btn-outline-secondary';
+  private aPregunta(c: Cuadrado, nivel: number, i: number): PreguntaQuiz {
+    const ids = ['a', 'b', 'c', 'd'];
+    const opciones = mezclar(c.opciones).map((o, k) => ({ id: ids[k], texto: String(o) }));
+    const correcta = ids[c.opciones.indexOf(c.correcta)];
+    return {
+      id: `cm-${nivel}-${i}`,
+      nivel,
+      tipo: 'personalizado',
+      enunciado: c.pregunta,
+      opciones,
+      respuestaCorrectaId: correcta,
+      explicacion: `${c.texto} Pasos: ${c.pasos.join(' → ')}`,
+      puntos: PUNTOS[nivel],
+      datos: c
+    };
+  }
+
+  private async terminarPartida(porcentaje: number, resultado: ResultadoQuiz): Promise<void> {
+    const v = this.vista();
+    const estrellas = porcentaje >= 80 ? 3 : porcentaje >= 50 ? 2 : 1;
+    this.vista.set({ ...v, estado: 'resultado', estrellas, mostrarConfeti: false });
+    if (this.intentoId) {
+      try {
+        await this.attempts.finalizar(this.intentoId, this.intentoInicio, {
+          actividadId: 'cuadrados-magicos',
+          puntaje: resultado.puntaje,
+          nivel: v.nivelSeleccionado,
+          respuestasCorrectas: resultado.correctas,
+          respuestasIncorrectas: resultado.incorrectas
+        });
+      } catch (e) {
+        console.error('No se pudo guardar el intento:', e);
+      }
+      this.intentoId = null;
+    }
+  }
+
+  private crearVistaInicial(nivel: number): QuizViewModel {
+    return {
+      config: this.config,
+      estado: 'intro',
+      indice: 0,
+      nivelSeleccionado: nivel,
+      preguntaActual: null,
+      total: CANTIDAD,
+      etiquetasNiveles: this.config.etiquetasNiveles ?? [],
+      resultado: { correctas: 0, incorrectas: 0, total: CANTIDAD, puntaje: 0, porcentaje: 0, respuestas: [] },
+      estrellas: 0,
+      colorTema: this.config.colorTema ?? 'amber',
+      seleccionada: null,
+      esCorrecta: null,
+      mostrarConfeti: false,
+      sonidosActivos: true,
+      segundosRestantes: 0
+    };
   }
 }

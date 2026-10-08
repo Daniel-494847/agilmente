@@ -133,25 +133,10 @@ export const ACTIVIDADES_ROUTES: Routes = [
         (m) => m.ConteoFiguras,
       ),
   },
-  {
-    path: "relaciones-analogias",
-    loadComponent: () =>
-      import("./juegos/relaciones-analogias/relaciones-analogias").then(
-        (m) => m.RelacionesAnalogias,
-      ),
-  },
   // Operaciones básicas: menú de operaciones con rutas hijas por tipo.
   // Cada hijo juega el formato duelo matemático en modo INDIVIDUAL.
   {
     path: "operaciones-basicas",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/operaciones-basicas-menu").then(
-        (m) => m.OperacionesBasicasMenu,
-      ),
-    children: OPERACIONES_BASICAS_CHILDREN,
-  },
-  {
-    path: "operaciones-numeros-naturales",
     loadComponent: () =>
       import("./juegos/operaciones-basicas/operaciones-basicas-menu").then(
         (m) => m.OperacionesBasicasMenu,

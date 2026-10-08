@@ -21,15 +21,6 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     ruta: '/razonamiento-logico/conteo-figuras'
   },
   {
-    id: 3,
-    titulo: 'Relaciones y Analogías',
-    descripcion: 'Encuentra la relación entre figuras y números.',
-    icono: 'bi-signpost-split',
-    imagen: '/images/Relaciones-y-Analogias.webp',
-    colorTema: 'amber',
-    ruta: '/razonamiento-logico/relaciones-analogias'
-  },
-  {
     id: 4,
     titulo: 'Operaciones Básicas',
     descripcion: 'Practica sumas, restas, multiplicaciones y divisiones en solitario contra el reloj.',

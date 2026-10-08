@@ -10,6 +10,21 @@
    texto lleve su propio parche.
    ========================================================================== */
 
+/* Botón "Volver" del encabezado. Solo medida (el color lo sigue poniendo
+   btn-outline-dark). El tamaño lo manda este `font-size` (el padding va en em
+   y crece con él).
+
+   En modo juego el sidebar es un widget flotante arriba-izquierda
+   (`sidebar.css`: logo 3rem + gap + hamburguesa, a `left: .75rem`). El
+   `margin-left` deja sitio para que el botón quede justo al lado de la
+   hamburguesa sin superponerse. */
+.quiz-page .qz-boton-volver {
+  font-size: 1em;
+  padding: 0.25em 0.8em;
+  line-height: 1.2;
+  margin-left: 7rem;
+}
+
 .quiz-page {
   --qz-base: clamp(1rem, 0.5vw + 0.85rem, 1.2rem);
   --qz-enunciado: calc(var(--qz-base) * 1.15);
@@ -73,12 +88,18 @@
 .quiz-page header {
   gap: 0.75rem;
   margin-bottom: 1rem;
+  /* En modo juego el sidebar se reduce a logo + botón menú y queda fijo
+     flotando arriba a la izquierda (12px de margen + 48px de logo + 8px de
+     hueco + ~40px del botón ≈ 108px). La cabecera reserva ese ancho para que
+     "Volver" no quede debajo del menú: se separa 12px más (7.5rem en total). */
+  padding-left: 7.5rem;
 }
 
 /* Bootstrap fija `--bs-btn-font-size: 1rem` en cada .btn, así que sin esto los
    botones del juego se quedan en 16px mientras el texto crece con la pantalla.
-   `1em` los iguala al texto que los rodea. */
-.quiz-page .btn {
+   `1em` los iguala al texto que los rodea. `.qz-boton-volver` queda fuera:
+   su tamaño propio (0.5em) se declara arriba y esta regla lo pisaría. */
+.quiz-page .btn:not(.qz-boton-volver) {
   font-size: 1em;
 }
 

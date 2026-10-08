@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
 import { ActividadResumen } from '../../../core/models/actividad.model';
 import { ActivityCard } from '../../../shared/components/activity-card/activity-card';
@@ -7,7 +6,7 @@ import { ActividadesService } from '../services/actividades.service';
 
 @Component({
   selector: 'app-actividades',
-  imports: [ActivityCard, RouterLink],
+  imports: [ActivityCard],
   templateUrl: './actividades.html'
 })
 export class Actividades implements OnInit {

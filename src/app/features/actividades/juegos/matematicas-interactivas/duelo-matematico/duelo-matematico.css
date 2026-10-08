@@ -662,8 +662,8 @@
 
 /* ============================================================
    Adaptación por ALTO  (móvil apaisado: el caso crítico)
-   Cuanto menos alto, más columnas en el teclado → teclas más altas
-   y el tablero pasa a 2 filas para ganar espacio vertical.
+   Cuanto menos alto, más columnas en el teclado → teclas más altas.
+   En apaisado los jugadores ocupan una sola fila con la arena al centro.
    ============================================================ */
 
 @media (max-height: 620px) {
@@ -688,15 +688,15 @@
 
 @media (max-height: 620px) and (min-width: 601px) {
   .duelo-board {
-    /* 2 filas: arena arriba (compacta), jugadores abajo */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto minmax(0, 1fr);
+    /* En apaisado el teclado necesita toda la altura: arena entre jugadores. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, .32fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .arena {
-    grid-column: 1 / -1;
+    grid-column: 2;
     grid-row: 1;
-    flex-direction: row;
+    flex-direction: column;
     gap: .5rem;
   }
 
@@ -718,12 +718,12 @@
 
   .player-panel:first-of-type {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
   }
 
   .player-panel:nth-of-type(2) {
-    grid-column: 2;
-    grid-row: 2;
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 
@@ -741,5 +741,57 @@
 
   .duelo-heading h1 {
     font-size: .8rem;
+  }
+
+  .duelo-wrap {
+    gap: .1rem;
+  }
+
+  .arena-art {
+    display: none !important;
+  }
+
+  .player-panel {
+    padding: .2rem;
+    border-top-width: 2px;
+  }
+
+  .player-header {
+    gap: .2rem;
+  }
+
+  .player-avatar {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+
+  .player-progress {
+    margin: .1rem 0;
+  }
+
+  .question-box {
+    min-height: 32px;
+    margin: .1rem 0;
+    padding: .1rem;
+  }
+
+  .answer-display {
+    min-height: 22px;
+    margin-bottom: .1rem;
+  }
+
+  .number-key {
+    font-size: clamp(1rem, 5dvh, 1.5rem);
+  }
+
+  .check-button {
+    min-height: 24px;
+    margin-top: .1rem;
+  }
+
+  .player-message {
+    min-height: 0;
+    margin-top: .1rem;
   }
 }

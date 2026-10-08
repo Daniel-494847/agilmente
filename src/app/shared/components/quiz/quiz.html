@@ -8,8 +8,8 @@
   }
 
   <div class="container-xl h-100 d-flex flex-column">
-    <header class="d-flex align-items-center justify-content-between flex-wrap">
-      <button type="button" class="btn btn-outline-dark fw-semibold px-3 rounded-4" (click)="volver.emit()">
+    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-dark fw-semibold rounded-4 qz-boton-volver" (click)="volver.emit()">
         <i class="bi bi-arrow-left"></i> Volver
       </button>
 
@@ -127,6 +127,33 @@
             @if (pregunta.contenidoHtml) {
               <div [innerHTML]="pregunta.contenidoHtml"></div>
             }
+            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-2" role="listbox">
+              @for (op of pregunta.opciones; track op.id; let i = $index) {
+                <div class="col">
+                  <button
+                    type="button"
+                    class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start p-3 fw-semibold rounded-3"
+                    [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
+                    [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
+                    [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
+                    [class.btn-danger]="vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId"
+                    [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
+                    [attr.aria-selected]="vista.seleccionada === op.id"
+                    [disabled]="vista.estado === 'feedback'"
+                    (click)="respuestaSeleccionada.emit(op.id)"
+                  >
+                    <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
+                    <span class="flex-grow-1">{{ op.texto }}</span>
+                    @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
+                      <i class="bi bi-check-circle-fill"></i>
+                    }
+                    @if (vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId) {
+                      <i class="bi bi-x-circle-fill"></i>
+                    }
+                  </button>
+                </div>
+              }
+            </div>
           </div>
         } @else {
           <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:

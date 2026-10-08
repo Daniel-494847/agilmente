@@ -11,7 +11,8 @@ import { ActivityCard } from '../../shared/components/activity-card/activity-car
 @Component({
   selector: 'app-dashboard',
   imports: [ActivityCard, RouterLink],
-  templateUrl: './dashboard.html'
+  templateUrl: './dashboard.html',
+  styleUrl: './dashboard.css'
 })
 export class Dashboard implements OnInit {
   private readonly activitiesService = inject(ActividadesService);

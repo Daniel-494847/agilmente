@@ -12,8 +12,6 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { auth, colecciones, db, NOMBRES_COLECCION } from '../../../core/firebase';
 
-type TipoUsuario = 'estudiante' | 'docente' | 'administrador';
-
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule],
@@ -24,7 +22,6 @@ export class Login {
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal('');
   readonly modoRegistro = signal(false);
-  readonly tipoUsuario = signal<TipoUsuario>('estudiante');
 
   constructor(
     private readonly fb: FormBuilder,
@@ -34,8 +31,7 @@ export class Login {
     this.form = this.fb.nonNullable.group({
       nombreCompleto: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      tipoUsuario: ['estudiante', Validators.required]
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
     this.modoRegistro.set(this.route.snapshot.queryParamMap.get('registro') === '1');
     this.actualizarCampoNombre();
@@ -44,13 +40,7 @@ export class Login {
   toggleModo(): void {
     this.modoRegistro.update((v) => !v);
     this.errorMessage.set('');
-    this.form.get('tipoUsuario')?.setValue(this.tipoUsuario());
     this.actualizarCampoNombre();
-  }
-
-  seleccionarTipo(tipo: TipoUsuario): void {
-    this.tipoUsuario.set(tipo);
-    this.form.get('tipoUsuario')?.setValue(tipo);
   }
 
   async iniciarSesion(): Promise<void> {
@@ -89,7 +79,6 @@ export class Login {
       return;
     }
     const { nombreCompleto, email, password } = this.form.getRawValue();
-    const tipo = this.tipoUsuario();
     this.isSubmitting.set(true);
     this.errorMessage.set('');
     try {
@@ -97,7 +86,7 @@ export class Login {
       await setDoc(doc(colecciones.usuarios, credential.user.uid), {
         email,
         nombreCompleto: nombreCompleto.trim(),
-        rol: tipo === 'administrador' ? 'estudiante' : tipo,
+        rol: 'estudiante',
         creadoEn: serverTimestamp(),
         ultimoIngreso: serverTimestamp()
       });
@@ -123,7 +112,7 @@ export class Login {
       const data = {
         email: credential.user.email ?? '',
         nombreCompleto: credential.user.displayName ?? 'Usuario',
-        rol: this.tipoUsuario() === 'docente' ? 'docente' : 'estudiante',
+        rol: 'estudiante',
         ultimoIngreso: serverTimestamp()
       };
       if (!userDoc.exists()) {

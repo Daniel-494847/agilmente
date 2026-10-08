@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  # El plugin @netlify/angular-runtime exige la carpeta del navegador
+  publish = "dist/agilmente/browser"
+
+# Aplicación de una sola página (Angular): cualquier ruta
+# debe servir index.html para que el router funcione al recargar.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -5,17 +5,12 @@
         <span class="bg-primary text-white rounded-3 d-inline-flex align-items-center justify-content-center fw-bold" style="width: 52px; height: 52px; font-size: 1.5rem">A</span>
         <div>
           <p class="text-primary text-uppercase small fw-bold mb-1">Agilmente</p>
-          <h1 class="h4 mb-0">{{ modoRegistro() ? 'Regístrate' : 'Inicia sesión' }}</h1>
+          <h1 class="h4 mb-0">{{ modoRegistro() ? 'Registrarse' : 'Iniciar sesión' }}</h1>
         </div>
       </div>
       <p class="text-secondary mb-4">
-        {{ modoRegistro() ? 'Crea tu cuenta para comenzar.' : 'Accede a tu cuenta para continuar.' }}
+        Bienvenido a la página educativa que busca fortalecer el razonamiento lógico matemático.
       </p>
-
-      <div class="btn-group w-100 mb-4" role="group">
-        <button type="button" class="btn" [class.btn-primary]="tipoUsuario() === 'estudiante'" [class.btn-outline-primary]="tipoUsuario() !== 'estudiante'" (click)="seleccionarTipo('estudiante')">Estudiante</button>
-        <button type="button" class="btn" [class.btn-primary]="tipoUsuario() === 'docente'" [class.btn-outline-primary]="tipoUsuario() !== 'docente'" (click)="seleccionarTipo('docente')">Docente</button>
-      </div>
 
       <form [formGroup]="form" (ngSubmit)="modoRegistro() ? registrarUsuario() : iniciarSesion()" novalidate>
         @if (modoRegistro()) {
@@ -39,10 +34,10 @@
           {{ isSubmitting() ? 'Espera...' : (modoRegistro() ? 'Crear cuenta' : 'Iniciar sesión') }}
         </button>
         <button type="button" class="btn btn-outline-dark btn-lg w-100 mt-3" (click)="iniciarConGoogle()" [disabled]="isSubmitting()">
-          <i class="bi bi-google me-2"></i> {{ modoRegistro() ? 'Registrarse' : 'Iniciar' }} con Google
+          <i class="bi bi-google me-2"></i> Iniciar con cuenta de Google
         </button>
         <button type="button" class="btn btn-link w-100 mt-3" (click)="toggleModo()">
-          {{ modoRegistro() ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate' }}
+          {{ modoRegistro() ? '¿Ya tienes cuenta? Iniciar sesión' : '¿No tienes cuenta? Registrarse' }}
         </button>
       </form>
     </div>
