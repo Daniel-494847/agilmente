@@ -53,11 +53,11 @@ textarea {
    alto y el número de filas son conocidos, la pirámide entera cabe SIEMPRE.
    --------------------------------------------------------------------------- */
 .piramide-caja {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   width: 100%;
-  gap: 0.25em;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Contenedor del dibujo: reclama el alto que sobra y calcula el lado de la

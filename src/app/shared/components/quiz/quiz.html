@@ -90,38 +90,70 @@
 
     @if ((vista.estado === 'jugando' || vista.estado === 'feedback') && vista.preguntaActual; as pregunta) {
       <section class="card qz-question-card border-0 shadow-sm rounded-4 p-3 p-md-4 flex-grow-1 d-flex flex-column">
-        <div>
-          <span class="badge rounded-pill text-bg-primary px-3 py-2 fw-semibold">
-            <i class="bi bi-patch-question"></i> Pregunta {{ vista.indice + 1 }} de {{ vista.total }}
-          </span>
-        </div>
-
-        @if (pregunta.rejilla; as rejilla) {
-          <div class="qz-rejilla" role="group" [attr.aria-label]="rejilla.descripcion ?? 'Rejilla del ejercicio'"
-               [style.--qz-columnas]="rejilla.lado">
-            @for (celda of rejilla.celdas; track $index) {
-              <div class="qz-rejilla-celda {{ celda.clase ?? '' }}" [attr.aria-label]="celda.ariaLabel">
-                {{ celda.texto }}
-              </div>
-            }
+        <div class="qz-contenido">
+          <div>
+            <span class="badge rounded-pill text-bg-primary px-3 py-2 fw-semibold">
+              <i class="bi bi-patch-question"></i> Pregunta {{ vista.indice + 1 }} de {{ vista.total }}
+            </span>
           </div>
-        }
 
-        @if (pregunta.imagen; as imagen) {
-          <figure class="qz-figura m-0 text-center">
-            <img [src]="imagen" alt="Figura del ejercicio" class="img-fluid" />
-          </figure>
-        }
+          @if (pregunta.rejilla; as rejilla) {
+            <div class="qz-rejilla" role="group" [attr.aria-label]="rejilla.descripcion ?? 'Rejilla del ejercicio'"
+                 [style.--qz-columnas]="rejilla.lado">
+              @for (celda of rejilla.celdas; track $index) {
+                <div class="qz-rejilla-celda {{ celda.clase ?? '' }}" [attr.aria-label]="celda.ariaLabel">
+                  {{ celda.texto }}
+                </div>
+              }
+            </div>
+          }
 
-        <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
+          @if (pregunta.imagen; as imagen) {
+            <figure class="qz-figura m-0 text-center">
+              <img [src]="imagen | svgSeguro" alt="Figura del ejercicio" class="img-fluid" />
+            </figure>
+          }
 
-        @if (pregunta.tipo === 'personalizado') {
-          <div class="qz-custom-content flex-grow-1 mt-3 d-flex flex-column">
-            <ng-content select="[quiz-custom]"></ng-content>
-            @if (pregunta.contenidoHtml) {
-              <div class="qz-html-content" [innerHTML]="pregunta.contenidoHtml"></div>
-            }
-            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-2" role="listbox">
+          <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
+
+          @if (pregunta.tipo === 'personalizado') {
+            <div class="qz-custom-content mt-2 d-flex flex-column">
+              <ng-content select="[quiz-custom]"></ng-content>
+              @if (pregunta.contenidoHtml) {
+                <div class="qz-html-content" [innerHTML]="pregunta.contenidoHtml"></div>
+              }
+              <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-1 w-100" role="listbox">
+                @for (op of pregunta.opciones; track op.id; let i = $index) {
+                  <div class="col">
+                    <button
+                      type="button"
+                      class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
+                      [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
+                      [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
+                      [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
+                      [class.btn-danger]="vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId"
+                      [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
+                      [attr.aria-selected]="vista.seleccionada === op.id"
+                      [disabled]="vista.estado === 'feedback'"
+                      (click)="respuestaSeleccionada.emit(op.id)"
+                    >
+                      <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
+                      <span class="flex-grow-1">{{ op.texto }}</span>
+                      @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
+                        <i class="bi bi-check-circle-fill"></i>
+                      }
+                      @if (vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId) {
+                        <i class="bi bi-x-circle-fill"></i>
+                      }
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:
+                 sin eso las opciones se pegaban al enunciado. -->
+            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0 w-100" role="listbox">
               @for (op of pregunta.opciones; track op.id; let i = $index) {
                 <div class="col">
                   <button
@@ -148,41 +180,11 @@
                 </div>
               }
             </div>
-          </div>
-        } @else {
-          <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:
-               sin eso las opciones se pegaban al enunciado. -->
-          <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0" role="listbox">
-            @for (op of pregunta.opciones; track op.id; let i = $index) {
-              <div class="col">
-                <button
-                  type="button"
-                  class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
-                  [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
-                  [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
-                  [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
-                  [class.btn-danger]="vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId"
-                  [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
-                  [attr.aria-selected]="vista.seleccionada === op.id"
-                  [disabled]="vista.estado === 'feedback'"
-                  (click)="respuestaSeleccionada.emit(op.id)"
-                >
-                  <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
-                  <span class="flex-grow-1">{{ op.texto }}</span>
-                  @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
-                    <i class="bi bi-check-circle-fill"></i>
-                  }
-                  @if (vista.estado === 'feedback' && vista.seleccionada === op.id && op.id !== pregunta.respuestaCorrectaId) {
-                    <i class="bi bi-x-circle-fill"></i>
-                  }
-                </button>
-              </div>
-            }
-          </div>
-        }
+          }
+        </div>
 
         @if (vista.estado === 'feedback') {
-          <div class="alert mt-auto mb-0 border-0 rounded-4 d-flex align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
+          <div class="alert mb-0 border-0 rounded-4 d-flex align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
             <p class="fw-bold mb-0 flex-shrink-0">
               @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
               @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! Sigue intentando }
@@ -191,7 +193,7 @@
               <p class="small mb-0 qz-explicacion" [title]="pregunta.explicacion">{{ pregunta.explicacion }}</p>
             }
 
-            <button type="button" class="btn fw-semibold px-4 rounded-4 flex-shrink-0 ms-auto qz-boton-avanzar" [class.btn-primary]="vista.esCorrecta" [class.btn-outline-dark]="!vista.esCorrecta" (click)="avanzar.emit()">
+            <button type="button" class="btn fw-semibold px-3 rounded-4 flex-shrink-0 ms-auto qz-boton-avanzar" [class.btn-primary]="vista.esCorrecta" [class.btn-outline-dark]="!vista.esCorrecta" (click)="avanzar.emit()">
               {{ vista.indice + 1 >= vista.total ? 'Ver resultados' : 'Siguiente' }}
               <i class="bi" [class.bi-trophy]="vista.indice + 1 >= vista.total" [class.bi-arrow-right]="vista.indice + 1 < vista.total"></i>
             </button>

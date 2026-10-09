@@ -87,7 +87,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .quiz-page .qz-intro-card,
@@ -139,20 +138,38 @@
   letter-spacing: 0.04em;
 }
 
-/* Pregunta: el enunciado y las opciones, que heredan --qz-base. */
+/* Pregunta: el enunciado y las opciones, que heredan --qz-base.
+
+   La tarjeta se divide en dos zonas:
+   - .qz-contenido: zona con el contenido principal (enunciado + opciones)
+   - .alert: zona fija (feedback con botón "Siguiente" siempre visible)
+
+   Sin scroll interno: todo el contenido debe caber en la pantalla.
+   En móviles se compacta usando media queries. */
 .quiz-page .qz-question-card {
-  gap: 1rem;
+  gap: 0.75rem;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  overflow-y: auto;
+  padding: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+/* Zona de contenido: enunciado + opciones (sin scroll) */
+.quiz-page .qz-contenido {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .quiz-page .qz-enunciado {
   font-size: var(--qz-enunciado);
   line-height: 1.3;
+  text-align: center;
 }
 
 /* ----------------------------------------------------------------------------
@@ -263,6 +280,14 @@
   object-fit: contain;
 }
 
+/* En pantallas pequeñas la figura se compacta para evitar scroll */
+@media (max-width: 575.98px) {
+  .quiz-page .qz-figura {
+    flex: 0 1 auto;
+    max-height: 8rem;
+  }
+}
+
 /* Aviso del tiempo: late cuando quedan 5 segundos o menos. */
 .qz-timer-urgent {
   animation: qz-pulse 1s ease-in-out infinite;
@@ -273,13 +298,14 @@
    bloque medía 183px cuando su contenido era de 47px, y ese sobrante era la
    causa principal del scroll en la tarjeta. */
 .quiz-page .qz-question-card .alert {
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  margin-top: 0.4rem;
 }
 
 /* Botón "Siguiente / Ver resultados" del feedback: altura compacta para que la
    fila del aviso no crezca (con `py-2` medía 47px y marcaba el alto del bloque). */
 .quiz-page .qz-boton-avanzar {
-  padding-block: 0.35rem;
+  padding-block: 0.3rem;
 }
 
 /* Explicación del feedback: se queda con el espacio libre entre el mensaje y el
@@ -292,10 +318,102 @@
   min-width: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   overflow: hidden;
-  line-height: 1.3;
+  line-height: 1.2;
+}
+
+/* ----------------------------------------------------------------------------
+   Responsividad — pantallas pequeñas (móviles): SIN SCROLL
+
+   En móviles el contenido debe caber en la pantalla sin necesidad de hacer
+   scroll. Para lograrlo:
+   - Se reduce el tamaño base de la fuente
+   - Se compactan todos los espaciados
+   - Las figuras tienen un max-height muy reducido
+   - Las opciones de respuesta son más compactas
+   - El header ocupa menos espacio
+   -------------------------------------------------------------------------- */
+@media (max-width: 575.98px) {
+  .quiz-page {
+    --qz-base: 0.85rem;
+  }
+
+  .quiz-page header {
+    padding-left: 4rem;
+    margin-bottom: 0.25rem;
+    gap: 0.3rem;
+  }
+
+  .quiz-page .qz-boton-volver {
+    margin-left: 4rem;
+  }
+
+  .quiz-page .container-xl {
+    padding-inline: 0.3rem;
+  }
+
+  .quiz-page .qz-question-card {
+    padding: 0.3rem;
+    gap: 0.25rem;
+  }
+
+  .quiz-page .qz-contenido {
+    gap: 0.25rem;
+  }
+
+  /* Figura compacta: en móviles no debe ocupar más de 6rem */
+  .quiz-page .qz-figura {
+    max-height: 6rem;
+    margin-block: 0.05rem;
+  }
+
+  /* Opciones compactas: menos padding para que quepan sin scroll */
+  .quiz-page .qz-answer {
+    padding-block: calc(4px - 0.1em);
+    padding-inline: 0.4rem;
+  }
+
+  .quiz-page .qz-question-card .alert {
+    padding: 0.2rem 0.3rem;
+    gap: 0.25rem;
+    margin-top: 0.15rem;
+  }
+
+  .quiz-page .qz-boton-avanzar {
+    padding-inline: 0.4rem;
+    padding-block: 0.15rem;
+  }
+
+  .quiz-page .qz-intro-card,
+  .quiz-page .qz-result-card {
+    padding: 0.75rem 0.5rem;
+  }
+
+  /* Rejilla compacta en móviles */
+  .quiz-page .qz-rejilla {
+    --qz-celda: clamp(1.8rem, 7vw, 2.5rem);
+    gap: 0.2em;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .quiz-page {
+    --qz-base: 0.8rem;
+  }
+
+  .quiz-page header {
+    padding-left: 3.5rem;
+  }
+
+  .quiz-page .qz-boton-volver {
+    margin-left: 3.5rem;
+  }
+
+  .quiz-page .qz-figura {
+    max-height: 4.5rem;
+  }
 }
 
 @keyframes qz-pulse {
@@ -359,10 +477,13 @@
    la tarjeta.
    ------------------------------------------------------------------------------- */
 .quiz-page .qz-custom-content {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* `flex: 1 1 auto` (y no `0 0 auto`): el contenido tiene que CRECER y quedarse
@@ -374,8 +495,10 @@
    pirámide (clientHeight 164 con 260 de contenido), dejando el ejercicio
    irresoluble. Que crezca y, si no cabe, que la tarjeta haga scroll. */
 .quiz-page .qz-html-content {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
 }

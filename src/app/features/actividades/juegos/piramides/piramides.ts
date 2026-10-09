@@ -260,11 +260,9 @@ export class Piramides implements OnInit, OnDestroy {
 
   private renderizarPiramide(p: Piramide, nivel: number, revelar = false): string {
     const filas = revelar ? p.completa : p.oculta;
-    // `--piramide-filas` es lo que permite al CSS repartir el alto disponible
-    // entre las filas para que la pirámide siempre quepa entera.
     return `
       <div class="piramide-caja d-flex flex-column align-items-center w-100">
-        <div class="piramide-render" style="--piramide-filas: ${filas.length}">${this.renderizarFilas(filas)}</div>
+        <div class="piramide-render">${this.renderizarFilas(filas)}</div>
       </div>
     `;
   }
