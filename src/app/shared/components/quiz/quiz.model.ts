@@ -31,9 +31,9 @@ export interface RejillaQuiz {
 export interface PreguntaQuiz {
   id: string;
   enunciado: string;
+  /** Imagen de la pregunta (URL o data URI, p. ej. el SVG de Conteo de
+      Figuras). La plantilla la dibuja sobre el enunciado. */
   imagen?: string;
-  secuenciaNumerica?: number[];
-  secuenciaVisual?: { simbolo: string; descripcion: string }[];
   /** Rejilla de casilleros (se dibuja encima del enunciado). */
   rejilla?: RejillaQuiz;
   tipo: TipoPregunta;
@@ -52,15 +52,12 @@ export interface PreguntaQuiz {
 export interface ConfiguracionQuiz {
   titulo: string;
   descripcion?: string;
-  icono?: string;
   niveles?: number;
   preguntasPorNivel?: number;
   etiquetasNiveles?: string[];
   colorTema?: "purple" | "green" | "amber" | "blue" | "pink" | "orange";
   preguntas: PreguntaQuiz[];
   tiempoLimiteSegundos?: number;
-  mensajeExito?: string;
-  mensajeAnimo?: string;
 }
 
 export interface ResultadoQuiz {

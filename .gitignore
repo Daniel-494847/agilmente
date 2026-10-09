@@ -6,6 +6,7 @@ dist/
 .env.*
 
 firebase-debug.log
+*.log
 
 # Archivos temporales
 _dash.txt

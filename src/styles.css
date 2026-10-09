@@ -24,3 +24,113 @@ select,
 textarea {
   font-family: inherit;
 }
+
+/* ---------------------------------------------------------------------------
+   Pirámides — la pirámide se adapta al hueco libre de la tarjeta de quiz
+   (sin scroll de página).
+
+   El dibujo se inyecta con [innerHTML] y el DomSanitizer de Angular (hasta la
+   v23) elimina el atributo `style` de ese HTML, así que todo el tamaño vive
+   aquí, en CSS global (el contenido dinámico no lleva los atributos de
+   encapsulación, por eso las reglas de cada componente no le aplican).
+
+   Cadena de altura: .qz-html-content (quiz.css) da el hueco libre →
+   .piramide-caja y .piramide-render lo reparten → las filas (flex: 1) se
+   reparten exactamente el alto disponible con un tope de 61px (si sobra
+   espacio, la pirámide queda centrada) → las casillas se estiran al alto de su
+   fila: SIEMPRE el mismo tamaño para todas, también las vacías y las ocultas,
+   que así conservan su hueco. Nunca empujan la tarjeta: min-height: 0 en toda
+   la cadena y overflow: hidden en la casilla como red de seguridad final.
+   --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   Pirámides — dibujo compacto que NUNCA se aplasta ni obliga a hacer scroll.
+
+   El lado de la casilla no es un valor fijo: sale del alto que la tarjeta puede
+   prestar al dibujo (--piramide-alto) repartido entre las filas
+   (--piramide-filas, que el componente pone en el HTML). Se acota con un mínimo
+   legible y un máximo para que no crezca sin motivo, y con `min()` contra el
+   ancho disponible para que en pantallas estrechas tampoco desborde. Como el
+   alto y el número de filas son conocidos, la pirámide entera cabe SIEMPRE.
+   --------------------------------------------------------------------------- */
+.piramide-caja {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  gap: 0.25em;
+  justify-content: flex-start;
+}
+
+/* Contenedor del dibujo: reclama el alto que sobra y calcula el lado de la
+   casilla repartiéndolo entre las filas.
+
+   El presupuesto de alto (`--piramide-alto`) es lo que queda de la ventana tras
+   descontar cabecera, enunciado, opciones y el aviso de feedback. Al dividirlo
+   entre las filas sale un lado que SIEMPRE cabe; los topes (mínimo legible y
+   máximo 5rem) evitan que quede ilegible o desproporcionado. El `min()` contra
+   el ancho de la pantalla hace que en móviles la pirámide nunca desborde. */
+.piramide-render {
+  --piramide-filas: 3;
+  --piramide-hueco: calc(100svh - 26rem);
+  --piramide-alto: clamp(7rem, var(--piramide-hueco), 34rem);
+  --piramide-lado: clamp(
+    2rem,
+    min(
+      calc((var(--piramide-alto) - (var(--piramide-filas) - 1) * 0.4em) / var(--piramide-filas)),
+      calc((100vw - 3rem) / var(--piramide-filas))
+    ),
+    5rem
+  );
+
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4em;
+  overflow: hidden;
+}
+
+/* Filas: se apilan y nunca se encojan por debajo del alto de sus casillas. */
+.piramide-render > div {
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(2px, 0.8vw, 6px);
+}
+
+/* Casillero por resolver: atenuado pero visible, para que se distinga de un
+   dato dado y de un casillero ya revelado. */
+.piramide-vacia {
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+/* Casilla cuadrada, del mismo tamaño en toda la pirámide. El lado lo calcula
+   .piramide-render a partir del alto disponible. */
+.piramide-celda {
+  flex: 0 0 auto;
+  height: var(--piramide-lado);
+  width: var(--piramide-lado);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  line-height: 1;
+  font-size: calc(var(--piramide-lado) * 0.42);
+  text-align: center;
+  padding: 0;
+}
+
+/* -------------------------------------------------------------------
+   Sucesiones y Patrones: las preguntas se ven un 50% más grandes.
+   El tamaño lo define la plantilla del quiz en `.quiz-page`
+   (`--qz-enunciado` = base × 1.15); aquí se pide × 1.5, y sólo
+   dentro de este juego — el selector con el elemento del componente
+   gana en especificidad a los estilos encapsulados de la plantilla.
+   (Las figuras son SVG y las hace grandes la plantilla en `.qz-figura`.)
+   ------------------------------------------------------------------- */
+app-sucesiones-patrones .quiz-page {
+  --qz-enunciado: calc(var(--qz-base) * 1.725);
+}

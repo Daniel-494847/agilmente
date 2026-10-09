@@ -5,7 +5,7 @@
    variantes de Bootstrap (btn-outline-dark, btn-primary, btn-success…). Aquí
    solo hay medidas: nada de background/color/border de botones.
 
-   Escala: --qz-base manda en todo el juego y de él salen enunciado, serie,
+   Escala: --qz-base manda en todo el juego y de él salen enunciado,
    títulos y cifras. Así el tamaño de letra crece con la pantalla sin que cada
    texto lleve su propio parche.
    ========================================================================== */
@@ -40,6 +40,11 @@
     radial-gradient(ellipse at 88% 0%, var(--qz-soft), transparent 55%),
     radial-gradient(ellipse at 6% 100%, var(--bs-info-bg-subtle), transparent 48%);
   background-attachment: fixed;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .quiz-page[data-theme='purple'] {
@@ -78,6 +83,11 @@
   max-width: 1240px;
   padding-inline: clamp(0.5rem, 3vw, 3rem);
   justify-content: safe center;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .quiz-page .qz-intro-card,
@@ -129,25 +139,20 @@
   letter-spacing: 0.04em;
 }
 
-/* Pregunta: la serie es lo importante, luego el enunciado y por último las
-   opciones, que heredan --qz-base. */
+/* Pregunta: el enunciado y las opciones, que heredan --qz-base. */
 .quiz-page .qz-question-card {
   gap: 1rem;
-}
-
-.quiz-page .qz-serie {
-  font-size: var(--qz-serie);
-  line-height: 1.25;
-  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overflow-y: auto;
 }
 
 .quiz-page .qz-enunciado {
   font-size: var(--qz-enunciado);
   line-height: 1.3;
-}
-
-.quiz-page .qz-sequence-visual {
-  line-height: 1.8;
 }
 
 /* ----------------------------------------------------------------------------
@@ -222,9 +227,75 @@
   opacity: 1;
 }
 
+/* Opciones de respuesta: la altura total baja un 30% respecto a la que tenía
+   con la utilidad p-3.
+
+   Altura vieja = padding (2×1rem) + borde (2×1px) + contenido (1.6em, la
+   bolita A/B/C) = 34px + 1.6em ≈ 60px. Como box-sizing es border-box, el
+   padding por lado que deja el 70% de esa altura es:
+     (0.7×(34px + 1.6em) − 2px − 1.6em) / 2 = 10.9px − 0.24em
+   (≈60px → ≈42px con fuente de 16px; sigue escalando con --qz-base).
+   El padding lateral se mantiene en 1rem, como p-3. */
+.quiz-page .qz-answer {
+  padding-block: calc(10.9px - 0.24em);
+  padding-inline: 1rem;
+}
+
+/* Figura de la pregunta (los SVG de Conteo de Figuras y Geometría
+   Básica): es el elemento flexible de la tarjeta —crece con el hueco
+   libre hasta el doble de su tamaño natural y se achica sola cuando
+   no alcanza—, así que la pregunta cabe entera SIN scroll en
+   cualquier pantalla. `object-fit: contain` la escala sin deformar. */
+.quiz-page .qz-figura {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-height: 26rem;
+  margin-block: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quiz-page .qz-figura img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Aviso del tiempo: late cuando quedan 5 segundos o menos. */
 .qz-timer-urgent {
   animation: qz-pulse 1s ease-in-out infinite;
+}
+
+/* Aviso del feedback: una sola fila (mensaje + explicación + botón) con padding
+   reducido. Con el padding por defecto de `.alert` (1rem arriba y abajo) el
+   bloque medía 183px cuando su contenido era de 47px, y ese sobrante era la
+   causa principal del scroll en la tarjeta. */
+.quiz-page .qz-question-card .alert {
+  padding: 0.5rem 0.75rem;
+}
+
+/* Botón "Siguiente / Ver resultados" del feedback: altura compacta para que la
+   fila del aviso no crezca (con `py-2` medía 47px y marcaba el alto del bloque). */
+.quiz-page .qz-boton-avanzar {
+  padding-block: 0.35rem;
+}
+
+/* Explicación del feedback: se queda con el espacio libre entre el mensaje y el
+   botón, con un tope de dos líneas (puntos suspensivos solo si aún no cabe).
+   Así no empuja el botón a otra fila —que era lo que hacía crecer el aviso— y
+   el texto no se corta a media palabra cuando hay sitio. El texto completo va
+   siempre en `title`. */
+.quiz-page .qz-explicacion {
+  flex: 1 1 0;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.3;
 }
 
 @keyframes qz-pulse {
@@ -275,4 +346,36 @@
   .confeti-piece {
     animation: none;
   }
+}
+
+/* -------------------------------------------------------------------------------
+   Contenido personalizado (innerHTML) adaptado a la tarjeta.
+
+   Sin min-height: 0, un elemento flex de columna no puede encogerse por debajo
+   de su contenido (min-height: auto) y retos altos —la pirámide de 5 filas—
+   desbordan la tarjeta y obligan a hacer scroll en la página. Con esta cadena,
+   .qz-html-content ocupa exactamente el hueco libre (crece con flex y puede
+   encogerse) y el contenido reparte esa altura hacia abajo en lugar de empujar
+   la tarjeta.
+   ------------------------------------------------------------------------------- */
+.quiz-page .qz-custom-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* `flex: 1 1 auto` (y no `0 0 auto`): el contenido tiene que CRECER y quedarse
+   con el alto libre de la tarjeta para que la pirámide llene el hueco. Con
+   `0 0 auto` se encogía a su tamaño natural y dejaba media tarjeta en blanco.
+
+   `min-height: auto` (no `0`) y sin `overflow: hidden`: con `overflow: hidden`
+   y `min-height: 0` este bloque se comprimía y RECORTABA la base de la
+   pirámide (clientHeight 164 con 260 de contenido), dejando el ejercicio
+   irresoluble. Que crezca y, si no cabe, que la tarjeta haga scroll. */
+.quiz-page .qz-html-content {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }

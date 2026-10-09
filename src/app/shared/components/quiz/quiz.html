@@ -9,7 +9,7 @@
 
   <div class="container-xl h-100 d-flex flex-column">
     <header class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <button type="button" class="btn btn-outline-dark fw-semibold rounded-4 qz-boton-volver" (click)="volver.emit()">
+      <button type="button" class="btn btn-outline-dark fw-semibold rounded-4 qz-boton-volver" (click)="volverAtras()">
         <i class="bi bi-arrow-left"></i> Volver
       </button>
 
@@ -96,10 +96,6 @@
           </span>
         </div>
 
-        @if (pregunta.secuenciaNumerica?.length) {
-          <p class="qz-serie fw-bold text-center text-dark mb-0">{{ pregunta.secuenciaNumerica.join(', ') }}, ...</p>
-        }
-
         @if (pregunta.rejilla; as rejilla) {
           <div class="qz-rejilla" role="group" [attr.aria-label]="rejilla.descripcion ?? 'Rejilla del ejercicio'"
                [style.--qz-columnas]="rejilla.lado">
@@ -111,12 +107,10 @@
           </div>
         }
 
-        @if (pregunta.secuenciaVisual?.length) {
-          <p class="qz-serie qz-sequence-visual fw-bold text-center text-dark mb-0" aria-label="Secuencia visual">
-            @for (figura of pregunta.secuenciaVisual; track $index) {
-              <span [attr.aria-label]="figura.descripcion">{{ figura.simbolo }}</span>
-            }
-          </p>
+        @if (pregunta.imagen; as imagen) {
+          <figure class="qz-figura m-0 text-center">
+            <img [src]="imagen" alt="Figura del ejercicio" class="img-fluid" />
+          </figure>
         }
 
         <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
@@ -125,14 +119,14 @@
           <div class="qz-custom-content flex-grow-1 mt-3 d-flex flex-column">
             <ng-content select="[quiz-custom]"></ng-content>
             @if (pregunta.contenidoHtml) {
-              <div [innerHTML]="pregunta.contenidoHtml"></div>
+              <div class="qz-html-content" [innerHTML]="pregunta.contenidoHtml"></div>
             }
             <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-2" role="listbox">
               @for (op of pregunta.opciones; track op.id; let i = $index) {
                 <div class="col">
                   <button
                     type="button"
-                    class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start p-3 fw-semibold rounded-3"
+                    class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
                     [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
                     [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
                     [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
@@ -163,7 +157,7 @@
               <div class="col">
                 <button
                   type="button"
-                  class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start p-3 fw-semibold rounded-3"
+                  class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
                   [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
                   [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
                   [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
@@ -188,17 +182,16 @@
         }
 
         @if (vista.estado === 'feedback') {
-          <div class="alert mt-auto mb-0 text-center border-0 rounded-4" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
-            <p class="fw-bold mb-1">
+          <div class="alert mt-auto mb-0 border-0 rounded-4 d-flex align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
+            <p class="fw-bold mb-0 flex-shrink-0">
               @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
               @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! Sigue intentando }
             </p>
-
             @if (pregunta.explicacion) {
-              <p class="small mb-3">{{ pregunta.explicacion }}</p>
+              <p class="small mb-0 qz-explicacion" [title]="pregunta.explicacion">{{ pregunta.explicacion }}</p>
             }
 
-            <button type="button" class="btn fw-semibold px-4 py-2 rounded-4" [class.btn-primary]="vista.esCorrecta" [class.btn-outline-dark]="!vista.esCorrecta" (click)="avanzar.emit()">
+            <button type="button" class="btn fw-semibold px-4 rounded-4 flex-shrink-0 ms-auto qz-boton-avanzar" [class.btn-primary]="vista.esCorrecta" [class.btn-outline-dark]="!vista.esCorrecta" (click)="avanzar.emit()">
               {{ vista.indice + 1 >= vista.total ? 'Ver resultados' : 'Siguiente' }}
               <i class="bi" [class.bi-trophy]="vista.indice + 1 >= vista.total" [class.bi-arrow-right]="vista.indice + 1 < vista.total"></i>
             </button>

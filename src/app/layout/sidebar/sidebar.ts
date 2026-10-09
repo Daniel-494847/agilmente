@@ -13,6 +13,8 @@ interface ItemMenu {
   tono: string;
   ruta: string;
   rutaAdmin?: string;
+  /** Si es true, solo la ven los administradores (es un enlace de administración). */
+  soloAdmin?: boolean;
 }
 
 @Component({
@@ -86,6 +88,13 @@ export class Sidebar {
       tono: 'success',
       ruta: '/perfil',
       rutaAdmin: '/perfil/administrar'
+    },
+    {
+      etiqueta: 'Gestión de usuarios',
+      icono: 'bi-people',
+      tono: 'secondary',
+      ruta: '/administracion/usuarios',
+      soloAdmin: true
     }
   ];
 
@@ -155,9 +164,6 @@ export class Sidebar {
       if (auth.currentUser) {
         await signOut(auth);
       }
-      localStorage.removeItem('agilmente_user_role');
-      localStorage.removeItem('agilmente_guest');
-      localStorage.removeItem('agilmente_session');
       localStorage.removeItem('agilmente_user_name');
       this.cerrarMenuMovil();
       await this.router.navigateByUrl('/inicio');

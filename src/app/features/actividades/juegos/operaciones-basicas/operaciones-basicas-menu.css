@@ -52,20 +52,38 @@
   font-size: clamp(.7rem, 2dvh, 1.15rem);
 }
 
-/* 6 tarjetas: 3 columnas en ancho, 6 en una sola fila si hay mucho ancho
-   y poco alto , para no sumar filas. */
+/* 6 tarjetas en rejilla de 3 columnas (3 × 2), que es lo que permite que
+   títulos como «Operaciones combinadas» quepan en dos líneas sin partirse.
+   Con `auto-fit` + 220px salían 4 columnas de ~200px y las palabras se
+   rompían a la mitad («Operacione / s / combinada / s»). */
 .operation-grid {
   flex: 0 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(.4rem, 1.8dvh, 1rem);
   width: 100%;
 }
 
+@media (max-width: 767.98px) {
+  .operation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .operation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .operation-card {
   min-height: 0;
-  height: clamp(62px, 15dvh, 132px);
+  /* `height` fija recortaba el contenido: «¡Resuelve el reto completo!» se salía
+     de la tarjeta. Con `min-height` + `height: 100%` la tarjeta crece si el
+     texto lo necesita y todas las de una fila quedan iguales. */
+  height: 100%;
+  min-height: clamp(62px, 15dvh, 132px);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -105,6 +123,13 @@
 
 .operation-text {
   min-width: 0;
+  flex: 1 1 auto;
+  /* Sin esto los títulos largos se partían a media palabra («Multiplicaci / ón»,
+     «Operacione / s»). `overflow-wrap: normal` respeta las palabras completas y
+     `hyphens: none` evita guiones automáticos. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .operation-card strong {
@@ -127,12 +152,6 @@
   margin-left: auto;
   color: var(--operation);
   font-size: clamp(.7rem, 2dvh, 1.1rem);
-}
-
-@media (max-width: 575.98px) {
-  .operation-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
-  }
 }
 
 /* Pantallas apaisadas: las 6 tarjetas en una fila para no sumar alto. */

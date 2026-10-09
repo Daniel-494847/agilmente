@@ -20,7 +20,6 @@ interface Piramide {
   pregunta: string;
   opciones: number[];
   correcta: number;
-  texto: string;
   pasos: string[];
   clave: string;
 }
@@ -50,9 +49,12 @@ function celdasDe(valores: number[][], dados: boolean[][], meta: [number, number
           : { t: '?', c: 'bg-warning-subtle border-warning text-warning-emphasis' };
       }
       if (dados[r][j]) return { t: String(v), c: 'bg-body border-primary text-primary' };
+      // Casillero por resolver: se marca con un guion bajo para que no se lea
+      // como un hueco decorativo. Antes iba vacío y con un borde casi invisible,
+      // así que el alumno no sabía qué casillas le tocaba calcular.
       return revelar
         ? { t: String(v), c: 'bg-success-subtle border-success-subtle text-success-emphasis' }
-        : { t: '', c: 'bg-body-tertiary border-secondary-subtle' };
+        : { t: '–', c: 'bg-secondary-subtle border-secondary text-secondary-emphasis piramide-vacia' };
     })
   );
 }
@@ -137,7 +139,6 @@ function crearPiramide(nivel: number): Piramide | null {
       pregunta: meta[0] === 0 ? '¿Qué número va en la cima (?)' : '¿Qué número va en el casillero marcado (?)',
       opciones: opcionesCerca(resp, [resp + 1, resp - 1, resp + 2, ...vistos.slice(0, 3)]),
       correcta: resp,
-      texto: 'Cada casillero es la suma de los dos que tiene debajo. Si conoces el de arriba y uno de abajo, restas para hallar el otro.',
       pasos,
       clave: JSON.stringify(oculta),
     };
@@ -191,14 +192,11 @@ export class Piramides implements OnInit, OnDestroy {
     config: {
       titulo: 'Pirámides',
       descripcion: 'Cada casillero es la suma de los dos que tiene debajo. Usa sumas y restas para hallar el valor que falta.',
-      icono: 'bi-triangle',
       niveles: 3,
       preguntasPorNivel: CANTIDAD,
       etiquetasNiveles: ['Básico', 'Intermedio', 'Avanzado'],
       colorTema: 'orange',
       preguntas: [],
-      mensajeExito: '¡Excelente! Dominas las pirámides.',
-      mensajeAnimo: '¡Sigue practicando las relaciones numéricas!',
     },
     estado: 'intro',
     indice: 0,
@@ -242,40 +240,31 @@ export class Piramides implements OnInit, OnDestroy {
   }
 
   private obtenerPreguntas(nivel: number): PreguntaQuiz[] {
-    return this.piramidesPorNivel[nivel - 1].map((p, idx) => this.mapearPiramide(p, nivel, idx));
+    return this.piramidesPorNivel[nivel - 1].map((p, i) => this.mapearPiramide(p, nivel, i));
   }
 
   private mapearPiramide(p: Piramide, nivel: number, idx: number): PreguntaQuiz {
-    const html = this.renderizarPiramide(p, nivel);
     return {
       id: `piramide-${nivel}-${idx}-${p.clave.slice(0, 8)}`,
       enunciado: p.pregunta,
       tipo: 'personalizado',
-      contenidoHtml: html,
-      opciones: p.opciones.map((op) => ({
-        id: String(op),
-        texto: String(op),
-      })),
+      contenidoHtml: this.renderizarPiramide(p, nivel, false),
+      opciones: p.opciones.map((op) => ({ id: String(op), texto: String(op) })),
       respuestaCorrectaId: String(p.correcta),
-      explicacion: `${p.texto}\n${p.pasos.map((paso: string, i: number) => `${i + 1}. ${paso}`).join('\n')}`,
+      explicacion: `Pasos: ${p.pasos.join(' → ')}`,
       nivel,
       puntos: PUNTOS[nivel] ?? 10,
       datos: { piramide: p, nivel },
     };
   }
 
-  private renderizarPiramide(p: Piramide, nivel: number): string {
-    const filasOcultas = this.renderizarFilas(p.oculta);
-    const nivelBadge = this.obtenerEtiquetaNivel(nivel);
-    const colorBadge = this.obtenerColorNivel(nivel);
+  private renderizarPiramide(p: Piramide, nivel: number, revelar = false): string {
+    const filas = revelar ? p.completa : p.oculta;
+    // `--piramide-filas` es lo que permite al CSS repartir el alto disponible
+    // entre las filas para que la pirámide siempre quepa entera.
     return `
-      <div class="d-flex flex-column align-items-center w-100">
-        <div class="mb-3 text-center">
-          <span class="badge text-bg-${colorBadge} me-2">${nivelBadge}</span>
-          <small class="text-muted">Cada casillero es la suma de los dos que tiene debajo.</small>
-        </div>
-        <div class="piramide-render">${filasOcultas}</div>
-        <div class="small text-muted mt-3">${p.texto}</div>
+      <div class="piramide-caja d-flex flex-column align-items-center w-100">
+        <div class="piramide-render" style="--piramide-filas: ${filas.length}">${this.renderizarFilas(filas)}</div>
       </div>
     `;
   }
@@ -283,33 +272,15 @@ export class Piramides implements OnInit, OnDestroy {
   private renderizarFilas(celdas: Celda[][]): string {
     return celdas
       .map(
-        (fila: Celda[]) => `
-      <div class="d-flex justify-content-center gap-2 mb-2">
-        ${fila
-          .map(
-            (c: Celda) => `
-          <div class="border border-2 rounded-3 d-flex align-items-center justify-content-center fw-bold fs-5 ${c.c}" style="width: 56px; height: 44px; flex-shrink: 0;">${c.t}</div>
-        `
-          )
+        (f: Celda[]) => `
+      <div class="d-flex justify-content-center">
+        ${f
+          .map((c: Celda) => `<div class="border border-2 rounded-3 d-flex align-items-center justify-content-center fw-bold piramide-celda ${c.c}">${c.t}</div>`)
           .join('')}
       </div>
     `
       )
       .join('');
-  }
-
-  private obtenerEtiquetaNivel(nivel: number): string {
-    if (nivel === 1) return 'Básico';
-    if (nivel === 2) return 'Intermedio';
-    if (nivel === 3) return 'Avanzado';
-    return 'Nivel ' + nivel;
-  }
-
-  private obtenerColorNivel(nivel: number): string {
-    if (nivel === 1) return 'success';
-    if (nivel === 2) return 'warning';
-    if (nivel === 3) return 'danger';
-    return 'secondary';
   }
 
   volver(): void {
@@ -363,26 +334,30 @@ export class Piramides implements OnInit, OnDestroy {
     const pregunta = vm.preguntaActual;
     if (!pregunta) return;
     const esCorrecta = opcionId === pregunta.respuestaCorrectaId;
-    const respuesta = {
-      preguntaId: pregunta.id,
-      opcionId,
-      correcta: esCorrecta,
-    };
     const resultado = {
       ...vm.resultado,
-      correctas: esCorrecta ? vm.resultado.correctas + 1 : vm.resultado.correctas,
-      incorrectas: !esCorrecta ? vm.resultado.incorrectas + 1 : vm.resultado.incorrectas,
-      respuestas: [...vm.resultado.respuestas, respuesta],
+      correctas: vm.resultado.correctas + (esCorrecta ? 1 : 0),
+      incorrectas: vm.resultado.incorrectas + (!esCorrecta ? 1 : 0),
+      respuestas: [...vm.resultado.respuestas, { preguntaId: pregunta.id, opcionId, correcta: esCorrecta }],
     };
-    const puntaje = resultado.correctas * (pregunta.puntos ?? 10);
-    resultado.puntaje = puntaje;
+    resultado.puntaje = resultado.correctas * (pregunta.puntos ?? 10);
     resultado.porcentaje = Math.round((resultado.correctas / Math.max(1, resultado.total)) * 100);
+
+    // Al revelar se muestra la pirámide RESUELTA: sin esto el alumno veía la
+    // explicación («8 + 2 = 10») pero el 10 no aparecía en ningún casillero, así
+    // que no podía comprobar de dónde salía la respuesta.
+    const piramide = pregunta.datos?.piramide as Piramide | undefined;
+    const nivel = (pregunta.datos?.nivel as number) ?? this.nivelActual;
+    const revelada: PreguntaQuiz = piramide
+      ? { ...pregunta, contenidoHtml: this.renderizarPiramide(piramide, nivel, true) }
+      : pregunta;
 
     this.vm.set({
       ...vm,
       seleccionada: opcionId,
       esCorrecta,
       estado: 'feedback',
+      preguntaActual: revelada,
       resultado,
     });
   }

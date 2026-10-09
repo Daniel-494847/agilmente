@@ -27,22 +27,24 @@
   <div class="sidebar-panel flex-grow-1" [class.d-none]="!menuAbierto() && false" [class.sidebar-panel--open]="menuAbierto()">
     <nav id="sidebar-menu" class="nav flex-column gap-2">
       @for (item of menu; track item.ruta) {
-        <button
-          type="button"
-          class="btn menu-item d-flex align-items-center gap-2 text-start rounded-3 fw-semibold"
-          [class.btn-primary]="esActivo(item)"
-          [class.menu-item--activo]="esActivo(item)"
-          (click)="navegar(item)"
-          [attr.aria-current]="esActivo(item) ? 'page' : null"
-        >
-          <span class="menu-icon d-inline-flex align-items-center justify-content-center rounded-2 bg-white text-primary flex-shrink-0">
-            <i class="bi {{ item.icono }}"></i>
-          </span>
-          <span class="menu-label">{{ item.etiqueta }}</span>
-          @if (esModoAdmin() && item.rutaAdmin) {
-            <i class="bi bi-pencil-square ms-auto small" aria-hidden="true"></i>
-          }
-        </button>
+        @if (!item.soloAdmin || esModoAdmin()) {
+          <button
+            type="button"
+            class="btn menu-item d-flex align-items-center gap-2 text-start rounded-3 fw-semibold"
+            [class.btn-primary]="esActivo(item)"
+            [class.menu-item--activo]="esActivo(item)"
+            (click)="navegar(item)"
+            [attr.aria-current]="esActivo(item) ? 'page' : null"
+          >
+            <span class="menu-icon d-inline-flex align-items-center justify-content-center rounded-2 bg-white text-primary flex-shrink-0">
+              <i class="bi {{ item.icono }}"></i>
+            </span>
+            <span class="menu-label">{{ item.etiqueta }}</span>
+            @if (esModoAdmin() && item.rutaAdmin) {
+              <i class="bi bi-pencil-square ms-auto small" aria-hidden="true"></i>
+            }
+          </button>
+        }
       }
     </nav>
 

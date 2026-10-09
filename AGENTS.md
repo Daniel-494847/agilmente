@@ -34,10 +34,8 @@ Ejemplo de referencia completo: `src/app/features/actividades/juegos/sucesiones-
 La apariencia se cambia mediante los campos de `PreguntaQuiz`, no con otra pantalla:
 
 - `tipo`: `opcion-multiple` | `verdadero-falso` | `completar`
-- `secuenciaNumerica` / `secuenciaVisual` para retos de patrón
 - `opciones[].imagen` y `opciones[].ariaLabel` para figuras
 - `niveles` + `etiquetasNiveles` + generación por nivel
-- `mensajeExito` / `mensajeAnimo` para el texto de la intro
 
 Excepción conocida: `matematicas-interactivas/*` (sumas, restas, multiplicación,
 división, combinadas, duelo) usa keypad numérico propio porque es un reto de

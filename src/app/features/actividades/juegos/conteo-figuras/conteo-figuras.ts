@@ -9,6 +9,7 @@ import {
   QuizViewModel,
   TipoPregunta,
 } from "../../../../shared/components/quiz/quiz.model";
+import { EJERCICIOS, Nivel, svgDe } from "./conteo-figuras.data";
 
 @Component({
   selector: "app-conteo-figuras",
@@ -40,8 +41,8 @@ export class ConteoFiguras implements OnInit, OnDestroy {
     descripcion: "Cuenta figuras, segmentos, ángulos y triángulos.",
     colorTema: "green",
     niveles: 3,
-    preguntasPorNivel: 5,
-    etiquetasNiveles: ["Inicial", "Práctica", "Intermedio"],
+    preguntasPorNivel: 25,
+    etiquetasNiveles: ["Básico", "Intermedio", "Avanzado"],
     preguntas: [],
   };
 
@@ -91,7 +92,12 @@ export class ConteoFiguras implements OnInit, OnDestroy {
       });
   }
   private inicial(n: number): QuizViewModel {
-    const list = this.config.preguntas.filter((p) => p.nivel === n);
+    // Cada vez que se elige o reinicia un nivel, se mezcla el orden de sus 25 ejercicios
+    const list = this.mezclar(this.config.preguntas.filter((p) => p.nivel === n));
+    this.config.preguntas = [
+      ...this.config.preguntas.filter((p) => p.nivel !== n),
+      ...list,
+    ];
     const total = list.length;
     return {
       config: this.config,
@@ -118,29 +124,38 @@ export class ConteoFiguras implements OnInit, OnDestroy {
       segundosRestantes: 0,
     };
   }
+
+  // Convierte los 75 ejercicios (25 por nivel) al formato PreguntaQuiz
   private generar(): PreguntaQuiz[] {
+    const niveles: Nivel[] = ["basico", "intermedio", "avanzado"];
+    const ids = ["a", "b", "c", "d"];
     const out: PreguntaQuiz[] = [];
-    for (let n = 1; n <= 3; n++) {
-      for (let i = 0; i < 5; i++) {
-        const v = 3 + i + n;
+    niveles.forEach((nombre, idx) => {
+      for (const e of EJERCICIOS[nombre]) {
         out.push({
-          id: `cf-${n}-${i}`,
-          enunciado: "¿Cuántas figuras hay?",
+          id: `cf-${e.id}`,
+          enunciado: e.pregunta,
+          imagen: svgDe(e.trazos), // gráfico del ejercicio (ver nota en quiz.model)
           tipo: "opcion-multiple" as TipoPregunta,
-          nivel: n,
-          opciones: [
-            { id: "a", texto: String(v) },
-            { id: "b", texto: String(v + 1) },
-            { id: "c", texto: String(v - 1) },
-            { id: "d", texto: String(v + 2) },
-          ],
-          respuestaCorrectaId: "a",
-          explicacion: `Hay ${v} figuras.`,
+          nivel: idx + 1,
+          opciones: e.opciones.map((o, i) => ({ id: ids[i], texto: String(o) })),
+          respuestaCorrectaId: ids[e.opciones.indexOf(e.correcta)],
+          explicacion: e.explicacion,
         });
       }
-    }
+    });
     return out;
   }
+
+  private mezclar<T>(a: T[]): T[] {
+    const c = [...a];
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
+  }
+
   volver() {
     void this.router.navigateByUrl("/razonamiento-logico");
   }

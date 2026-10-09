@@ -1,0 +1,59 @@
+<main class="container py-4 py-lg-5" style="max-width: 56rem">
+  <header class="mb-4">
+    <a routerLink="/inicio" class="btn btn-link text-decoration-none fw-semibold px-0">
+      <i class="bi bi-arrow-left me-1"></i> Volver a inicio
+    </a>
+    <h1 class="h3 fw-bold mt-2 mb-1">Gestión de usuarios</h1>
+    <p class="text-secondary mb-0">Cambia el rol de cada usuario. Solo los administradores pueden ver esta página.</p>
+  </header>
+
+  @if (mensaje()) {
+    <div class="alert alert-success" role="status">{{ mensaje() }}</div>
+  }
+  @if (error()) {
+    <div class="alert alert-danger" role="alert">{{ error() }}</div>
+  }
+
+  @if (cargando()) {
+    <p class="text-secondary">Cargando usuarios…</p>
+  } @else {
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Nombre</th>
+            <th scope="col">Correo</th>
+            <th scope="col" class="text-center">Rol</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of usuarios(); track u.uid) {
+            <tr>
+              <td>{{ u.nombreCompleto || '—' }}</td>
+              <td class="text-truncate" style="max-width: 16rem">{{ u.email || '—' }}</td>
+              <td class="text-center">
+                @if (u.uid === miUid()) {
+                  <span class="badge rounded-pill text-bg-secondary" title="No puedes cambiar tu propio rol">{{ u.rol }}</span>
+                } @else {
+                  <select
+                    class="form-select form-select-sm d-inline-block w-auto"
+                    [value]="u.rol"
+                    [attr.aria-label]="'Rol de ' + (u.nombreCompleto || u.email)"
+                    (change)="cambiarRol(u, $any($event.target).value)">
+                    @for (r of rolesOpciones; track r) {
+                      <option [value]="r">{{ r }}</option>
+                    }
+                  </select>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="text-center text-secondary py-4">No hay usuarios registrados.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</main>

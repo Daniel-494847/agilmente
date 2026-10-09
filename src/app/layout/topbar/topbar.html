@@ -19,7 +19,13 @@
         </div>
       }
       <div>
-        <h2 class="h5 fw-bold mb-0">¡Hola, {{ usuario.nombre }}!</h2>
+        <h2 class="h5 fw-bold mb-0">¡Hola, {{ usuario.nombre }}!
+          @if (usuario.rol === 'administrador') {
+            <span class="badge rounded-pill text-bg-danger ms-2">{{ usuario.rol }}</span>
+          } @else if (usuario.rol === 'docente') {
+            <span class="badge rounded-pill text-bg-info ms-2">{{ usuario.rol }}</span>
+          }
+        </h2>
         <small class="text-body-secondary">Sigue aprendiendo cada día</small>
       </div>
     </div>
@@ -32,8 +38,8 @@
     }
 
     @if (esAdministrador()) {
-      <a routerLink="/razonamiento-logico/administrar" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-shield-lock me-1"></i> 
+      <a routerLink="/razonamiento-logico/administrar" class="btn btn-outline-primary btn-sm" aria-label="Administrar actividades">
+        <i class="bi bi-shield-lock me-1"></i> Admin
       </a>
     }
 

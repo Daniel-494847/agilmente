@@ -1,14 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
 
-/**
- * Envoltura de la Fullscreen API del navegador con `signal`, para que la
- * interfaz (botón salir, icono, aviso) reaccione sola.
- *
- * Si el navegador no soporta la API (iPhone, WebViews), `soportado()` es
- * `false` y el juego sigue funcionando "a pantalla completa" gracias al layout
- * fijo de 100dvh que usan los juegos.
- */
+
 @Injectable({ providedIn: 'root' })
 export class FullscreenService {
   private readonly doc = inject(DOCUMENT);

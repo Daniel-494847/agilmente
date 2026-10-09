@@ -1,895 +1,618 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-
-import { AttemptsService } from '../../../../core/services/attempts.service';
-import { GameUiService } from '../../../../core/services/game-ui.service';
-import { Quiz } from '../../../../shared/components/quiz/quiz';
-import type {
+import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
+import { Router } from "@angular/router";
+import { AttemptsService } from "../../../../core/services/attempts.service";
+import { GameUiService } from "../../../../core/services/game-ui.service";
+import { Quiz } from "../../../../shared/components/quiz/quiz";
+import {
   ConfiguracionQuiz,
   PreguntaQuiz,
   QuizViewModel,
-  ResultadoQuiz
-} from '../../../../shared/components/quiz/quiz.model';
+  TipoPregunta,
+} from "../../../../shared/components/quiz/quiz.model";
 
-// ====================== GENERADOR DE EJERCICIOS ======================
-// Cada nivel combina 3 familias: crecientes, decrecientes y figuras/patrones.
-// Cada vez que se empieza un nivel se crean 25 preguntas al azar (sin repetir),
-// todas con explicación.
+// Sucesiones y Patrones (un solo archivo): 25 ejercicios por nivel con gráficos SVG.
+// Cada respuesta y cada explicación se CALCULAN a partir de los datos del ejercicio.
 
-const CANTIDAD = 25; // ejercicios por nivel
-const PUNTOS: Record<number, number> = { 1: 10, 2: 15, 3: 20 };
+// ================== Dibujo (trazos SVG) ==================
+type Nivel = "basico" | "intermedio" | "avanzado";
 
+// Un trazo es una pieza del dibujo: línea (l), polígono (p), círculo (c) o texto (x)
+interface Trazo {
+  t: "l" | "p" | "c" | "x";
+  x1?: number; y1?: number; x2?: number; y2?: number; // línea
+  pts?: string; // polígono
+  cx?: number; cy?: number; r?: number; // círculo
+  x?: number; y?: number; s?: string; size?: number; // texto
+  fill?: string;
+  stroke?: string;
+}
+
+const INK = "#212529";
+const GRIS = "#6c757d";
+const r1 = (n: number) => Math.round(n * 10) / 10;
+const linea = (x1: number, y1: number, x2: number, y2: number): Trazo =>
+  ({ t: "l", x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke: INK });
+const poligono = (p: number[][], fill = "none"): Trazo =>
+  ({ t: "p", pts: p.map(q => `${r1(q[0])},${r1(q[1])}`).join(" "), fill, stroke: INK });
+const circulo = (cx: number, cy: number, r: number, fill: string): Trazo =>
+  ({ t: "c", cx: r1(cx), cy: r1(cy), r, fill, stroke: INK });
+const texto = (x: number, y: number, s: string, size = 13, fill = INK): Trazo =>
+  ({ t: "x", x: r1(x), y: r1(y), s, size, fill });
+
+// Números pseudoaleatorios con semilla (cada ejercicio siempre se ve igual)
+function rng(semilla: number) {
+  let a = semilla >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Convierte los trazos en una imagen SVG (data URI) para el quiz
+function svgDe(trazos: Trazo[]): string {
+  const piezas = trazos.map(t => {
+    if (t.t === "l") return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="2" stroke-linecap="round"/>`;
+    if (t.t === "p") return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+    if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2"/>`;
+    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 13}" font-weight="bold" font-family="sans-serif" fill="${t.fill}">${t.s}</text>`;
+  });
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200"><rect width="300" height="200" fill="#fff"/>${piezas.join("")}</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+// ================== Tipos de los ejercicios ==================
 interface Ejercicio {
-  enunciado: string;
-  serie?: number[]; // números que el quiz dibuja arriba de las opciones
-  opciones: string[]; // texto de cada botón (números o figuras)
-  correcta: string;
+  id: string;
+  nivel: Nivel;
+  tema: string;
+  pregunta: string;
+  trazos: Trazo[];
+  opciones: string[];
+  correcta: string; // uno de los textos de opciones
   explicacion: string;
 }
 
-// Utilidades
-const azar = (a: number, b: number) => Math.floor(Math.random() * (b - a + 1)) + a;
-const mezclar = <T>(l: T[]) => [...l].sort(() => Math.random() - 0.5);
-
-// Opciones: la correcta + 3 falsas. "extras" son errores típicos (se usan primero)
-function opcionesCerca(c: number, extras: number[] = []): number[] {
-  const set = new Set<number>([c]);
-  for (const v of mezclar(extras)) {
-    if (set.size < 4 && Number.isInteger(v) && v >= 0) set.add(v);
-  }
-  let k = 1;
-  while (set.size < 4) {
-    const v = c + azar(1, Math.max(3, Math.ceil(c * 0.3))) * (Math.random() < 0.5 ? -1 : 1);
-    set.add(v >= 0 ? v : c + k++);
-  }
-  return mezclar([...set]);
+interface Base {
+  tema: string;
+  pregunta: string;
+  trazos: Trazo[];
+  explicacion: string;
+  // Respuesta numérica (se generan las opciones cercanas)...
+  valor?: number;
+  paso?: number;
+  trampas?: number[]; // errores típicos
+  // ...o respuesta de texto con opciones fijas
+  fijas?: string[];
+  correctaTexto?: string;
 }
 
-// Opciones numéricas listas para usar (como texto)
-const op = (c: number, extras: number[] = []) => ({
-  opciones: opcionesCerca(c, extras).map(String),
-  correcta: String(c)
-});
+// Separación de las opciones cercanas según el tamaño de la respuesta
+const pasoPara = (v: number) => (v < 20 ? 1 : v < 60 ? 2 : v < 200 ? 5 : v < 800 ? 20 : 50);
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const sup = (n: number) => String(n).split("").map(d => SUP[+d]).join("");
 
-// Textos de los enunciados (mismo estilo que antes)
-const sigue = (t: number[]) => `¿Qué número sigue: ${t.join(', ')}, ...?`;
-const falta = (t: number[], h: number) =>
-  `¿Qué número falta: ${t.map((x, i) => (i === h ? '?' : x)).join(', ')}?`;
+// ================== Gráficos ==================
+const CAJA = "#e7f1ff";
+const HUECO = "#fff3cd";
 
-// ---------------------- BÁSICO ----------------------
-
-// 1) Sube sumando una cantidad fija
-const b1 = (): Ejercicio => {
-  const a = azar(1, 20), d = azar(2, 9);
-  const t = Array.from({ length: 6 }, (_, i) => a + d * i);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] + d + 1, t[4] + d - 1, t[4] + 2 * d]),
-    explicacion: `La serie sube ${d} cada vez. Entonces ${t[4]} + ${d} = ${t[5]}.`,
-  };
-};
-
-// 2) Baja restando una cantidad fija
-const b2 = (): Ejercicio => {
-  const d = azar(2, 8), a = d * 5 + azar(5, 20);
-  const t = Array.from({ length: 6 }, (_, i) => a - d * i);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] - d + 1, t[4] - d - 1, t[4] + d]),
-    explicacion: `La serie baja ${d} cada vez. Entonces ${t[4]} − ${d} = ${t[5]}.`,
-  };
-};
-
-// 3) Falta un número en medio
-const b3 = (): Ejercicio => {
-  const a = azar(1, 20), d = azar(2, 9), h = azar(1, 4);
-  const t = Array.from({ length: 6 }, (_, i) => a + d * i);
-  return {
-    enunciado: falta(t, h),
-    ...op(t[h], [t[h] + 1, t[h] - 1, t[h] + d]),
-    explicacion: `La serie sube ${d} cada vez. Entre ${t[h - 1]} y ${t[h + 1]} va el ${t[h - 1]} + ${d} = ${t[h]}.`,
-  };
-};
-
-// 4) ¿Cuánto se suma cada vez?
-const b4 = (): Ejercicio => {
-  const a = azar(1, 20), d = azar(2, 9);
-  const t = Array.from({ length: 5 }, (_, i) => a + d * i);
-  return {
-    enunciado: `En la serie ${t.join(', ')}, ¿cuánto se suma de un número al siguiente?`, serie: t,
-    ...op(d, [d + 1, d - 1, d + 2]),
-    explicacion: `${t[1]} − ${t[0]} = ${d}. Siempre se suma ${d}.`,
-  };
-};
-
-// 5) Patrón que se repite (2 o 3 números)
-const b5 = (): Ejercicio => {
-  const largo = azar(2, 3);
-  const base = mezclar(Array.from({ length: 20 }, (_, i) => i + 1)).slice(0, largo);
-  const t = Array.from({ length: 2 * largo + 1 }, (_, i) => base[i % largo]);
-  const r = base[1];
-  return {
-    enunciado: sigue(t), serie: t,
-    ...op(r, [...base.filter((x) => x !== r), base[0] + base[1]]),
-    explicacion: `El grupo que se repite es ${base.join(', ')}. Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
-
-// 6) Tabla de multiplicar
-const b6 = (): Ejercicio => {
-  const k = azar(3, 9), s = azar(1, 5);
-  const t = Array.from({ length: 5 }, (_, i) => k * (s + i));
-  const r = k * (s + 5);
-  return {
-    enunciado: sigue(t), serie: t,
-    ...op(r, [r + 1, r - 1, r + k]),
-    explicacion: `Es la tabla del ${k}: ${k} × ${s + 5} = ${r}.`,
-  };
-};
-
-// ---------------------- INTERMEDIO ----------------------
-
-// 1) Se multiplica por la misma cantidad
-const i1 = (): Ejercicio => {
-  const a = azar(1, 4), r = azar(2, 3);
-  const t = Array.from({ length: 6 }, (_, i) => a * r ** i);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [2 * t[4] - t[3], t[4] * r - 1, t[4] * (r + 1)]),
-    explicacion: `Cada número se multiplica por ${r}. Entonces ${t[4]} × ${r} = ${t[5]}.`,
-  };
-};
-
-// 2) Se divide entre la misma cantidad
-const i2 = (): Ejercicio => {
-  const r = azar(2, 3), b = azar(2, 5);
-  const t = Array.from({ length: 6 }, (_, i) => b * r ** (5 - i));
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] - r, t[5] + 1, t[5] * 2]),
-    explicacion: `Cada número se divide entre ${r}. Entonces ${t[4]} ÷ ${r} = ${t[5]}.`,
-  };
-};
-
-// 3) Falta un número en una serie que se multiplica
-const i3 = (): Ejercicio => {
-  const a = azar(1, 4), r = azar(2, 3), h = azar(2, 4);
-  const t = Array.from({ length: 6 }, (_, i) => a * r ** i);
-  return {
-    enunciado: falta(t, h),
-    ...op(t[h], [t[h - 1] + (t[h - 1] - t[h - 2]), t[h] + 1, t[h] - 1]),
-    explicacion: `Se multiplica por ${r} cada vez: ${t[h - 1]} × ${r} = ${t[h]}.`,
-  };
-};
-
-// 4) Se alternan dos operaciones: +a y ×2
-const i4 = (): Ejercicio => {
-  const s = azar(1, 5), a = azar(2, 6);
-  const t = [s];
-  for (let i = 1; i < 6; i++) t.push(i % 2 === 1 ? t[i - 1] + a : t[i - 1] * 2);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] * 2, t[4] + a + 1, t[4] + 2 * a]),
-    explicacion: `Se alterna "+${a}" y "×2". El último paso fue ×2, ahora toca +${a}: ${t[4]} + ${a} = ${t[5]}.`,
-  };
-};
-
-// 5) Cuadrados (con o sin número extra)
-const i5 = (): Ejercicio => {
-  const s = azar(1, 6), c = azar(0, 1) * azar(1, 5);
-  const t = Array.from({ length: 6 }, (_, i) => (s + i) ** 2 + c);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] + (t[4] - t[3]), t[5] + 1, t[5] - 1]),
-    explicacion: `Son cuadrados${c ? ` más ${c}` : ''}: ${s + 5}² ${c ? `+ ${c} ` : ''}= ${t[5]}.`,
-  };
-};
-
-// 6) Dos series mezcladas
-const i6 = (): Ejercicio => {
-  const a = azar(1, 10), da = azar(1, 4), b = azar(20, 40), db = azar(2, 6);
-  const t: number[] = [];
-  for (let i = 0; i < 4; i++) t.push(a + da * i, b + db * i);
-  const r = t[7];
-  return {
-    enunciado: sigue(t.slice(0, 7)), serie: t.slice(0, 7),
-    ...op(r, [t[6] + da, r + 1, r - 1]),
-    explicacion: `Son dos series mezcladas. Los lugares impares suben ${da}. Los pares (${b}, ${b + db}, ${b + 2 * db}...) suben ${db}. Sigue ${t[5]} + ${db} = ${r}.`,
-  };
-};
-
-// ---------------------- AVANZADO ----------------------
-
-// 1) Los saltos crecen de 1 en 1
-const a1 = (): Ejercicio => {
-  const a = azar(1, 6), d = azar(1, 3);
-  const t = [a];
-  for (let i = 0; i < 5; i++) t.push(t[i] + d + i);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] + d + 3, t[4] + d + 5, t[4] + d]),
-    explicacion: `Los saltos son ${d}, ${d + 1}, ${d + 2}, ${d + 3} y ahora ${d + 4}. Entonces ${t[4]} + ${d + 4} = ${t[5]}.`,
-  };
-};
-
-// 2) Cada número es la suma de los dos anteriores
-const a2 = (): Ejercicio => {
-  const t = [azar(1, 5), azar(1, 5)];
-  for (let i = 2; i < 7; i++) t.push(t[i - 1] + t[i - 2]);
-  return {
-    enunciado: sigue(t.slice(0, 6)), serie: t.slice(0, 6),
-    ...op(t[6], [t[5] + t[3], t[5] * 2, t[6] + 1]),
-    explicacion: `Cada número es la suma de los dos anteriores: ${t[4]} + ${t[5]} = ${t[6]}.`,
-  };
-};
-
-// 3) Números triangulares
-const a3 = (): Ejercicio => {
-  const s = azar(1, 4);
-  const T = (n: number) => (n * (n + 1)) / 2;
-  const t = Array.from({ length: 5 }, (_, i) => T(s + i));
-  const r = T(s + 5);
-  return {
-    enunciado: sigue(t), serie: t,
-    ...op(r, [t[4] + (s + 4), t[4] + (s + 6), r + 1]),
-    explicacion: `Son los números triangulares: el salto crece de 1 en 1. Ahora se suma ${s + 5}: ${t[4]} + ${s + 5} = ${r}.`,
-  };
-};
-
-// 4) Cubos o n × (n + 1)
-const a4 = (): Ejercicio => {
-  const cubos = Math.random() < 0.5;
-  const s = cubos ? azar(1, 3) : azar(1, 5);
-  const f = (n: number) => (cubos ? n ** 3 : n * (n + 1));
-  const t = Array.from({ length: 5 }, (_, i) => f(s + i));
-  const r = f(s + 5);
-  return {
-    enunciado: sigue(t), serie: t,
-    ...op(r, [t[4] + (t[4] - t[3]), r + 1, r - 1]),
-    explicacion: cubos
-      ? `Son cubos: ${s + 5} × ${s + 5} × ${s + 5} = ${r}.`
-      : `Son productos de números seguidos: ${s + 5} × ${s + 6} = ${r}.`,
-  };
-};
-
-// 5) Término de un lugar lejano: k·lugar + c
-const a5 = (): Ejercicio => {
-  const k = azar(2, 7), c = azar(0, 5), p = azar(10, 20);
-  const t = Array.from({ length: 4 }, (_, i) => k * (i + 1) + c);
-  const r = k * p + c;
-  return {
-    enunciado: `En la serie ${t.join(', ')}, ... ¿qué número ocupa el lugar ${p}?`, serie: t,
-    ...op(r, [r + k, r - k, k * p]),
-    explicacion: `Sube ${k} cada vez, así que el término es ${k} × lugar${c ? ` + ${c}` : ''}. Lugar ${p}: ${k} × ${p}${c ? ` + ${c}` : ''} = ${r}.`,
-  };
-};
-
-// 6) Se multiplica y se suma: x → m·x + c
-const a6 = (): Ejercicio => {
-  const m = azar(2, 3), c = azar(1, 3), s = azar(1, 3);
-  const t = [s];
-  for (let i = 0; i < 5; i++) t.push(t[i] * m + c);
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] * m, t[4] * m + c + 1, t[4] + (t[4] - t[3])]),
-    explicacion: `Cada número se multiplica por ${m} y se le suma ${c}: ${t[4]} × ${m} + ${c} = ${t[5]}.`,
-  };
-};
-
-// 7) Dos series mezcladas: una suma y otra multiplica
-const a7 = (): Ejercicio => {
-  const a = azar(1, 10), da = azar(2, 5), b = azar(1, 3);
-  const t: number[] = [];
-  for (let i = 0; i < 4; i++) t.push(a + da * i, b * 2 ** i);
-  const r = t[7];
-  return {
-    enunciado: sigue(t.slice(0, 7)), serie: t.slice(0, 7),
-    ...op(r, [t[5] + 2, r + 1, r - 2]),
-    explicacion: `Son dos series mezcladas. Lugares impares: suben ${da} cada vez. Lugares pares: ${b}, ${b * 2}, ${b * 4}... se multiplican por 2. Sigue ${t[5]} × 2 = ${r}.`,
-  };
-};
-
-// 8) Falta un número en la serie "suma de los dos anteriores"
-const a8 = (): Ejercicio => {
-  const t = [azar(1, 5), azar(1, 5)];
-  for (let i = 2; i < 7; i++) t.push(t[i - 1] + t[i - 2]);
-  const h = azar(2, 4);
-  const v = t.slice(0, 6);
-  return {
-    enunciado: falta(v, h),
-    ...op(t[h], [t[h] + 1, t[h] - 1, t[h - 1] * 2]),
-    explicacion: `Cada número es la suma de los dos anteriores: ${t[h - 2]} + ${t[h - 1]} = ${t[h]}.`,
-  };
-};
-
-// ---------------------- DECRECIENTES (más tipos) ----------------------
-
-// Básico: falta un número en una serie que baja
-const bd2 = (): Ejercicio => {
-  const d = azar(2, 8), a = d * 5 + azar(5, 20), h = azar(1, 4);
-  const t = Array.from({ length: 6 }, (_, i) => a - d * i);
-  return {
-    enunciado: falta(t, h),
-    ...op(t[h], [t[h] + 1, t[h] - 1, t[h] + d]),
-    explicacion: `La serie baja ${d} cada vez. Entre ${t[h - 1]} y ${t[h + 1]} va el ${t[h - 1]} − ${d} = ${t[h]}.`,
-  };
-};
-
-// Básico: ¿cuánto se resta cada vez?
-const bd3 = (): Ejercicio => {
-  const d = azar(2, 8), a = d * 5 + azar(5, 20);
-  const t = Array.from({ length: 5 }, (_, i) => a - d * i);
-  return {
-    enunciado: `En la serie ${t.join(', ')}, ¿cuánto se resta de un número al siguiente?`, serie: t,
-    ...op(d, [d + 1, d - 1, d + 2]),
-    explicacion: `${t[0]} − ${t[1]} = ${d}. Siempre se resta ${d}.`,
-  };
-};
-
-// Intermedio: lo que se resta baja de 1 en 1 (100, 90, 81, 73, ...)
-const id2 = (): Ejercicio => {
-  const s = azar(80, 100), r0 = azar(6, 10);
-  const t = [s];
-  for (let i = 0; i < 4; i++) t.push(t[i] - (r0 - i));
-  return {
-    enunciado: sigue(t.slice(0, 4)), serie: t.slice(0, 4),
-    ...op(t[4], [t[3] - (r0 - 2), t[3] - (r0 - 4), t[3] - (r0 - 3) + 1]),
-    explicacion: `Se resta ${r0}, luego ${r0 - 1}, luego ${r0 - 2} y ahora ${r0 - 3}: ${t[3]} − ${r0 - 3} = ${t[4]}.`,
-  };
-};
-
-// Intermedio: se alternan dos restas
-const id3 = (): Ejercicio => {
-  const s = azar(60, 90), a = azar(2, 5), b = azar(6, 9);
-  const t = [s];
-  for (let i = 1; i < 6; i++) t.push(t[i - 1] - (i % 2 === 1 ? a : b));
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] - b, t[4] - a - 1, t[4] - a + 1]),
-    explicacion: `Se alterna "−${a}" y "−${b}". El último paso fue −${b}, ahora toca −${a}: ${t[4]} − ${a} = ${t[5]}.`,
-  };
-};
-
-// Intermedio: falta un número en una serie que se divide
-const id4 = (): Ejercicio => {
-  const r = azar(2, 3), b = azar(2, 5), h = azar(1, 4);
-  const t = Array.from({ length: 6 }, (_, i) => b * r ** (5 - i));
-  return {
-    enunciado: falta(t, h),
-    ...op(t[h], [t[h] + 1, t[h] - 1, t[h - 1] - r]),
-    explicacion: `Se divide entre ${r} cada vez: ${t[h - 1]} ÷ ${r} = ${t[h]}.`,
-  };
-};
-
-// Avanzado: lo que se resta crece de 1 en 1
-const ad1 = (): Ejercicio => {
-  const d = azar(1, 3), s = azar(60, 100);
-  const t = [s];
-  for (let i = 0; i < 5; i++) t.push(t[i] - (d + i));
-  return {
-    enunciado: sigue(t.slice(0, 5)), serie: t.slice(0, 5),
-    ...op(t[5], [t[4] - (d + 3), t[4] - (d + 5), t[4] - d]),
-    explicacion: `Lo que se resta crece: ${d}, ${d + 1}, ${d + 2}, ${d + 3} y ahora ${d + 4}. Entonces ${t[4]} − ${d + 4} = ${t[5]}.`,
-  };
-};
-
-// Avanzado: término de un lugar lejano en una serie que baja
-const ad2 = (): Ejercicio => {
-  const k = azar(2, 7), p = azar(10, 15), C = k * (p + 2) + azar(1, 5);
-  const t = Array.from({ length: 4 }, (_, i) => C - k * (i + 1));
-  const r = C - k * p;
-  return {
-    enunciado: `En la serie ${t.join(', ')}, ... ¿qué número ocupa el lugar ${p}?`, serie: t,
-    ...op(r, [r + k, r - k, C - p]),
-    explicacion: `Baja ${k} cada vez, así que el término es ${C} − ${k} × lugar. Lugar ${p}: ${C} − ${k} × ${p} = ${r}.`,
-  };
-};
-
-// Avanzado: dos series mezcladas que bajan
-const ad3 = (): Ejercicio => {
-  const aA = azar(40, 60), da = azar(2, 5), bB = azar(70, 90), db = azar(3, 7);
-  const t: number[] = [];
-  for (let i = 0; i < 4; i++) t.push(aA - da * i, bB - db * i);
-  const r = t[7];
-  return {
-    enunciado: sigue(t.slice(0, 7)), serie: t.slice(0, 7),
-    ...op(r, [t[6] - da, r + 1, r - 1]),
-    explicacion: `Son dos series mezcladas que bajan. Lugares impares: restan ${da}. Lugares pares (${bB}, ${bB - db}, ${bB - 2 * db}...): restan ${db}. Sigue ${t[5]} − ${db} = ${r}.`,
-  };
-};
-
-// ---------------------- FIGURAS Y PATRONES ----------------------
-// Las figuras son emojis de colores y formas: se ven bien en el quiz sin CSS extra
-
-const COLORES = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'];
-const FORMAS = [ // círculo y cuadrado del mismo color
-  { c: '🔴', s: '🟥' }, { c: '🔵', s: '🟦' }, { c: '🟢', s: '🟩' },
-  { c: '🟡', s: '🟨' }, { c: '🟣', s: '🟪' }, { c: '🟠', s: '🟧' }
-];
-const MEZCLA = ['⭐', '🔺', '🔴', '🟦', '❤️', '🔷'];
-const TAMANOS = ['▪️', '◾', '◼️', '⬛']; // de pequeño a grande
-
-// Repite un grupo de figuras hasta tener "largo" elementos
-const ciclo = (base: string[], largo: number) =>
-  Array.from({ length: largo }, (_, i) => base[i % base.length]);
-
-// Elige k figuras distintas: por color, por forma o mezcladas
-function elegirFiguras(k: number): { base: string[]; pool: string[] } {
-  const r = azar(0, 2);
-  if (r === 0) return { base: mezclar(COLORES).slice(0, k), pool: COLORES };
-  if (r === 1 && k <= 2) {
-    const f = FORMAS[azar(0, 5)];
-    return { base: mezclar([f.c, f.s]).slice(0, k), pool: [f.c, f.s] };
-  }
-  return { base: mezclar(MEZCLA).slice(0, k), pool: MEZCLA };
+// Fila de casillas con números; "?" es la casilla a descubrir y "…" indica que sigue
+function cajas(items: string[]): Trazo[] {
+  const n = items.length;
+  const w = Math.min(44, (284 - 6 * (n - 1)) / n);
+  const x0 = (300 - (n * w + 6 * (n - 1))) / 2;
+  const y = 82, h = 38;
+  const t: Trazo[] = [];
+  items.forEach((it, i) => {
+    const x = x0 + i * (w + 6);
+    if (it === "…") { t.push(texto(x + w / 2, y + 28, "…", 22)); return; }
+    t.push(poligono([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], it === "?" ? HUECO : CAJA));
+    t.push(texto(x + w / 2, y + 25, it, it.length > 3 ? 13 : 16));
+  });
+  return t;
 }
 
-// Opciones de figuras: la correcta + 3 distintas (primero las del patrón)
-function opcionesFig(correcta: string, base: string[], pool: string[]) {
-  const set = new Set<string>([correcta]);
-  for (const x of [...mezclar(base), ...mezclar(pool), ...mezclar(MEZCLA)]) {
-    if (set.size >= 4) break;
-    set.add(x);
-  }
-  return { opciones: mezclar([...set]), correcta };
+// Figuras pequeñas para los patrones: 0 círculo, 1 cuadrado, 2 triángulo, 3 rombo
+const NOMBRES = ["Círculo", "Cuadrado", "Triángulo", "Rombo"];
+function formaMini(tipo: number, cx: number, cy: number, r = 15): Trazo {
+  if (tipo === 0) return circulo(cx, cy, r, "#cfe2ff");
+  if (tipo === 1) return poligono([[cx - r, cy - r], [cx + r, cy - r], [cx + r, cy + r], [cx - r, cy + r]], "#d1e7dd");
+  if (tipo === 2) return poligono([[cx, cy - r - 2], [cx - r - 2, cy + r], [cx + r + 2, cy + r]], "#f8d7da");
+  return poligono([[cx, cy - r - 3], [cx + r + 3, cy], [cx, cy + r + 3], [cx - r - 3, cy]], "#fff3cd");
 }
 
-const sigueFig = (t: string[]) => `¿Qué figura sigue?  ${t.join(' ')} ...`;
-const faltaFig = (t: string[], h: number) =>
-  `¿Qué figura falta?  ${t.map((x, i) => (i === h ? '❓' : x)).join(' ')}`;
+// Fila de figuras seguida de "?" o "…"; con numerar=true se escribe el lugar de cada figura
+function filaFormas(seq: number[], final: "?" | "…", numerar: boolean): Trazo[] {
+  const items = seq.length + 1;
+  const paso = Math.min(42, 280 / items);
+  const x = (i: number) => 150 + (i - (items - 1) / 2) * paso;
+  const t: Trazo[] = [];
+  seq.forEach((f, i) => {
+    t.push(formaMini(f, x(i), 90));
+    if (numerar) t.push(texto(x(i), 135, String(i + 1), 12, GRIS));
+  });
+  const i = seq.length;
+  if (final === "?") {
+    t.push(poligono([[x(i) - 16, 74], [x(i) + 16, 74], [x(i) + 16, 106], [x(i) - 16, 106]], HUECO), texto(x(i), 98, "?", 20));
+  } else t.push(texto(x(i), 98, "…", 24));
+  return t;
+}
 
-// Básico: dos figuras que se alternan (círculo, cuadrado, círculo, cuadrado...)
-const bf1 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(2);
-  const t = ciclo(base, azar(5, 7));
-  const r = base[t.length % 2];
-  return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, pool),
-    explicacion: `Se alternan ${base.join(' y ')}. Después de ${t[t.length - 1]} viene ${r}.`,
-  };
+// Figuras que crecen (puntos o palitos)
+type TipoCrec = "palitos" | "triangulo" | "cuadrado" | "ele" | "cruz" | "oblongo";
+
+const CREC: Record<TipoCrec, { v: (k: number) => number; regla: string; formula: (k: number) => string; que: string }> = {
+  palitos: { v: k => 3 * k + 1, que: "palitos", regla: "Cada figura tiene 3 palitos más que la anterior", formula: k => `3 × ${k} + 1` },
+  triangulo: { v: k => (k * (k + 1)) / 2, que: "puntos", regla: "Cada figura agrega una fila nueva con un punto más que la fila anterior", formula: k => `${k} × ${k + 1} ÷ 2` },
+  cuadrado: { v: k => k * k, que: "puntos", regla: "La figura k forma un cuadrado de k × k puntos", formula: k => `${k} × ${k}` },
+  ele: { v: k => 2 * k - 1, que: "puntos", regla: "Cada figura agrega 2 puntos (uno en cada brazo de la L)", formula: k => `2 × ${k} − 1` },
+  cruz: { v: k => 4 * k + 1, que: "puntos", regla: "Cada figura agrega 4 puntos (uno en cada brazo de la cruz)", formula: k => `4 × ${k} + 1` },
+  oblongo: { v: k => k * (k + 1), que: "puntos", regla: "La figura k tiene k filas de k + 1 puntos", formula: k => `${k} × ${k + 1}` },
 };
 
-// Básico: falta una figura en medio
-const bf2 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(2);
-  const t = ciclo(base, 7), h = azar(1, 5);
-  return {
-    enunciado: faltaFig(t, h),
-    ...opcionesFig(t[h], base, pool),
-    explicacion: `Se alternan ${base.join(' y ')}. Entre ${t[h - 1]} y ${t[h + 1]} va ${t[h]}.`,
-  };
-};
+function dibujarCrec(tipo: TipoCrec, k: number, cx: number, cy: number): Trazo[] {
+  const t: Trazo[] = [];
+  const punto = (x: number, y: number) => t.push(circulo(x, y, 5, "#0d6efd"));
+  const d = tipo === "cruz" ? 13 : 16;
+  if (tipo === "palitos") {
+    const s = 18, x0 = cx - (k * s) / 2, y0 = cy - s / 2;
+    for (let i = 0; i < k; i++) t.push(linea(x0 + i * s, y0, x0 + (i + 1) * s, y0), linea(x0 + i * s, y0 + s, x0 + (i + 1) * s, y0 + s));
+    for (let i = 0; i <= k; i++) t.push(linea(x0 + i * s, y0, x0 + i * s, y0 + s));
+  } else if (tipo === "triangulo") {
+    for (let i = 0; i < k; i++) for (let j = 0; j <= i; j++) punto(cx - (i * d) / 2 + j * d, cy - ((k - 1) * d) / 2 + i * d);
+  } else if (tipo === "cuadrado") {
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) punto(cx - ((k - 1) * d) / 2 + j * d, cy - ((k - 1) * d) / 2 + i * d);
+  } else if (tipo === "ele") {
+    const x0 = cx - ((k - 1) * d) / 2, y0 = cy - ((k - 1) * d) / 2;
+    for (let r = 0; r < k; r++) punto(x0, y0 + r * d);
+    for (let c = 1; c < k; c++) punto(x0 + c * d, y0 + (k - 1) * d);
+  } else if (tipo === "cruz") {
+    punto(cx, cy);
+    for (let m = 1; m <= k; m++) { punto(cx + m * d, cy); punto(cx - m * d, cy); punto(cx, cy + m * d); punto(cx, cy - m * d); }
+  } else {
+    for (let i = 0; i < k; i++) for (let j = 0; j <= k; j++) punto(cx - (k * d) / 2 + j * d, cy - ((k - 1) * d) / 2 + i * d);
+  }
+  return t;
+}
 
-// Intermedio: grupo de 3 figuras que se repite
-const if1 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(3);
-  const t = ciclo(base, azar(7, 9));
-  const r = base[t.length % 3];
-  return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, pool),
-    explicacion: `Se repite el grupo ${base.join(' ')} (3 figuras). Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
+// ================== Constructores de ejercicios ==================
+// Describe la regla de una sucesión (el último número es la respuesta)
+function describir(t: number[], manual?: string): string {
+  if (manual) return manual;
+  const n = t.length, last = t[n - 1], prev = t[n - 2];
+  const dif = t.slice(1).map((v, i) => v - t[i]);
+  if (dif.every(d => d === dif[0])) {
+    return dif[0] >= 0 ? `Se suma ${dif[0]} cada vez: ${prev} + ${dif[0]} = ${last}.` : `Se resta ${-dif[0]} cada vez: ${prev} − ${-dif[0]} = ${last}.`;
+  }
+  if (t.every(v => v !== 0) && t.slice(1).every((v, i) => v % t[i] === 0 && v / t[i] === t[1] / t[0])) {
+    return `Se multiplica por ${t[1] / t[0]} cada vez: ${prev} × ${t[1] / t[0]} = ${last}.`;
+  }
+  if (t.length > 3 && t.slice(2).every((v, i) => v === t[i + 1] + t[i])) {
+    return `Cada número es la suma de los dos anteriores: ${t[n - 3]} + ${prev} = ${last}.`;
+  }
+  if (t.length > 4 && t.slice(3).every((v, i) => v === t[i + 2] + t[i + 1] + t[i])) {
+    return `Cada número es la suma de los tres anteriores: ${t[n - 4]} + ${t[n - 3]} + ${prev} = ${last}.`;
+  }
+  const d2 = dif.slice(1).map((v, i) => v - dif[i]);
+  if (d2.every(d => d === d2[0])) {
+    return `Las diferencias entre números seguidos son ${dif.slice(0, -1).join(", ")}…: aumentan ${d2[0]} cada vez, así que ahora se suma ${dif[dif.length - 1]}: ${prev} + ${dif[dif.length - 1]} = ${last}.`;
+  }
+  return "";
+}
 
-// Intermedio: dos figuras iguales y una distinta (A A B)
-const if2 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(2);
-  const pat = [base[0], base[0], base[1]];
-  const t = ciclo(pat, azar(7, 8));
-  const r = pat[t.length % 3];
+// ¿Qué número sigue? (el último elemento de la lista es la respuesta)
+function siguiente(terms: number[], manual?: string, trampas?: number[]): Base {
+  const mostrar = terms.slice(0, -1), valor = terms[terms.length - 1];
+  const p = mostrar[mostrar.length - 1], p2 = mostrar[mostrar.length - 2];
   return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, pool),
-    explicacion: `Se repite el grupo ${pat.join(' ')}: dos iguales y luego una distinta. Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
-
-// Intermedio: falta una figura en un grupo de 3
-const if3 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(3);
-  const t = ciclo(base, 9), h = azar(2, 6);
-  return {
-    enunciado: faltaFig(t, h),
-    ...opcionesFig(t[h], base, pool),
-    explicacion: `Se repite el grupo ${base.join(' ')}. En ese lugar toca ${t[h]}.`,
-  };
-};
-
-// Intermedio: el tamaño crece o decrece
-const if4 = (): Ejercicio => {
-  const idx = mezclar([0, 1, 2, 3]).slice(0, 3).sort((a, b) => a - b);
-  let base = idx.map((i) => TAMANOS[i]);
-  const crece = Math.random() < 0.5;
-  if (!crece) base = base.reverse();
-  const t = ciclo(base, azar(7, 9));
-  const r = base[t.length % 3];
-  return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, TAMANOS),
-    explicacion: `El tamaño va ${crece ? 'de menor a mayor' : 'de mayor a menor'} y el grupo ${base.join(' ')} se repite. Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
-
-// Avanzado: ¿qué figura ocupa un lugar lejano?
-const af1 = (): Ejercicio => {
-  const k = azar(3, 4), p = azar(10, 20);
-  const { base, pool } = elegirFiguras(k);
-  const t = ciclo(base, 2 * k);
-  const q = Math.floor(p / k), sobra = p % k;
-  const r = sobra === 0 ? base[k - 1] : base[sobra - 1];
-  return {
-    enunciado: `${t.join(' ')} ...  ¿Qué figura ocupa el lugar ${p}?`,
-    ...opcionesFig(r, base, pool),
-    explicacion: sobra === 0
-      ? `El grupo ${base.join(' ')} se repite cada ${k} figuras. ${p} ÷ ${k} = ${q} exacto, así que el lugar ${p} es la última del grupo: ${r}.`
-      : `El grupo ${base.join(' ')} se repite cada ${k} figuras. ${p} ÷ ${k} = ${q} y sobran ${sobra}: es la figura número ${sobra} del grupo, ${r}.`,
-  };
-};
-
-// Avanzado: grupos que crecen (¿cuántas figuras tendrá el grupo n?)
-const af2 = (): Ejercicio => {
-  const fig = COLORES[azar(0, 5)], s = azar(1, 3), d = azar(1, 3), g = azar(5, 7);
-  const grupos = Array.from({ length: 4 }, (_, i) => fig.repeat(s + d * i));
-  const r = s + d * (g - 1);
-  return {
-    enunciado: `Cada grupo tiene más figuras que el anterior:  ${grupos.join('  |  ')}  |  ...  ¿Cuántas figuras tendrá el grupo ${g}?`,
-    ...op(r, [r + d, r - d, r + 1]),
-    explicacion: `Cada grupo tiene ${d} figura${d > 1 ? 's' : ''} más. Grupo ${g}: ${s} + ${d} × ${g - 1} = ${r}.`,
-  };
-};
-
-// Avanzado: grupo de 4 figuras que se repite
-const af3 = (): Ejercicio => {
-  const { base, pool } = elegirFiguras(4);
-  const t = ciclo(base, azar(9, 11));
-  const r = base[t.length % 4];
-  return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, pool),
-    explicacion: `Se repite el grupo ${base.join(' ')} (4 figuras). Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
-
-// Avanzado: el tamaño sube y baja
-const af4 = (): Ejercicio => {
-  const idx = mezclar([0, 1, 2, 3]).slice(0, 3).sort((a, b) => a - b);
-  const [a, b, c] = idx.map((i) => TAMANOS[i]);
-  const base = [a, b, c, b];
-  const t = ciclo(base, azar(9, 11));
-  const r = base[t.length % 4];
-  return {
-    enunciado: sigueFig(t),
-    ...opcionesFig(r, base, TAMANOS),
-    explicacion: `El tamaño sube y baja: ${base.join(' ')} y vuelve a empezar. Después de ${t[t.length - 1]} viene ${r}.`,
-  };
-};
-
-// Cada nivel combina 3 familias de actividades:
-// [crecientes (suma/multiplicación), decrecientes (resta/división), figuras y patrones]
-const FAMILIAS_NIVEL: Record<number, (() => Ejercicio)[][]> = {
-  1: [[b1, b3, b4, b6], [b2, bd2, bd3], [bf1, bf2, b5]],
-  2: [[i1, i3, i4, i5, i6], [i2, id2, id3, id4], [if1, if2, if3, if4]],
-  3: [[a1, a2, a3, a4, a5, a6, a7, a8], [ad1, ad2, ad3], [af1, af2, af3, af4]],
-};
-
-// Convierte un ejercicio al formato PreguntaQuiz
-function aPregunta(e: Ejercicio, nivel: number, n: number): PreguntaQuiz {
-  const ids = ['a', 'b', 'c', 'd'];
-  return {
-    id: `n${nivel}-${n}`,
-    nivel,
-    enunciado: e.enunciado,
-    tipo: 'opcion-multiple',
-    ...(e.serie ? { secuenciaNumerica: e.serie } : {}),
-    opciones: e.opciones.map((o, k) => ({ id: ids[k], texto: o })),
-    respuestaCorrectaId: ids[e.opciones.indexOf(e.correcta)],
-    explicacion: e.explicacion,
-    puntos: PUNTOS[nivel]
+    tema: "Sucesiones numéricas", pregunta: "¿Qué número sigue en la sucesión?",
+    trazos: cajas([...mostrar.map(String), "?"]),
+    valor, paso: pasoPara(valor), trampas: trampas ?? [p + (p - p2)],
+    explicacion: describir(terms, manual),
   };
 }
 
-// Crea las 25 preguntas de un nivel: se reparten entre las 3 familias
-// (9 + 8 + 8), sin repetir enunciados, y se mezclan en orden al azar
-function crearNivel(nivel: number): PreguntaQuiz[] {
-  const familias = FAMILIAS_NIVEL[nivel];
-  const vistos = new Set<string>();
-  const ejercicios: Ejercicio[] = [];
-  for (let i = 0; i < 500 && ejercicios.length < CANTIDAD; i++) {
-    const fam = familias[ejercicios.length % familias.length];
-    const e = fam[azar(0, fam.length - 1)]();
-    if (vistos.has(e.enunciado)) continue;
-    vistos.add(e.enunciado);
-    ejercicios.push(e);
-  }
-  return mezclar(ejercicios).map((e, i) => aPregunta(e, nivel, i + 1));
+// ¿Qué número falta? (el hueco está en la posición idx)
+function faltante(terms: number[], idx: number, explicacion: string): Base {
+  const items = terms.map(String);
+  items[idx] = "?";
+  return {
+    tema: "Sucesiones numéricas", pregunta: "¿Qué número falta en la sucesión?", trazos: cajas(items),
+    valor: terms[idx], paso: pasoPara(terms[idx]), trampas: [terms[idx] + 2], explicacion,
+  };
 }
 
-// ====================== COMPONENTE ======================
+// Término del lugar n de una sucesión que suma d cada vez
+function terminoN(a1: number, d: number, n: number): Base {
+  const vals = [0, 1, 2, 3, 4].map(i => a1 + i * d);
+  const valor = a1 + (n - 1) * d;
+  return {
+    tema: "Término general", pregunta: `¿Qué número ocupa el lugar ${n} de esta sucesión?`, trazos: cajas([...vals.map(String), "…"]),
+    valor, paso: pasoPara(valor), trampas: [a1 + n * d, n * Math.abs(d)],
+    explicacion: `Cada número se obtiene ${d < 0 ? "restando" : "sumando"} ${Math.abs(d)}. El lugar ${n} es ${a1} ${d < 0 ? "−" : "+"} ${n - 1} × ${Math.abs(d)} = ${valor}.`,
+  };
+}
 
+// Término del lugar n de una sucesión que multiplica por r cada vez
+function terminoGeometrico(a: number, r: number, n: number): Base {
+  const vals = [0, 1, 2, 3].map(i => a * r ** i);
+  const valor = a * r ** (n - 1);
+  return {
+    tema: "Término general", pregunta: `¿Qué número ocupa el lugar ${n} de esta sucesión?`, trazos: cajas([...vals.map(String), "…"]),
+    valor, paso: pasoPara(valor), trampas: [a * r ** n, a * r * (n - 1)],
+    explicacion: `Se multiplica por ${r} cada vez. El lugar ${n} es ${a} × ${r}${sup(n - 1)} = ${a} × ${r ** (n - 1)} = ${valor}.`,
+  };
+}
+
+// Suma de los primeros n términos de una sucesión que suma d cada vez
+function sumaAritmetica(a1: number, d: number, n: number): Base {
+  const vals = [0, 1, 2, 3].map(i => a1 + i * d);
+  const ult = a1 + (n - 1) * d, valor = ((a1 + ult) * n) / 2;
+  return {
+    tema: "Sumas de sucesiones", pregunta: `¿Cuánto suman los primeros ${n} números de esta sucesión?`, trazos: cajas([...vals.map(String), "…"]),
+    valor, paso: pasoPara(valor), trampas: [ult * n, valor - ult],
+    explicacion: `El número del lugar ${n} es ${ult}. Se suma el primero con el último y se multiplica por la cantidad de números ÷ 2: (${a1} + ${ult}) × ${n} ÷ 2 = ${valor}.`,
+  };
+}
+
+// Patrón de figuras que se repite: ¿qué figura sigue?
+function cicloSigue(patron: number[], mostrar: number): Base {
+  const L = patron.length;
+  const seq = Array.from({ length: mostrar }, (_, i) => patron[i % L]);
+  const sig = patron[mostrar % L];
+  return {
+    tema: "Patrones de figuras", pregunta: "¿Qué figura sigue en el patrón?", trazos: filaFormas(seq, "?", false),
+    fijas: NOMBRES, correctaTexto: NOMBRES[sig],
+    explicacion: `El patrón se repite cada ${L} figuras: ${patron.map(f => NOMBRES[f].toLowerCase()).join(", ")}. Después de la figura ${mostrar} toca la figura ${(mostrar % L) + 1} del patrón: ${NOMBRES[sig].toLowerCase()}.`,
+  };
+}
+
+// Patrón de figuras que se repite: ¿qué figura ocupa el lugar n?
+function cicloLugar(patron: number[], lugar: number): Base {
+  const L = patron.length;
+  const seq = Array.from({ length: Math.min(8, L * 2) }, (_, i) => patron[i % L]);
+  const idx = (lugar - 1) % L, q = Math.floor(lugar / L), r = lugar % L;
+  return {
+    tema: "Patrones de figuras", pregunta: `Si el patrón sigue así, ¿qué figura ocupa el lugar ${lugar}?`, trazos: filaFormas(seq, "…", true),
+    fijas: NOMBRES, correctaTexto: NOMBRES[patron[idx]],
+    explicacion: `El patrón de ${L} figuras (${patron.map(f => NOMBRES[f].toLowerCase()).join(", ")}) se repite. ${lugar} ÷ ${L} da cociente ${q} y resto ${r}. ` +
+      (r === 0 ? "Como el resto es 0, es la última figura del patrón" : `El resto ${r} indica la figura n.º ${r} del patrón`) + `: ${NOMBRES[patron[idx]].toLowerCase()}.`,
+  };
+}
+
+// Figuras que crecen: se muestran las primeras y se pregunta por la figura "pide"
+function crece(tipo: TipoCrec, pide: number, mostrar = 3): Base {
+  const c = CREC[tipo];
+  const trazos: Trazo[] = [];
+  for (let i = 1; i <= mostrar; i++) {
+    const cx = (300 / mostrar) * (i - 0.5);
+    trazos.push(...dibujarCrec(tipo, i, cx, 88), texto(cx, 165, `Figura ${i}`, 12, GRIS));
+  }
+  const valor = c.v(pide);
+  const lineal = c.v(mostrar) + (c.v(mostrar) - c.v(mostrar - 1)) * (pide - mostrar);
+  const lista = Array.from({ length: pide }, (_, i) => c.v(i + 1)).join(", ");
+  return {
+    tema: "Figuras que crecen", pregunta: `¿Cuántos ${c.que} tendrá la figura ${pide}?`, trazos,
+    valor, paso: pasoPara(valor), trampas: [lineal, c.v(pide - 1)],
+    explicacion: `${c.regla}. Figura ${pide}: ${c.formula(pide)} = ${valor}.` + (pide <= 7 ? ` (Valores: ${lista}.)` : ""),
+  };
+}
+
+// ================== Armado de los tres niveles ==================
+function armar(nivel: Nivel, bases: Base[]): Ejercicio[] {
+  return bases.map((b, i) => {
+    const r = rng(nivel.length * 1000 + i);
+    let opciones: string[], correcta: string;
+    if (b.fijas) {
+      opciones = [...b.fijas];
+      for (let k = opciones.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [opciones[k], opciones[j]] = [opciones[j], opciones[k]]; }
+      correcta = b.correctaTexto!;
+    } else {
+      const valor = b.valor!, paso = b.paso!;
+      const set = new Set<number>([valor]);
+      (b.trampas ?? []).forEach(t => { if (t > 0 && Number.isInteger(t) && set.size < 4) set.add(t); });
+      const cand = [-3, -2, -1, 1, 2, 3].map(d => valor + d * paso).filter(v => v > 0);
+      for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; }
+      cand.forEach(v => { if (set.size < 4) set.add(v); });
+      opciones = [...set].sort((x, y) => x - y).map(String);
+      correcta = String(valor);
+    }
+    return { id: `${nivel}-${i + 1}`, nivel, tema: b.tema, pregunta: b.pregunta, trazos: b.trazos, opciones, correcta, explicacion: b.explicacion };
+  });
+}
+
+const BASICO = armar("basico", [
+  // sumar o restar siempre lo mismo
+  ...[[2, 4, 6, 8, 10], [5, 10, 15, 20, 25], [3, 6, 9, 12, 15], [10, 20, 30, 40, 50], [1, 4, 7, 10, 13], [20, 18, 16, 14, 12], [50, 45, 40, 35, 30], [7, 14, 21, 28, 35]].map(t => siguiente(t)),
+  // multiplicar siempre por lo mismo
+  ...[[1, 2, 4, 8, 16], [2, 4, 8, 16, 32], [3, 6, 12, 24, 48]].map(t => siguiente(t)),
+  // cuadrados, impares y múltiplos
+  siguiente([1, 4, 9, 16, 25], "Son los números multiplicados por sí mismos: 1×1, 2×2, 3×3, 4×4 y 5×5 = 25."),
+  siguiente([11, 13, 15, 17, 19]),
+  siguiente([0, 5, 10, 15, 20]),
+  // patrones de figuras
+  cicloSigue([0, 2], 5), cicloSigue([1, 2], 5), cicloSigue([0, 0, 2], 7), cicloSigue([0, 1, 2], 7), cicloSigue([3, 1], 5), cicloSigue([2, 2, 1], 7),
+  // figuras que crecen
+  crece("palitos", 4), crece("cuadrado", 4), crece("triangulo", 4), crece("ele", 4), crece("oblongo", 4),
+]);
+
+const INTERMEDIO = armar("intermedio", [
+  // las diferencias van cambiando
+  siguiente([1, 2, 4, 7, 11, 16]),
+  siguiente([2, 3, 5, 8, 12, 17]),
+  siguiente([1, 3, 6, 10, 15, 21], "Son los números triangulares: se suma 2, luego 3, luego 4, 5 y 6. Entonces 15 + 6 = 21."),
+  siguiente([1, 4, 9, 16, 25, 36], "Son los cuadrados: 1×1, 2×2, 3×3, 4×4, 5×5 y 6×6 = 36."),
+  // multiplicar o dividir
+  siguiente([2, 6, 18, 54, 162]),
+  siguiente([3, 9, 27, 81, 243]),
+  siguiente([5, 10, 20, 40, 80, 160]),
+  siguiente([256, 128, 64, 32, 16], "Se divide entre 2 cada vez: 32 ÷ 2 = 16."),
+  // cada número es la suma de los anteriores
+  siguiente([1, 1, 2, 3, 5, 8, 13]),
+  siguiente([2, 3, 5, 8, 13, 21]),
+  siguiente([3, 4, 7, 11, 18, 29]),
+  // dos sucesiones mezcladas
+  siguiente([1, 10, 2, 20, 3, 30, 4], "Hay dos sucesiones mezcladas. Los lugares impares van 1, 2, 3, … y los pares 10, 20, 30, …. Toca un lugar impar: el siguiente es 4.", [40]),
+  siguiente([2, 5, 4, 10, 6, 15, 8, 20], "Hay dos sucesiones mezcladas. Los lugares impares van 2, 4, 6, 8, … y los pares 5, 10, 15, …. Toca un lugar par: 15 + 5 = 20.", [10]),
+  siguiente([5, 1, 10, 2, 15, 3, 20], "Hay dos sucesiones mezcladas. Los lugares impares van 5, 10, 15, … y los pares 1, 2, 3, …. Toca un lugar impar: 15 + 5 = 20.", [4]),
+  // figuras que crecen
+  crece("palitos", 6), crece("triangulo", 5), crece("cuadrado", 6), crece("ele", 7), crece("cruz", 5),
+  // patrones de figuras: lugar n
+  cicloLugar([0, 1, 2], 10), cicloLugar([1, 2], 11), cicloLugar([0, 1, 2, 3], 14),
+  // dos operaciones
+  siguiente([1, 3, 7, 15, 31, 63], "Se multiplica por 2 y se suma 1: 31 × 2 + 1 = 63."),
+  siguiente([2, 3, 5, 9, 17, 33], "Se multiplica por 2 y se resta 1: 17 × 2 − 1 = 33."),
+  // cubos
+  siguiente([1, 8, 27, 64, 125], "Son los cubos: 1×1×1, 2×2×2, 3×3×3, 4×4×4 y 5×5×5 = 125."),
+]);
+
+const AVANZADO = armar("avanzado", [
+  // término del lugar n
+  terminoN(3, 4, 20), terminoN(5, 3, 15), terminoN(2, 7, 10), terminoN(100, -4, 12),
+  // figuras que crecen: lugares lejanos
+  crece("palitos", 10), crece("triangulo", 10), crece("cuadrado", 12), crece("ele", 15), crece("cruz", 12), crece("oblongo", 10),
+  // suma de los primeros n términos
+  sumaAritmetica(2, 2, 10), sumaAritmetica(5, 5, 8),
+  // el término depende del lugar al cuadrado
+  siguiente([2, 5, 10, 17, 26, 37], "El número del lugar n es n × n + 1: 1×1+1 = 2, 2×2+1 = 5, 3×3+1 = 10… El lugar 6 es 6 × 6 + 1 = 37."),
+  siguiente([3, 8, 15, 24, 35, 48], "El número del lugar n es n × (n + 2): 1×3 = 3, 2×4 = 8, 3×5 = 15… El lugar 6 es 6 × 8 = 48."),
+  siguiente([0, 3, 8, 15, 24, 35], "El número del lugar n es n × n − 1: 1−1 = 0, 4−1 = 3, 9−1 = 8… El lugar 6 es 36 − 1 = 35."),
+  // término del lugar n multiplicando
+  terminoGeometrico(2, 2, 8), terminoGeometrico(3, 2, 7),
+  // patrones de figuras: lugares lejanos
+  cicloLugar([0, 1, 2], 50), cicloLugar([0, 2, 1, 3], 30), cicloLugar([0, 0, 2, 1, 1], 23),
+  // reglas especiales
+  siguiente([1, 2, 3, 6, 11, 20, 37]),
+  siguiente([2, 4, 6, 12, 14, 28, 30, 60], "Se alternan dos operaciones: ×2 y +2. Después de 30 toca ×2: 30 × 2 = 60."),
+  siguiente([1, 2, 6, 24, 120, 720], "Se multiplica por 2, luego por 3, 4, 5 y 6: 120 × 6 = 720."),
+  // número que falta en medio
+  faltante([4, 10, 16, 22, 28], 1, "Se suma 6 cada vez: 4 + 6 = 10 (y 10 + 6 = 16)."),
+  faltante([2, 6, 18, 54, 162], 2, "Se multiplica por 3 cada vez: 6 × 3 = 18 (y 18 × 3 = 54)."),
+]);
+
+const EJERCICIOS: Record<Nivel, Ejercicio[]> = {
+  basico: BASICO,
+  intermedio: INTERMEDIO,
+  avanzado: AVANZADO,
+};
+
+// ================== Componente ==================
 @Component({
-  selector: 'app-sucesiones-patrones',
+  selector: "app-sucesiones-patrones",
   standalone: true,
   imports: [Quiz],
   template: `
     <app-quiz
       [vista]="vista()"
-      rutaVolver="/razonamiento-logico"
       (volver)="volver()"
-      (nivelElegido)="elegirNivel($event)"
+      (nivelElegido)="nivelElegido($event)"
       (empezar)="empezar()"
-      (respuestaSeleccionada)="seleccionar($event)"
-      (avanzar)="siguiente()"
+      (respuestaSeleccionada)="respuestaSeleccionada($event)"
+      (avanzar)="avanzar()"
       (reiniciar)="reiniciar()"
       (alternarSonido)="alternarSonido()"
     />
-  `
+  `,
 })
 export class SucesionesPatrones implements OnInit, OnDestroy {
-  private readonly router = inject(Router);
   private readonly gameUi = inject(GameUiService);
   private readonly attempts = inject(AttemptsService);
-
+  private readonly router = inject(Router);
   private intentoId: string | null = null;
   private intentoInicio = 0;
-  private temporizador: ReturnType<typeof setInterval> | null = null;
 
-  // Preguntas de cada nivel (se vuelven a crear al azar cada vez que se empieza)
-  private banco: Record<number, PreguntaQuiz[]> = {
-    1: crearNivel(1),
-    2: crearNivel(2),
-    3: crearNivel(3)
-  };
-
-  private readonly config: ConfiguracionQuiz = {
-    titulo: 'Sucesiones y Patrones',
-    descripcion: 'Descubre la regla y completa la secuencia.',
-    colorTema: 'purple',
+  readonly config: ConfiguracionQuiz = {
+    titulo: "Sucesiones y Patrones",
+    descripcion: "Descubre secuencias y relaciones entre imágenes y números.",
+    colorTema: "blue",
     niveles: 3,
-    etiquetasNiveles: ['Básico', 'Intermedio', 'Avanzado'],
-    tiempoLimiteSegundos: 30,
-    preguntas: [...this.banco[1], ...this.banco[2], ...this.banco[3]]
+    preguntasPorNivel: 25,
+    etiquetasNiveles: ["Básico", "Intermedio", "Avanzado"],
+    preguntas: [],
   };
 
   readonly vista = signal<QuizViewModel>({
-    config: this.config,
-    estado: 'intro',
+    config: {} as ConfiguracionQuiz,
+    estado: "intro",
     indice: 0,
     nivelSeleccionado: 1,
     preguntaActual: null,
-    total: CANTIDAD,
-    etiquetasNiveles: ['Básico', 'Intermedio', 'Avanzado'],
+    total: 0,
+    etiquetasNiveles: [],
     resultado: {
       correctas: 0,
       incorrectas: 0,
-      total: CANTIDAD,
+      total: 0,
       puntaje: 0,
       porcentaje: 0,
-      respuestas: []
+      respuestas: [],
     },
     estrellas: 0,
-    colorTema: 'purple',
+    colorTema: "blue",
     seleccionada: null,
     esCorrecta: null,
     mostrarConfeti: false,
     sonidosActivos: true,
-    segundosRestantes: this.config.tiempoLimiteSegundos ?? 0
+    segundosRestantes: 0,
   });
 
   ngOnInit(): void {
+    this.config.preguntas = this.generar();
+    this.vista.set(this.inicial(1));
     this.gameUi.setJugando(true);
+    void this.attempts.iniciar("sucesiones-patrones").then((s) => {
+      this.intentoId = s?.id ?? null;
+      this.intentoInicio = s?.inicio ?? Date.now();
+    });
   }
-
   ngOnDestroy(): void {
-    this.detenerTemporizador();
     this.gameUi.setJugando(false);
-  }
-
-  volver(): void {
-    this.detenerTemporizador();
-    this.gameUi.setJugando(false);
-    this.router.navigateByUrl('/razonamiento-logico');
-  }
-
-  elegirNivel(nivel: number): void {
-    if (this.vista().estado !== 'intro') return;
-    this.vista.set(this.crearVistaInicial(nivel));
-    this.reproducirSonido('click');
-  }
-
-  async empezar(): Promise<void> {
-    const nivel = this.vista().nivelSeleccionado;
-    this.banco[nivel] = crearNivel(nivel); // 25 ejercicios nuevos al azar
-    const preguntas = this.preguntasDeNivel(nivel);
-    if (preguntas.length === 0) return;
-    const sesion = await this.attempts.iniciar('sucesiones-patrones');
-    this.intentoId = sesion?.id ?? null;
-    this.intentoInicio = sesion?.inicio ?? Date.now();
-
-    this.vista.update((v) => ({
-      ...v,
-      estado: 'jugando',
-      indice: 0,
-      total: preguntas.length,
-      preguntaActual: preguntas[0],
-      resultado: { ...v.resultado, total: preguntas.length },
-      seleccionada: null,
-      esCorrecta: null,
-      mostrarConfeti: false,
-      segundosRestantes: this.config.tiempoLimiteSegundos ?? 0
-    }));
-    this.iniciarTemporizador();
-    this.reproducirSonido('click');
-  }
-
-  seleccionar(opcionId: string): void {
-    const v = this.vista();
-    if (v.estado !== 'jugando' || !v.preguntaActual) return;
-    this.detenerTemporizador();
-    const correcta = opcionId === v.preguntaActual.respuestaCorrectaId;
-    const puntos = correcta ? (v.preguntaActual.puntos ?? 10) : 0;
-    const resultado: ResultadoQuiz = {
-      ...v.resultado,
-      correctas: v.resultado.correctas + (correcta ? 1 : 0),
-      incorrectas: v.resultado.incorrectas + (correcta ? 0 : 1),
-      puntaje: v.resultado.puntaje + puntos,
-      respuestas: [
-        ...v.resultado.respuestas,
-        { preguntaId: v.preguntaActual.id, opcionId, correcta }
-      ]
-    };
-    resultado.porcentaje = v.total > 0 ? Math.round((resultado.correctas / v.total) * 100) : 0;
-
-    this.vista.set({
-      ...v,
-      estado: 'feedback',
-      seleccionada: opcionId,
-      esCorrecta: correcta,
-      mostrarConfeti: correcta,
-      resultado
-    });
-    this.reproducirSonido(correcta ? 'acierto' : 'error');
-  }
-
-  async siguiente(): Promise<void> {
-    const v = this.vista();
-    const preguntas = this.preguntasDeNivel(v.nivelSeleccionado);
-    const next = v.indice + 1;
-    if (next >= preguntas.length) {
-      await this.terminarPartida(v.resultado.porcentaje, v.resultado);
-      return;
-    }
-    this.vista.set({
-      ...v,
-      estado: 'jugando',
-      indice: next,
-      preguntaActual: preguntas[next],
-      seleccionada: null,
-      esCorrecta: null,
-      mostrarConfeti: false,
-      segundosRestantes: this.config.tiempoLimiteSegundos ?? 0
-    });
-    this.iniciarTemporizador();
-  }
-
-  reiniciar(): void {
-    this.detenerTemporizador();
-    this.intentoId = null;
-    this.vista.set(this.crearVistaInicial(this.vista().nivelSeleccionado));
-  }
-
-  private preguntasDeNivel(nivel: number): PreguntaQuiz[] {
-    return this.banco[nivel] ?? this.banco[1];
-  }
-
-  alternarSonido(): void {
-    this.vista.update((v) => ({ ...v, sonidosActivos: !v.sonidosActivos }));
-  }
-
-  private iniciarTemporizador(): void {
-    this.detenerTemporizador();
-    const limite = this.config.tiempoLimiteSegundos ?? 0;
-    if (limite <= 0) return;
-    this.temporizador = setInterval(() => {
-      const v = this.vista();
-      if (v.estado !== 'jugando') {
-        this.detenerTemporizador();
-        return;
-      }
-      const restantes = v.segundosRestantes - 1;
-      if (restantes <= 0) {
-        this.vista.set({ ...v, segundosRestantes: 0 });
-        this.seleccionar('__tiempo-agotado__');
-        return;
-      }
-      this.vista.set({ ...v, segundosRestantes: restantes });
-    }, 1000);
-  }
-
-  private detenerTemporizador(): void {
-    if (this.temporizador) {
-      clearInterval(this.temporizador);
-      this.temporizador = null;
-    }
-  }
-
-  private async terminarPartida(porcentaje: number, resultado: ResultadoQuiz): Promise<void> {
-    const v = this.vista();
-    const estrellas = porcentaje >= 80 ? 3 : porcentaje >= 50 ? 2 : 1;
-    this.detenerTemporizador();
-    this.vista.set({ ...v, estado: 'resultado', estrellas, mostrarConfeti: false });
-    this.reproducirSonido(porcentaje >= 50 ? 'exito' : 'error');
-    if (this.intentoId) {
-      try {
-        await this.attempts.finalizar(this.intentoId, this.intentoInicio, {
-          actividadId: 'sucesiones-patrones',
-          puntaje: resultado.puntaje,
-          nivel: v.nivelSeleccionado,
-          respuestasCorrectas: resultado.correctas,
-          respuestasIncorrectas: resultado.incorrectas
-        });
-      } catch (e) {
-        console.error('No se pudo guardar el intento:', e);
-      }
-      this.intentoId = null;
-    }
-  }
-
-  private reproducirSonido(tipo: 'acierto' | 'error' | 'click' | 'exito'): void {
-    if (!this.vista().sonidosActivos) return;
-    try {
-      const ctx = new AudioContext();
-      const freqs: Record<string, number[]> = {
-        acierto: [523, 659, 784],
-        error: [220, 180],
-        click: [440],
-        exito: [523, 659, 784, 1047]
-      };
-      const dur = 0.12;
-      const ahora = ctx.currentTime;
-      (freqs[tipo] ?? [440]).forEach((f, i) => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.frequency.value = f;
-        g.gain.setValueAtTime(0.15, ahora + i * dur);
-        g.gain.exponentialRampToValueAtTime(0.001, ahora + i * dur + dur);
-        o.start(ahora + i * dur);
-        o.stop(ahora + i * dur + dur);
+    if (this.intentoId)
+      void this.attempts.finalizar(this.intentoId, this.intentoInicio, {
+        actividadId: "sucesiones-patrones",
+        puntaje: this.vista().resultado.puntaje,
+        nivel: this.vista().nivelSeleccionado,
+        respuestasCorrectas: this.vista().resultado.correctas,
+        respuestasIncorrectas: this.vista().resultado.incorrectas,
       });
-      setTimeout(() => void ctx.close(), 1200);
-    } catch {
-      // Sin audio: el juego sigue funcionando.
-    }
   }
 
-  private crearVistaInicial(nivel: number): QuizViewModel {
-    const total = this.preguntasDeNivel(nivel).length || CANTIDAD;
+  private inicial(n: number): QuizViewModel {
+    // Al elegir o reiniciar un nivel se mezcla el orden de sus 25 ejercicios
+    const list = this.mezclar(this.config.preguntas.filter((p) => p.nivel === n));
+    this.config.preguntas = [
+      ...this.config.preguntas.filter((p) => p.nivel !== n),
+      ...list,
+    ];
     return {
       config: this.config,
-      estado: 'intro',
+      estado: "intro",
       indice: 0,
-      nivelSeleccionado: nivel,
-      preguntaActual: null,
-      total,
-      etiquetasNiveles: this.config.etiquetasNiveles ?? ['Básico'],
+      nivelSeleccionado: n,
+      preguntaActual: list[0] ?? null,
+      total: list.length,
+      etiquetasNiveles: this.config.etiquetasNiveles ?? [],
       resultado: {
         correctas: 0,
         incorrectas: 0,
-        total,
+        total: list.length,
         puntaje: 0,
         porcentaje: 0,
-        respuestas: []
+        respuestas: [],
       },
       estrellas: 0,
-      colorTema: this.config.colorTema ?? 'purple',
+      colorTema: "blue",
       seleccionada: null,
       esCorrecta: null,
       mostrarConfeti: false,
       sonidosActivos: true,
-      segundosRestantes: this.config.tiempoLimiteSegundos ?? 0
+      segundosRestantes: 0,
     };
+  }
+
+  // Convierte los 75 ejercicios (25 por nivel) al formato PreguntaQuiz
+  private generar(): PreguntaQuiz[] {
+    const niveles: Nivel[] = ["basico", "intermedio", "avanzado"];
+    const ids = ["a", "b", "c", "d"];
+    const out: PreguntaQuiz[] = [];
+    niveles.forEach((nombre, idx) => {
+      for (const e of EJERCICIOS[nombre]) {
+        out.push({
+          id: `sp-${e.id}`,
+          enunciado: e.pregunta,
+          imagen: svgDe(e.trazos), // gráfico del ejercicio (campo opcional en PreguntaQuiz)
+          tipo: "opcion-multiple" as TipoPregunta,
+          nivel: idx + 1,
+          opciones: e.opciones.map((o, i) => ({ id: ids[i], texto: o })),
+          respuestaCorrectaId: ids[e.opciones.indexOf(e.correcta)],
+          explicacion: e.explicacion,
+        });
+      }
+    });
+    return out;
+  }
+
+  private mezclar<T>(a: T[]): T[] {
+    const c = [...a];
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
+  }
+
+  volver() {
+    void this.router.navigateByUrl("/razonamiento-logico");
+  }
+  nivelElegido(n: number) {
+    this.vista.set(this.inicial(n));
+  }
+  empezar() {
+    this.vista.update((s) => ({ ...s, estado: "jugando" }));
+  }
+  respuestaSeleccionada(id: string) {
+    const v = this.vista();
+    const p = v.preguntaActual;
+    if (!p) return;
+    const es = id === p.respuestaCorrectaId;
+    this.vista.update((s) => ({
+      ...s,
+      seleccionada: id,
+      esCorrecta: es,
+      estado: "feedback",
+      // El marcador se acumula aqui: avanzar() solo cierra la partida.
+      resultado: {
+        ...s.resultado,
+        correctas: s.resultado.correctas + (es ? 1 : 0),
+        incorrectas: s.resultado.incorrectas + (es ? 0 : 1),
+        puntaje: s.resultado.puntaje + (es ? (p.puntos ?? 10) : 0),
+        respuestas: [
+          ...s.resultado.respuestas,
+          { preguntaId: p.id, opcionId: id, correcta: es },
+        ],
+      },
+    }));
+  }
+  avanzar() {
+    const v = this.vista();
+    const list = this.config.preguntas.filter(
+      (p) => p.nivel === v.nivelSeleccionado,
+    );
+    const sig = v.indice + 1;
+    if (sig < list.length) {
+      this.vista.update((s) => ({
+        ...s,
+        indice: sig,
+        preguntaActual: list[sig],
+        estado: "jugando",
+        seleccionada: null,
+        esCorrecta: null,
+      }));
+    } else {
+      const c = v.resultado.correctas;
+      const t = list.length;
+      const pct = t === 0 ? 0 : Math.round((c / t) * 100);
+      this.vista.update((s) => ({
+        ...s,
+        estado: "resultado",
+        resultado: {
+          ...s.resultado,
+          correctas: c,
+          incorrectas: t - c,
+          total: t,
+          porcentaje: pct,
+        },
+        estrellas: pct >= 90 ? 3 : pct >= 70 ? 2 : pct >= 50 ? 1 : 0,
+        mostrarConfeti: pct >= 70,
+      }));
+    }
+  }
+  reiniciar() {
+    this.vista.set(this.inicial(this.vista().nivelSeleccionado));
+  }
+  alternarSonido() {
+    this.vista.update((s) => ({ ...s, sonidosActivos: !s.sonidosActivos }));
   }
 }

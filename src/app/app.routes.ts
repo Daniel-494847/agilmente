@@ -60,6 +60,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/auth/auth.routes').then((m) => m.PERFIL_ROUTES)
       },
+      {
+        path: 'administracion',
+        loadChildren: () =>
+          import('./features/administracion/administracion.routes').then(
+            (m) => m.ADMINISTRACION_ROUTES
+          )
+      },
       { path: '', redirectTo: 'inicio', pathMatch: 'full' }
     ]
   },

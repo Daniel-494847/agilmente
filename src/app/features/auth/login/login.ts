@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
-import { auth, colecciones, db, NOMBRES_COLECCION } from '../../../core/firebase';
+import { auth, colecciones } from '../../../core/firebase';
 
 @Component({
   selector: 'app-login',
@@ -54,16 +54,25 @@ export class Login {
     this.errorMessage.set('');
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      await setDoc(
-        doc(db, NOMBRES_COLECCION.usuarios, credential.user.uid),
-        { ultimoIngreso: serverTimestamp() },
-        { merge: true }
-      );
-      const nombre = localStorage.getItem('agilmente_user_name') ?? 'Usuario';
-      localStorage.setItem(
-        'agilmente_session',
-        JSON.stringify({ uid: credential.user.uid, email, nombre, rol: 'estudiante' })
-      );
+      const user = credential.user;
+      const userDoc = await getDoc(doc(colecciones.usuarios, user.uid));
+      if (!userDoc.exists()) {
+        // Autenticado sin documento: se crea con el rol por defecto.
+        const nombre = localStorage.getItem('agilmente_user_name') ?? '';
+        await setDoc(doc(colecciones.usuarios, user.uid), {
+          email,
+          nombreCompleto: nombre,
+          rol: 'estudiante',
+          creadoEn: serverTimestamp(),
+          ultimoIngreso: serverTimestamp()
+        });
+      } else {
+        await setDoc(
+          doc(colecciones.usuarios, user.uid),
+          { ultimoIngreso: serverTimestamp() },
+          { merge: true }
+        );
+      }
       this.router.navigateByUrl('/inicio');
     } catch {
       this.errorMessage.set('Credenciales incorrectas o error de conexión.');

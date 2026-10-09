@@ -12,7 +12,6 @@ import { QuizViewModel } from './quiz.model';
 })
 export class Quiz {
   @Input() vm?: QuizViewModel;
-  @Input() config?: QuizViewModel['config'];
   @Input() set vista(value: QuizViewModel) {
     this.vm = value;
   }
@@ -27,4 +26,18 @@ export class Quiz {
   @Output() avanzar = new EventEmitter<void>();
   @Output() reiniciar = new EventEmitter<void>();
   @Output() alternarSonido = new EventEmitter<void>();
+
+  /**
+   * «Volver» baja un nivel dentro del juego en vez de salir de él:
+   * desde «jugando», «feedback» o «resultado» regresa al menú del
+   * juego (intro) sin abandonarlo; desde el menú pide al juego que
+   * cierre y vuelva a la ventana anterior.
+   */
+  volverAtras(): void {
+    if (this.vista.estado !== 'intro') {
+      this.reiniciar.emit();
+      return;
+    }
+    this.volver.emit();
+  }
 }

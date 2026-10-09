@@ -63,7 +63,6 @@ export const ACTIVIDADES_ROUTES: Routes = [
       import("./admin/actividades-admin").then((m) => m.ActividadesAdmin),
     canActivate: [requireAdmin],
   },
-  // Juegos con componente propio (cuando existan)
   {
     path: "sucesiones-patrones",
     loadComponent: () =>
@@ -125,7 +124,6 @@ export const ACTIVIDADES_ROUTES: Routes = [
       },
     ],
   },
-  // Resto: placeholder genérico con data de ruta
   {
     path: "conteo-figuras",
     loadComponent: () =>
@@ -143,7 +141,6 @@ export const ACTIVIDADES_ROUTES: Routes = [
       ),
     children: OPERACIONES_BASICAS_CHILDREN,
   },
-  // TEMPORAL-VERIFICACION
   {
     path: "operadores-matematicos",
     loadComponent: () =>
@@ -199,7 +196,8 @@ export const ACTIVIDADES_ROUTES: Routes = [
     loadComponent: () =>
       import("./juegos/piramides/piramides").then((m) => m.Piramides),
   },
-  // Cuadrados mágicos: pantalla propia con cuadícula y explicación paso a paso.
+  // Cuadrados mágicos: plantilla de quiz; el cuadrado del modelo se dibuja
+  // con la rejilla (PreguntaQuiz.rejilla) y los pasos van en la explicación.
   {
     path: "cuadrados-magicos",
     loadComponent: () =>
