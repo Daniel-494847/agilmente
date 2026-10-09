@@ -1,28 +1,29 @@
-﻿<!-- ============================================================
+<!-- ============================================================
      AJUSTES DE LA RONDA
      ============================================================ -->
 @if (fase() === 'intro') {
   <main class="jm-intro">
-    <div class="container-xl d-flex flex-column min-vh-100">
-      <a
-        [routerLink]="rutaVolver"
-        class="btn btn-link text-decoration-none fw-semibold px-0 align-self-start jm-volver"
-      >
-        <i class="bi bi-arrow-left me-1"></i> Volver a actividades
-      </a>
+    <div class="container-xl d-flex flex-column min-vh-100 py-3">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <a
+          [routerLink]="rutaVolver"
+          class="btn btn-sm btn-outline-dark rounded-pill jm-volver"
+        >
+          <i class="bi bi-arrow-left me-1"></i> Volver
+        </a>
+        <span class="badge rounded-pill text-bg-primary px-3 py-2">ENTRENAMIENTO MENTAL</span>
+      </div>
 
-      <header class="jm-hero text-center mx-auto">
-        <span class="badge rounded-pill text-bg-primary px-3 py-2 jm-chip">ENTRENAMIENTO MENTAL</span>
-        <h1 class="fw-bold mt-3 mb-2">Juegos Mentales</h1>
-        <p class="lead text-secondary mb-0">
-          Memoriza los {{ totalEjercicios() }} ejercicios y después escribe todos sus resultados.
-        </p>
-      </header>
+      <div class="card border-0 shadow-sm rounded-4 jm-card mx-auto w-100">
+        <div class="card-body p-3 p-md-4">
+          <div class="text-center mb-3">
+            <h1 class="fw-bold mb-1 jm-titulo">Juegos Mentales</h1>
+            <p class="text-secondary mb-0 jm-subtitulo">
+              Memoriza los {{ totalEjercicios() }} ejercicios y escribe sus resultados
+            </p>
+          </div>
 
-      <section class="card border-0 shadow-sm rounded-4 jm-card mx-auto w-100">
-        <div class="card-body p-4">
-          <h2 class="h6 text-uppercase text-secondary fw-bold mb-3">1 · Tipo de operación</h2>
-
+          <h2 class="h6 text-uppercase text-secondary fw-bold mb-2">Tipo de operación</h2>
           <div class="jm-modos" role="group" aria-label="Tipo de operación">
             @for (m of modos; track m.id) {
               <button
@@ -39,24 +40,20 @@
               </button>
             }
           </div>
-
-          <p class="jm-nota mb-0 mt-3">
+          <p class="jm-nota mb-3 mt-2">
             <i class="bi bi-lightbulb me-1" aria-hidden="true"></i>{{ modoActual().nota }}
           </p>
-        </div>
 
-        <hr class="my-0" />
+          <hr class="my-3" />
 
-        <div class="card-body p-4">
-          <h2 class="h6 text-uppercase text-secondary fw-bold mb-3">2 · Ajustes de la ronda</h2>
-
-          <div class="row g-3">
-            <div class="col-12 col-md-6 col-lg-3">
-              <label class="form-label" for="jm-ejercicios">Número de ejercicios</label>
+          <h2 class="h6 text-uppercase text-secondary fw-bold mb-2">Ajustes de la ronda</h2>
+          <div class="row g-2 g-md-3">
+            <div class="col-6 col-lg-3">
+              <label class="form-label small mb-1" for="jm-ejercicios">Ejercicios</label>
               <input
                 id="jm-ejercicios"
                 type="number"
-                class="form-control jm-campo-cantidad"
+                class="form-control form-control-sm"
                 min="2"
                 max="20"
                 step="1"
@@ -65,27 +62,25 @@
                 (input)="escribirEjercicios($event)"
                 (change)="normalizarEjercicios()"
                 (blur)="normalizarEjercicios()"
-                aria-describedby="jm-ejercicios-ayuda"
               />
-              <small id="jm-ejercicios-ayuda" class="form-text">Elige cuántos quieres hacer: de 2 a 20.</small>
             </div>
 
-            <div class="col-12 col-md-6 col-lg-3">
-              <span class="form-label d-block" id="jm-etiqueta-cantidad">Números por ejercicio</span>
+            <div class="col-6 col-lg-3">
+              <span class="form-label small d-block mb-1" id="jm-etiqueta-cantidad">Números</span>
               <div class="btn-group w-100" role="group" aria-labelledby="jm-etiqueta-cantidad">
                 <button
                   type="button"
-                  class="btn btn-primary jm-paso"
+                  class="btn btn-sm btn-primary"
                   (click)="cambiarCantidad(-1)"
                   [disabled]="cantidad() <= 2"
                   aria-label="Quitar un número"
                 >
                   <i class="bi bi-dash-lg"></i>
                 </button>
-                <span class="btn jm-cantidad" aria-live="polite">{{ cantidad() }}</span>
+                <span class="btn btn-sm jm-cantidad" aria-live="polite">{{ cantidad() }}</span>
                 <button
                   type="button"
-                  class="btn btn-primary jm-paso"
+                  class="btn btn-sm btn-primary"
                   (click)="cambiarCantidad(1)"
                   [disabled]="cantidad() >= 20"
                   aria-label="Añadir un número"
@@ -95,13 +90,13 @@
               </div>
             </div>
 
-            <div class="col-12 col-md-6 col-lg-3">
-              <span class="form-label d-block" id="jm-etiqueta-cifras">Cifras de cada número</span>
+            <div class="col-6 col-lg-3">
+              <span class="form-label small d-block mb-1" id="jm-etiqueta-cifras">Cifras</span>
               <div class="btn-group w-100" role="group" aria-labelledby="jm-etiqueta-cifras">
                 @for (c of [1, 2, 3]; track c) {
                   <button
                     type="button"
-                    class="btn"
+                    class="btn btn-sm"
                     [class.btn-primary]="cifras() === c"
                     [class.btn-outline-primary]="cifras() !== c"
                     [attr.aria-pressed]="cifras() === c"
@@ -113,9 +108,9 @@
               </div>
             </div>
 
-            <div class="col-12 col-md-6 col-lg-3">
-              <label class="form-label" for="jm-tiempo">
-                Tiempo por número <strong>{{ tiempo().toFixed(1) }} s</strong>
+            <div class="col-6 col-lg-3">
+              <label class="form-label small mb-1" for="jm-tiempo">
+                Tiempo: <strong>{{ tiempo().toFixed(1) }}s</strong>
               </label>
               <input
                 id="jm-tiempo"
@@ -129,40 +124,37 @@
               />
             </div>
           </div>
+
+          <hr class="my-3" />
+
+          <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2">
+            <div class="text-center text-sm-start">
+              @if (ejerciciosSesion() > 0) {
+                <p class="text-secondary mb-0 small">
+                  Sesión: <strong>{{ aciertosSesion() }}/{{ ejerciciosSesion() }}</strong> correctos
+                </p>
+              }
+              <p class="text-secondary mb-0 small">
+                @if (soportado()) {
+                  Se abre en pantalla completa
+                } @else {
+                  {{ totalEjercicios() }} ejercicios · escribe los resultados
+                }
+              </p>
+            </div>
+            <button
+              type="button"
+              [class]="'btn btn-lg px-4 rounded-pill fw-bold jm-iniciar btn-' + modoActual().variante"
+              (click)="iniciar()"
+            >
+              <i class="bi bi-play-fill me-1"></i> ¡Empezar!
+            </button>
+          </div>
         </div>
+      </div>
 
-        <div class="card-body p-4 bg-light rounded-bottom-4 jm-cierre">
-          @if (ejerciciosSesion() > 0) {
-            <p class="text-center text-secondary mb-3">
-              Sesión: <strong>{{ aciertosSesion() }}/{{ ejerciciosSesion() }}</strong> ejercicios
-              correctos
-            </p>
-          }
-
-          <button
-            type="button"
-            [class]="'btn btn-lg w-100 jm-iniciar btn-' + modoActual().variante"
-            (click)="iniciar()"
-          >
-            <i class="bi bi-play-fill me-2"></i>Iniciar {{ totalEjercicios() }} ejercicios
-            @if (soportado()) {
-              <i class="bi bi-fullscreen ms-2" aria-hidden="true"></i>
-            }
-          </button>
-
-          <p class="text-center text-secondary small mt-2 mb-0">
-            @if (soportado()) {
-              Verás los {{ totalEjercicios() }} ejercicios uno a uno y al final te pediré los resultados.
-              La partida se abrirá en pantalla completa.
-            } @else {
-              Verás los {{ totalEjercicios() }} ejercicios uno a uno y al final te pediré los resultados.
-            }
-          </p>
-        </div>
-      </section>
-
-      <footer class="text-center text-secondary small mt-auto pt-4 pb-3">
-        Multiplicación: hasta 4 números de 2 cifras · Combinadas: se resuelve de izquierda a derecha
+      <footer class="text-center text-secondary small mt-auto pt-3 pb-1">
+        Multiplicación: hasta 4 números de 2 cifras · Combinadas: de izquierda a derecha
       </footer>
     </div>
   </main>

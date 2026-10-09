@@ -1,623 +1,361 @@
 /* ============================================================
-   JUEGOS MENTALES
-   - Pantalla de ajustes: tarjeta Bootstrap dentro del shell normal.
-   - Pantalla de partida: capa fija a pantalla completa (100dvh), sin scroll,
-     que en el juego también ocupa el documento en Fullscreen API.
+   INTRO
    ============================================================ */
 
-:host {
-  display: block;
-}
-
-/* ---------- Pantalla de ajustes ---------- */
-
 .jm-intro {
-  padding: 1rem 0 2rem;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  padding: 1rem 0;
 }
 
 .jm-volver {
-  align-self: flex-start;
+  font-size: 0.85rem;
 }
 
-.jm-hero {
-  max-width: 640px;
-  margin-block: clamp(1rem, 4vh, 2.5rem) clamp(1rem, 3vh, 2rem);
+.jm-titulo {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  color: #be185d;
 }
 
-.jm-hero h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 800;
-}
-
-.jm-hero .lead {
-  font-size: clamp(1rem, 2.2vw, 1.2rem);
-}
-
-.jm-chip {
-  font-size: .75rem;
-  font-weight: 800;
-  letter-spacing: .08em;
+.jm-subtitulo {
+  font-size: 0.95rem;
 }
 
 .jm-card {
-  max-width: 860px;
+  max-width: 680px;
 }
 
-/* Botonera de modos: 4 tarjetas grandes con icono, 2 columnas en móvil.
-   El color lo pone Bootstrap (btn-success, btn-warning...): aquí solo la forma. */
 .jm-modos {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .75rem;
-}
-
-@media (min-width: 768px) {
-  .jm-modos {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
 }
 
 .jm-modo {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: .35rem;
-  padding: 1rem .5rem;
-  border-width: 2px;
-  border-radius: 14px;
-  font-weight: 700;
-  line-height: 1.2;
-  text-align: center;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-
-.jm-modo:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 .5rem 1rem #0f172a2e;
-}
-
-.jm-modo:focus-visible {
-  outline: 3px solid #0d6efd;
-  outline-offset: 2px;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
+  border-radius: 1rem;
+  font-weight: 600;
 }
 
 .jm-modo-icono {
-  font-size: clamp(1.4rem, 4vw, 2rem);
-  line-height: 1;
+  font-size: 1.75rem;
 }
 
 .jm-modo-nombre {
-  font-size: .95rem;
+  font-size: 0.85rem;
 }
 
-/* Operación sin elegir: fondo en el tono suave de Bootstrap ($*-bg-subtle) para
-   que el texto se lea bien; el color fuerte lo pone btn-* al elegirla. */
-.jm-modo-apagado.jm-modo-success {
-  --bs-btn-color: #0f5132;
-  --bs-btn-bg: #d1e7dd;
-  --bs-btn-border-color: #a3cfbb;
-  --bs-btn-hover-color: #0a3d2a;
-  --bs-btn-hover-bg: #bbdfc9;
-  --bs-btn-hover-border-color: #8fc7aa;
-  --bs-btn-active-color: #0a3d2a;
-  --bs-btn-active-bg: #b6d7c8;
-  --bs-btn-active-border-color: #8fc7aa;
+.jm-modo-apagado {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
-.jm-modo-apagado.jm-modo-warning {
-  --bs-btn-color: #664d03;
-  --bs-btn-bg: #fff3cd;
-  --bs-btn-border-color: #ffe69c;
-  --bs-btn-hover-color: #4d3a02;
-  --bs-btn-hover-bg: #ffeab8;
-  --bs-btn-hover-border-color: #ffdd83;
-  --bs-btn-active-color: #4d3a02;
-  --bs-btn-active-bg: #ffe69c;
-  --bs-btn-active-border-color: #ffdd83;
+.jm-modo-apagado:hover {
+  background: #e5e7eb;
 }
 
-.jm-modo-apagado.jm-modo-primary {
-  --bs-btn-color: #084298;
-  --bs-btn-bg: #cfe2ff;
-  --bs-btn-border-color: #9ec5fe;
-  --bs-btn-hover-color: #052c65;
-  --bs-btn-hover-bg: #b8d5ff;
-  --bs-btn-hover-border-color: #7fb2fe;
-  --bs-btn-active-color: #052c65;
-  --bs-btn-active-bg: #9ec5fe;
-  --bs-btn-active-border-color: #7fb2fe;
+.jm-modo-success {
+  border: 2px solid #10b981;
 }
 
-.jm-modo-apagado.jm-modo-info {
-  --bs-btn-color: #055160;
-  --bs-btn-bg: #cff4fc;
-  --bs-btn-border-color: #9eeaf9;
-  --bs-btn-hover-color: #043d48;
-  --bs-btn-hover-bg: #baeaf6;
-  --bs-btn-hover-border-color: #7ddcea;
-  --bs-btn-active-color: #043d48;
-  --bs-btn-active-bg: #9eeaf9;
-  --bs-btn-active-border-color: #7ddcea;
+.jm-modo-warning {
+  border: 2px solid #f59e0b;
+}
+
+.jm-modo-primary {
+  border: 2px solid #3b82f6;
+}
+
+.jm-modo-info {
+  border: 2px solid #06b6d4;
 }
 
 .jm-nota {
-  padding: .6rem .8rem;
-  border-radius: 10px;
-  background: #fff7e6;
-  color: #7a5b00;
-  font-size: .9rem;
-}
-
-/* Steppers (nº de números) y campo libre (nº de ejercicios): misma altura. */
-.jm-paso {
-  width: 3rem;
-  min-height: 48px;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
+  color: #6b7280;
 }
 
 .jm-cantidad {
-  flex: 1 1 auto;
-  min-height: 48px;
+  min-width: 2.5rem;
+  background: white;
+  border: 1px solid #d1d5db;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #dee2e6;
-  background: #fff;
-  color: #0f172a;
-  font-size: 1.3rem;
-  font-weight: 800;
-  pointer-events: none;
-}
-
-.jm-campo-cantidad {
-  min-height: 48px;
-  text-align: center;
-  font-size: 1.3rem;
-  font-weight: 800;
-}
-
-.jm-campo-cantidad:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.25rem #0d6efd33;
-}
-
-.jm-cierre {
-  border-bottom-right-radius: 1rem !important;
-  border-bottom-left-radius: 1rem !important;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #be185d;
 }
 
 .jm-iniciar {
-  padding-block: .9rem;
-  font-size: clamp(1rem, 2.6vw, 1.35rem);
-  font-weight: 800;
-  letter-spacing: .02em;
-  border-radius: 14px;
-  border-width: 2px;
-  /* Sombra neutra: el mismo resalte vale para los cuatro colores de modo. */
-  box-shadow: 0 10px 22px #0f172a33;
+  border-radius: 2rem;
+  white-space: nowrap;
 }
 
-.jm-iniciar:hover,
-.jm-iniciar:focus-visible {
-  filter: brightness(.93);
-}
-
-/* ---------- Partida (pantalla completa) ---------- */
+/* ============================================================
+   PARTIDA
+   ============================================================ */
 
 .jm-juego {
   position: fixed;
   inset: 0;
   z-index: 1040;
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
   display: flex;
   flex-direction: column;
-  padding: clamp(.5rem, 2dvh, 1.2rem);
-  overflow: hidden;
-  color: #fff;
-  background-color: #0f1c33;
-  background-image: radial-gradient(circle at 20% 15%, #1e3a8a55, transparent 45%),
-    radial-gradient(circle at 85% 80%, #7e22ce44, transparent 45%);
+  padding: 1rem;
 }
 
 .jm-juego-ok {
-  background-color: #052e1f;
-  background-image: radial-gradient(circle at 20% 15%, #05966955, transparent 45%),
-    radial-gradient(circle at 85% 80%, #10b98144, transparent 45%);
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
 }
 
 .jm-juego-error {
-  background-color: #2b0f16;
-  background-image: radial-gradient(circle at 20% 15%, #be123c55, transparent 45%),
-    radial-gradient(circle at 85% 80%, #f9731644, transparent 45%);
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
 }
 
 .jm-cabecera {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .jm-acciones {
   display: flex;
-  align-items: center;
-  gap: .4rem;
+  gap: 0.5rem;
 }
 
-/* Barra de avance: un segmento por ejercicio. */
 .jm-progreso {
-  flex: 0 0 auto;
   display: flex;
-  gap: 4px;
-  margin: clamp(.4rem, 1.5dvh, 1rem) 0;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
 }
 
 .jm-progreso span {
-  flex: 1 1 0;
-  height: 6px;
-  border-radius: 999px;
-  background: #ffffff2e;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  transition: all 0.3s;
 }
 
 .jm-progreso span.hecho {
-  background: #60a5fa;
+  background: #10b981;
 }
 
 .jm-progreso span.actual {
-  background: #fff;
+  background: #ec4899;
+  transform: scale(1.3);
 }
 
-/* Tablero de números: ocupa todo el espacio sobrante. */
 .jm-tablero {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(.3rem, 1.5dvh, 1rem);
   text-align: center;
 }
 
 .jm-contador {
-  color: #ffffff99;
-  font-size: clamp(.6rem, 1.9dvh, .9rem);
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font-size: 1rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
 }
 
 .jm-numero {
-  font-size: clamp(3.5rem, 22dvh, 14rem);
-  font-weight: 800;
+  font-size: clamp(4rem, 15vw, 10rem);
+  font-weight: 900;
+  color: #be185d;
   line-height: 1;
-  letter-spacing: .02em;
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 10px 40px #00000055;
+  min-height: 1.2em;
 }
 
-/* Rótulo de "Ejercicio N" durante la pausa: mismo sitio, otras proporciones.
-   El `min()` evita que «Ejercicio 20» se salga en pantallas muy estrechas. */
 .jm-numero-rotulo {
-  font-size: min(clamp(1.5rem, 9dvh, 5rem), 12vw);
-  letter-spacing: .01em;
-  text-align: center;
+  font-size: clamp(2rem, 8vw, 4rem);
+  color: #6b7280;
 }
 
 .jm-mensaje {
-  color: #ffffffb3;
-  font-size: clamp(.8rem, 2.4dvh, 1.1rem);
+  font-size: 1.25rem;
+  color: #6b7280;
+  margin-top: 1rem;
 }
 
-/* Panel de respuestas y de resultado. */
 .jm-panel {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(.3rem, 1.4dvh, .9rem);
-  width: min(100%, 620px);
-  margin-inline: auto;
-  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  overflow-y: auto;
 }
 
 .jm-barra-huecos {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .5rem;
-  width: 100%;
-}
-
-.jm-nav-huecos .btn {
-  padding: .15rem .5rem;
-  line-height: 1.2;
-  font-weight: 800;
+  margin-bottom: 1rem;
 }
 
 .jm-pregunta {
-  margin: 0;
-  font-size: clamp(1.1rem, 4dvh, 2rem);
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
 }
 
-/* Huecos: uno por ejercicio. Se encogen y hacen scroll antes de Waltz el teclado. */
 .jm-huecos {
-  flex: 0 1 auto;
-  min-height: 0;
-  max-height: 32dvh;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: clamp(.2rem, .8dvh, .45rem);
-  overflow-y: auto;
   list-style: none;
-}
-
-.jm-huecos li {
-  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 .jm-hueco {
-  width: 100%;
-  min-width: 0;
-  min-height: clamp(42px, 7dvh, 62px);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: .1rem;
-  padding: .25rem .2rem;
-  border: 2px solid #ffffff3d;
-  border-radius: 12px;
-  background: #ffffff14;
-  color: #fff;
-  line-height: 1;
-}
-
-.jm-hueco.completo {
-  border-color: #6ee7b7;
-  background: #10b98133;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: white;
+  transition: all 0.2s;
 }
 
 .jm-hueco.activo {
-  border-color: #fff;
-  background: #ffffff33;
-  box-shadow: 0 0 0 3px #ffffff33;
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+}
+
+.jm-hueco.completo {
+  background: #ecfdf5;
+  border-color: #10b981;
 }
 
 .jm-hueco-num {
-  color: #ffffffa6;
-  font-size: clamp(.45rem, 1.35dvh, .65rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -.01em;
-  white-space: nowrap;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.jm-hueco.activo .jm-hueco-num {
-  color: #fff;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 .jm-hueco-valor {
-  font-size: clamp(1.1rem, 4dvh, 1.8rem);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #be185d;
 }
 
-.jm-hueco.activo .jm-hueco-valor {
-  color: #fff;
-}
-
-/* Teclado numérico: es el bloque elástico, absorbe la altura sobrante. */
 .jm-teclado {
-  flex: 1 1 auto;
-  min-height: 92px;
-  width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: clamp(.2rem, 1dvh, .5rem);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-/* El color lo pone Bootstrap (btn-primary, btn-danger, btn-success, btn-warning):
-   aquí solo el tamaño y el relieve para que parezca una tecla. */
 .jm-tecla {
-  min-height: 0;
-  border-radius: 12px;
-  font-size: clamp(1.6rem, 6dvh, 2.8rem);
-  font-weight: 800;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 0 #00000059;
+  padding: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  border-radius: 0.75rem;
 }
 
-.jm-tecla:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 #00000059;
+.jm-tecla-borrar {
+  grid-column: span 1;
 }
 
-.jm-tecla-borrar,
 .jm-tecla-signo {
-  font-size: clamp(1.1rem, 4dvh, 2rem);
+  font-size: 1.5rem;
 }
 
 .jm-comprobar {
-  flex: 0 0 auto;
-  min-height: clamp(42px, 7.5dvh, 64px);
-  font-size: clamp(.9rem, 2.6dvh, 1.3rem);
-  font-weight: 800;
-  border-radius: 14px;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
-/* ---------- Resultado: resumen fijo + lista con scroll ---------- */
-
 .jm-panel-resultado {
-  justify-content: flex-start;
-  gap: clamp(.3rem, 1.2dvh, .8rem);
+  justify-content: center;
 }
 
 .jm-resumen {
-  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: .75rem;
-  width: 100%;
-  text-align: left;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 1rem;
 }
 
 .jm-icono-resultado {
-  flex: 0 0 auto;
-  font-size: clamp(2.4rem, 9dvh, 4.5rem);
-  line-height: 1;
-  color: #fde047;
+  font-size: 3rem;
+  color: #ec4899;
 }
 
 .jm-titulo-resultado {
-  margin: 0;
-  font-size: clamp(1.3rem, 4.5dvh, 2.2rem);
+  font-size: 1.5rem;
   font-weight: 800;
-  line-height: 1.1;
+  margin-bottom: 0.25rem;
 }
 
 .jm-marcador {
-  margin: 0;
-  color: #ffffffb3;
-  font-size: clamp(.75rem, 2.2dvh, 1rem);
+  color: #6b7280;
 }
 
 .jm-detalle {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  margin: 0;
+  list-style: none;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  list-style: none;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .jm-detalle-fila {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: 1.6rem minmax(0, 1fr) auto 1.4rem;
+  display: flex;
   align-items: center;
-  gap: .4rem;
-  padding: clamp(.2rem, .8dvh, .5rem) clamp(.4rem, 1.2vw, .7rem);
-  border: 1px solid #ffffff26;
-  border-radius: 10px;
-  background: #ffffff14;
-  font-variant-numeric: tabular-nums;
-  text-align: left;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: white;
+  border-radius: 0.75rem;
 }
 
 .jm-detalle-fila.ok {
-  border-color: #6ee7b7;
-  background: #10b98126;
+  background: #ecfdf5;
 }
 
 .jm-detalle-num {
-  color: #ffffffa6;
-  font-size: clamp(.6rem, 1.7dvh, .85rem);
-  font-weight: 800;
-  text-align: center;
+  font-weight: 700;
+  color: #6b7280;
+  min-width: 1.5rem;
 }
 
 .jm-detalle-expresion {
-  font-size: clamp(.75rem, 2.3dvh, 1.05rem);
+  flex: 1;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .jm-detalle-tus {
-  font-size: clamp(.75rem, 2.3dvh, 1.05rem);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.jm-detalle-tus small {
-  font-weight: 600;
-  color: #ffffffa6;
+  color: #6b7280;
 }
 
 .jm-detalle-icono {
-  font-size: clamp(.8rem, 2.4dvh, 1.15rem);
-  text-align: center;
-}
-
-.jm-detalle-fila.ok .jm-detalle-icono {
-  color: #6ee7b7;
-}
-
-.jm-detalle-fila:not(.ok) .jm-detalle-icono {
-  color: #fca5a5;
+  font-size: 1.25rem;
 }
 
 .jm-acciones-fin {
-  flex: 0 0 auto;
-}
-
-.jm-acciones-fin .btn {
-  font-weight: 700;
-  border-radius: 12px;
-  padding-block: clamp(.35rem, 1.2dvh, .65rem);
-}
-
-.jm-acciones-fin .jm-iniciar {
-  box-shadow: none;
-}
-
-/* ---------- Pantallas bajas (móvil apaisado) ---------- */
-
-@media (max-height: 620px) {
-  .jm-progreso {
-    margin-block: .3rem;
-  }
-
-  .jm-mensaje {
-    display: none;
-  }
-
-  .jm-huecos {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    max-height: 26dvh;
-  }
-
-  .jm-teclado {
-    /* 4 columnas -> 3 filas de teclas en vez de 4 */
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    min-height: 78px;
-  }
-
-  .jm-comprobar {
-    min-height: 36px;
-  }
-}
-
-@media (max-height: 460px) {
-  .jm-hueco-num {
-    font-size: .45rem;
-  }
-
-  .jm-icono-resultado {
-    font-size: clamp(1.8rem, 8dvh, 2.6rem);
-  }
+  max-width: 300px;
+  margin: 0 auto;
 }

@@ -7,7 +7,7 @@ import { GameUiService } from '../../../../core/services/game-ui.service';
 
 type Modo = 'suma' | 'resta' | 'multiplicacion' | 'combinadas';
 
-/** Fases de la ronda: ajustes -> Showing exercises -> respuestas -> resultado. */
+/** Fases de la ronda: ajustes -> mostrando ejercicios -> respuestas -> resultado. */
 type Fase = 'intro' | 'reproduciendo' | 'respondiendo' | 'resultado';
 
 interface Paso {
@@ -162,8 +162,6 @@ export class JuegosMentales implements OnDestroy {
 
   elegirModo(modo: Modo): void {
     this.modo.set(modo);
-    // La multiplicación solo admite 4 números de 2 cifras: el paso también lo
-    // recorta, así que aquí dejamos los controles listos para lo que se verá.
     if (modo === 'multiplicacion') {
       this.cantidad.set(Math.min(this.cantidad(), 4));
       this.cifras.set(Math.min(this.cifras(), 2));
@@ -174,7 +172,6 @@ export class JuegosMentales implements OnDestroy {
     this.cantidad.update((valor) => Math.min(20, Math.max(2, valor + delta)));
   }
 
-  /** Campo numérico libre: guarda lo que se escribe (se recorta al salir). */
   escribirEjercicios(evento: Event): void {
     const texto = (evento.target as HTMLInputElement).value;
     this.ejerciciosTexto.set(texto);
@@ -186,7 +183,6 @@ export class JuegosMentales implements OnDestroy {
     }
   }
 
-  /** Al salir del campo se ajusta al rango 2-20 y se refleja en el campo. */
   normalizarEjercicios(): void {
     const total = this.totalEjercicios();
     this.ejercicios.set(total);
@@ -208,7 +204,6 @@ export class JuegosMentales implements OnDestroy {
      Ronda
      ================================================================ */
 
-  /** Botón «Iniciar prueba»: abre a pantalla completa y muestra los ejercicios. */
   async iniciar(): Promise<void> {
     this.normalizarAjustes();
 
@@ -224,8 +219,6 @@ export class JuegosMentales implements OnDestroy {
     this.fase.set('reproduciendo');
     this.mensaje.set('¡Atento!');
 
-    // Modo juego del shell (oculta topbar y colapsa el sidebar) + pantalla
-    // completa real del navegador.
     this.gameUi.setJugando(true);
     await this.fullscreen.activar();
 
@@ -237,7 +230,6 @@ export class JuegosMentales implements OnDestroy {
     await this.reproducir();
   }
 
-  /** Compara los N resultados escritos con las operaciones de los ejercicios. */
   comprobar(): void {
     if (this.fase() !== 'respondiendo' || !this.puedeComprobar()) return;
 
@@ -261,7 +253,6 @@ export class JuegosMentales implements OnDestroy {
     void this.guardarIntento();
   }
 
-  /** Vuelve a los ajustes y cierra la pantalla completa. */
   salir(): void {
     this.token++;
     this.gameUi.setJugando(false);
@@ -280,26 +271,22 @@ export class JuegosMentales implements OnDestroy {
   }
 
   /* ================================================================
-     Huecos de respuesta (teclado en pantalla y teclado físico)
+     Huecos de respuesta
      ================================================================ */
 
   seleccionarHueco(indice: number): void {
     this.huecoActivo.set(indice);
   }
 
-  /** Mueve el hueco seleccionado (botones «anterior / siguiente»). */
   moverHueco(delta: number): void {
     const total = this.respuestas().length;
     if (total === 0) return;
     this.huecoActivo.set(Math.min(total - 1, Math.max(0, this.huecoActivo() + delta)));
   }
 
-  /** `true` si se puede avanzar al hueco siguiente. */
   readonly hayHuecoSiguiente = computed(() => this.huecoActivo() < this.respuestas().length - 1);
-  /** `true` si se puede volver al hueco anterior. */
   readonly hayHuecoAnterior = computed(() => this.huecoActivo() > 0);
 
-  /** Escribe en un hueco concreto del array de respuestas (copia inmutable). */
   private escribirRespuesta(indice: number, valor: string): void {
     this.respuestas.update((lista) => {
       const copia = [...lista];
@@ -313,13 +300,11 @@ export class JuegosMentales implements OnDestroy {
 
     const actual = this.respuestas()[indice] ?? '';
 
-    // El signo solo va delante: los resultados negativos empiezan por "-".
     if (digito === '-') {
       this.escribirRespuesta(indice, actual === '' ? '-' : actual);
       return;
     }
 
-    // El cero inicial se sustituye, no se acumula ("0" + "5" -> "5").
     if (actual === '0') {
       this.escribirRespuesta(indice, digito);
     } else if (actual.length < 8) {
@@ -349,7 +334,6 @@ export class JuegosMentales implements OnDestroy {
     } else if (evento.key === 'ArrowLeft' || evento.key === 'ArrowUp') {
       this.moverHueco(-1);
     } else if (evento.key === 'Enter') {
-      // Enter pasa al hueco siguiente; en el último comprueba los resultados.
       if (this.hayHuecoSiguiente()) {
         this.moverHueco(1);
       } else {
@@ -376,7 +360,6 @@ export class JuegosMentales implements OnDestroy {
       this.indiceEjercicio.set(ejercicio);
       const pasos = serie[ejercicio];
 
-      // Rótulo del ejercicio con 3 s de pausa: separa un ejercicio del siguiente.
       this.indiceNumero.set(0);
       this.rotulo.set(true);
       this.pantalla.set(`Ejercicio ${ejercicio + 1}`);
@@ -396,7 +379,6 @@ export class JuegosMentales implements OnDestroy {
         await this.esperar(duracion);
         if (!this.sigueVivo(token)) return;
 
-        // Pausa corta entre números para que se lean los repetidos.
         this.pantalla.set('');
         await this.esperar(150);
       }
@@ -408,7 +390,6 @@ export class JuegosMentales implements OnDestroy {
     this.mensaje.set('Ahora escribe los resultados');
   }
 
-  /** `true` si esta ronda sigue vigente (el usuario no salió ni reinició). */
   private sigueVivo(token: number): boolean {
     return token === this.token && this.fase() === 'reproduciendo';
   }
@@ -417,7 +398,6 @@ export class JuegosMentales implements OnDestroy {
      Generación y cálculo
      ================================================================ */
 
-  /** Crea un ejercicio: lista de números y operadores según el modo elegido. */
   private generar(): Paso[] {
     const modo = this.modo();
     let numeros = this.cantidad();
@@ -438,7 +418,6 @@ export class JuegosMentales implements OnDestroy {
         if (modo === 'multiplicacion') op = '×';
         if (modo === 'combinadas') {
           op = ['+', '−', '×'][Math.floor(Math.random() * 3)];
-          // Multiplicador de 2 a 9 para que el producto siga siendo manejable.
           if (op === '×') valor = 2 + Math.floor(Math.random() * 8);
         }
       }
@@ -448,7 +427,6 @@ export class JuegosMentales implements OnDestroy {
     return lista;
   }
 
-  /** Resuelve la operación de izquierda a derecha. */
   private calcular(pasos: Paso[]): number {
     return pasos.reduce((acumulado, paso, indice) => {
       if (indice === 0) return paso.valor;
@@ -458,7 +436,6 @@ export class JuegosMentales implements OnDestroy {
     }, 0);
   }
 
-  /** «48 − 12 − 7» */
   private expresionDe(pasos: Paso[]): string {
     return pasos.map((paso, indice) => (indice === 0 ? `${paso.valor}` : `${paso.op} ${paso.valor}`)).join(' ');
   }
@@ -474,7 +451,7 @@ export class JuegosMentales implements OnDestroy {
   }
 
   /* ================================================================
-     Intentos (progreso del estudiante)
+     Intentos
      ================================================================ */
 
   private async guardarIntento(): Promise<void> {
@@ -495,7 +472,6 @@ export class JuegosMentales implements OnDestroy {
     }
   }
 
-  /** Cierra un intento abierto al abandonar la ronda, para no dejarlo pendiente. */
   private async cerrarIntento(): Promise<void> {
     if (!this.intentoId) return;
 

@@ -427,9 +427,8 @@ function construirMagico(nivel: number, e: number): PreguntaQuiz {
   };
 }
 
-/** Impares: sudoku · pares: cuadrado mágico. */
 function construirPregunta(nivel: number, e: number): PreguntaQuiz {
-  return e % 2 === 1 ? construirSudoku(nivel, e) : construirMagico(nivel, e);
+  return construirSudoku(nivel, e);
 }
 // <GEN-END>
 
