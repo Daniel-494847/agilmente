@@ -323,12 +323,6 @@ export const EJERCICIOS: Record<Nivel, Ejercicio[]> = {
   avanzado: AVANZADO,
 };
 
-export const NIVELES: { id: Nivel; nombre: string; detalle: string; color: string }[] = [
-  { id: 'basico', nombre: 'Básico', detalle: 'Figuras sueltas, segmentos, ángulos y triángulos sencillos', color: 'success' },
-  { id: 'intermedio', nombre: 'Intermedio', detalle: 'Cuadrículas, abanicos con horizontales y triángulos divididos', color: 'warning' },
-  { id: 'avanzado', nombre: 'Avanzado', detalle: 'Rectángulos, cuadrados y segmentos en figuras grandes', color: 'danger' },
-];
-
 // ---------- Convierte los trazos en una imagen SVG (data URI) para el quiz ----------
 export function svgDe(trazos: Trazo[]): string {
   const piezas = trazos.map(t => {

@@ -24,23 +24,6 @@ textarea {
 }
 
 /* ---------------------------------------------------------------------------
-   Pirámides — la pirámide se adapta al hueco libre de la tarjeta de quiz
-   (sin scroll de página).
-
-   El dibujo se inyecta con [innerHTML] y el DomSanitizer de Angular (hasta la
-   v23) elimina el atributo `style` de ese HTML, así que todo el tamaño vive
-   aquí, en CSS global (el contenido dinámico no lleva los atributos de
-   encapsulación, por eso las reglas de cada componente no le aplican).
-
-   Cadena de altura: .qz-html-content (quiz.css) da el hueco libre →
-   .piramide-caja y .piramide-render lo reparten → las filas (flex: 1) se
-   reparten exactamente el alto disponible con un tope de 61px (si sobra
-   espacio, la pirámide queda centrada) → las casillas se estiran al alto de su
-   fila: SIEMPRE el mismo tamaño para todas, también las vacías y las ocultas,
-   que así conservan su hueco. Nunca empujan la tarjeta: min-height: 0 en toda
-   la cadena y overflow: hidden en la casilla como red de seguridad final.
-   --------------------------------------------------------------------------- */
-/* ---------------------------------------------------------------------------
    Pirámides — dibujo compacto que NUNCA se aplasta ni obliga a hacer scroll.
 
    El lado de la casilla no es un valor fijo: sale del alto que la tarjeta puede
