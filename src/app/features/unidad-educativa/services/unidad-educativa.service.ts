@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { getDoc, setDoc } from 'firebase/firestore';
 
-import { auth, referencias } from '../../../core/firebase';
-import { DatosUnidadEducativa } from '../models/unidad-educativa.model';
+import { auth, referencias } from '@core/firebase';
+import { DatosUnidadEducativa } from '@features/unidad-educativa/models/unidad-educativa.model';
 
 @Injectable({ providedIn: 'root' })
 export class UnidadEducativaService {

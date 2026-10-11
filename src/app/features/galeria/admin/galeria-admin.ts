@@ -2,9 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { NOMBRES_COLECCION } from '../../../core/firebase';
-import { ContentService } from '../../../core/services/content.service';
-import { FotoGaleria } from '../galeria.model';
+import { NOMBRES_COLECCION } from '@core/firebase';
+import { ContentService } from '@core/services/content.service';
+import { CloudinaryService } from '@core/services/cloudinary.service';
+import { FotoGaleria } from '@features/galeria/galeria.model';
 
 @Component({
   selector: 'app-galeria-admin',
@@ -13,6 +14,7 @@ import { FotoGaleria } from '../galeria.model';
 })
 export class GaleriaAdmin implements OnInit {
   private readonly content = inject(ContentService);
+  private readonly cloudinary = inject(CloudinaryService);
   private readonly fb = inject(FormBuilder);
 
   readonly fotos = signal<FotoGaleria[]>([]);
@@ -26,7 +28,6 @@ export class GaleriaAdmin implements OnInit {
 
   readonly form = this.fb.nonNullable.group({
     alt: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120)]],
-    facebookUrl: ['', [Validators.maxLength(300)]],
     url: [''],
     publicado: [true]
   });
@@ -35,32 +36,31 @@ export class GaleriaAdmin implements OnInit {
     await this.cargar();
   }
 
+  /** Previsualiza el archivo elegido o restaura la imagen actual si no eligió nada. */
   onFileChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
     this.archivoSeleccionado.set(file);
     this.error.set('');
 
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        this.error.set('Solo se permiten archivos de imagen.');
-        this.archivoSeleccionado.set(null);
-        this.previewUrl.set('');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => this.previewUrl.set(String(reader.result ?? ''));
-      reader.readAsDataURL(file);
-    } else {
-      this.previewUrl.set('');
+    if (!file) {
+      this.previewUrl.set(this.form.controls.url.value);
+      return;
     }
+    if (!file.type.startsWith('image/')) {
+      this.error.set('Solo se permiten archivos de imagen.');
+      this.archivoSeleccionado.set(null);
+      this.previewUrl.set(this.form.controls.url.value);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => this.previewUrl.set(String(reader.result ?? ''));
+    reader.readAsDataURL(file);
   }
 
   editar(foto: FotoGaleria): void {
     this.editandoId.set(foto.id);
     this.form.setValue({
       alt: foto.alt,
-      facebookUrl: foto.facebookUrl ?? '',
       url: foto.url,
       publicado: foto.publicado !== false
     });
@@ -75,7 +75,7 @@ export class GaleriaAdmin implements OnInit {
     this.editandoId.set(null);
     this.archivoSeleccionado.set(null);
     this.previewUrl.set('');
-    this.form.reset({ alt: '', facebookUrl: '', url: '', publicado: true });
+    this.form.reset({ alt: '', url: '', publicado: true });
     this.mensaje.set('');
     this.error.set('');
   }
@@ -89,47 +89,45 @@ export class GaleriaAdmin implements OnInit {
       return;
     }
 
-    const { alt, facebookUrl, url, publicado } = this.form.getRawValue();
+    // Nueva foto: exige archivo o URL. Edición: usa la URL existente.
+    const esNueva = !this.editandoId();
     const archivo = this.archivoSeleccionado();
-    const id = this.editandoId();
-
-    // Nueva foto: requiere archivo. Edición: archivo opcional si ya hay url.
-    if (!id && !archivo && !url.trim()) {
-      this.error.set('Selecciona una imagen o indica una URL.');
+    const urlFormulario = this.form.controls.url.value.trim();
+    if (esNueva && !archivo && !urlFormulario) {
+      this.error.set('Sube una imagen o indica una URL.');
       return;
     }
 
     this.guardando.set(true);
     try {
-      let imageUrl = url.trim();
-
-      if (archivo) {
-        imageUrl = await this.content.subirImagen(archivo);
-      }
-
-      if (!imageUrl) {
-        this.error.set('No hay URL de imagen válida.');
-        return;
-      }
-
       const datos: Partial<FotoGaleria> & { id?: string } = {
-        alt: alt.trim(),
-        url: imageUrl,
-        facebookUrl: facebookUrl.trim() || undefined,
-        publicado
+        alt: this.form.controls.alt.value.trim(),
+        url: urlFormulario,
+        publicado: this.form.controls.publicado.value
       };
 
-      if (id) {
-        datos.id = id;
+      if (archivo) {
+        const resultado = await this.cloudinary.subirImagen(archivo, 'galeria');
+        datos.url = resultado.secure_url;
+        datos.publicId = resultado.public_id;
+        if (!this.editandoId()) datos.creadoEn = Date.now();
+      }
+
+      if (this.editandoId()) {
+        datos.id = this.editandoId()!;
       }
 
       await this.content.guardar(NOMBRES_COLECCION.fotosGaleria, datos);
-      this.mensaje.set(id ? 'Foto actualizada.' : publicado ? 'Foto publicada.' : 'Foto guardada como borrador.');
+      this.mensaje.set(
+        this.editandoId() ? 'Foto actualizada.' : datos.publicado ? 'Foto publicada.' : 'Foto guardada como borrador.'
+      );
       this.cancelar();
       await this.cargar();
-    } catch (e) {
-      console.error(e);
-      this.error.set('No se pudo guardar. Verifica conexión, Storage y rol administrador.');
+    } catch (err) {
+      console.error(err);
+      this.error.set(
+        this.cloudinary.error() ?? 'No se pudo guardar la foto. Verifica conexión y rol administrador.'
+      );
     } finally {
       this.guardando.set(false);
     }
@@ -137,11 +135,7 @@ export class GaleriaAdmin implements OnInit {
 
   async cambiarPublicacion(foto: FotoGaleria): Promise<void> {
     try {
-      await this.content.guardar(NOMBRES_COLECCION.fotosGaleria, {
-        id: foto.id,
-        alt: foto.alt,
-        url: foto.url,
-        facebookUrl: foto.facebookUrl,
+      await this.content.actualizar(NOMBRES_COLECCION.fotosGaleria, foto.id, {
         publicado: !foto.publicado
       });
       await this.cargar();
@@ -167,8 +161,7 @@ export class GaleriaAdmin implements OnInit {
   private async cargar(): Promise<void> {
     this.cargando.set(true);
     try {
-      const lista = await this.content.listar<FotoGaleria>(NOMBRES_COLECCION.fotosGaleria);
-      this.fotos.set(lista);
+      this.fotos.set(await this.content.listar<FotoGaleria>(NOMBRES_COLECCION.fotosGaleria));
     } catch {
       this.error.set('No se pudo cargar la lista de fotos.');
     } finally {

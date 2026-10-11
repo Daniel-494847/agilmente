@@ -4,7 +4,7 @@
       <i class="bi bi-arrow-left me-1"></i>Volver a la galería
     </a>
     <h1 class="fs-4 fw-bold mt-2 mb-1"><i class="bi bi-images me-2"></i>Administrar Galería</h1>
-    <p class="text-secondary mb-0">Sube imágenes a Firebase Storage o pega una URL, y controla si están publicadas.</p>
+    <p class="text-secondary mb-0">Sube imágenes a Cloudinary o pega una URL, y controla si están publicadas.</p>
   </header>
 
   <div class="row g-4">
@@ -31,6 +31,18 @@
             </div>
           }
 
+          @if (cloudinary.subiendo()) {
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span>Subiendo a Cloudinary...</span>
+                <span>{{ cloudinary.progreso() }}%</span>
+              </div>
+              <div class="progress" role="progressbar" aria-label="Progreso de subida" [attr.aria-valuenow]="cloudinary.progreso()" aria-valuemin="0" aria-valuemax="100" style="height: 8px">
+                <div class="progress-bar bg-primary" [style.width.%]="cloudinary.progreso()"></div>
+              </div>
+            </div>
+          }
+
           <div class="mb-3">
             <label class="form-label fw-semibold" for="url">O URL de imagen</label>
             <input id="url" type="url" class="form-control" formControlName="url" placeholder="https://..." />
@@ -42,11 +54,6 @@
             @if (form.controls.alt.touched && form.controls.alt.invalid) {
               <div class="text-danger small mt-1">Escribe una descripción de al menos 2 caracteres.</div>
             }
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-semibold" for="facebookUrl">Enlace de publicación (opcional)</label>
-            <input id="facebookUrl" type="url" class="form-control" formControlName="facebookUrl" placeholder="https://facebook.com/..." />
           </div>
 
           <div class="form-check form-switch mb-4">
@@ -62,7 +69,7 @@
           }
 
           <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary fw-bold flex-grow-1" [disabled]="guardando()">
+            <button type="submit" class="btn btn-primary fw-bold flex-grow-1" [disabled]="guardando() || cloudinary.subiendo()">
               @if (guardando()) {
                 <span class="spinner-border spinner-border-sm me-2"></span>
               }
@@ -93,9 +100,6 @@
                 <img [src]="f.url" [alt]="f.alt" class="rounded-3 border" width="72" height="54" style="object-fit: cover" loading="lazy" />
                 <div class="flex-grow-1 min-w-0">
                   <div class="fw-semibold text-truncate">{{ f.alt }}</div>
-                  @if (f.facebookUrl) {
-                    <small class="text-body-secondary text-truncate d-block">{{ f.facebookUrl }}</small>
-                  }
                 </div>
                 <span class="badge" [class.text-bg-success]="f.publicado" [class.text-bg-secondary]="!f.publicado">
                   {{ f.publicado ? 'Publicada' : 'Borrador' }}

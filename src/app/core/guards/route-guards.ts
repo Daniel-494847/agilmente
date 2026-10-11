@@ -2,8 +2,8 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { User, onAuthStateChanged } from 'firebase/auth';
 
-import { auth } from '../firebase';
-import { UserRoleService } from '../auth/user-role.service';
+import { auth } from '@core/firebase';
+import { UserRoleService } from '@core/auth/user-role.service';
 
 const obtenerUsuarioActual = (): Promise<User | null> =>
   new Promise((resolve) => {

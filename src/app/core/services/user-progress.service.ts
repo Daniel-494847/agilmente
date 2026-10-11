@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 
-import { auth, db, NOMBRES_COLECCION } from '../firebase';
+import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
 
 export interface ProgresoUsuario {
   puntos: number;

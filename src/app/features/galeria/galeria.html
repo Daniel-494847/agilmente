@@ -20,7 +20,7 @@
           <div class="col">
             <article class="card border-0 shadow-sm overflow-hidden h-100">
               <img
-                [src]="foto.url"
+                [src]="urlDe(foto)"
                 [alt]="foto.alt"
                 class="w-100"
                 style="aspect-ratio: 4 / 3; object-fit: cover; background: #e9ecef"
@@ -28,11 +28,6 @@
               />
               <div class="card-body d-flex justify-content-between align-items-center gap-2">
                 <p class="small mb-0 text-secondary">{{ foto.alt }}</p>
-                @if (foto.facebookUrl) {
-                  <a [href]="foto.facebookUrl" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
-                    Ver publicación
-                  </a>
-                }
               </div>
             </article>
           </div>

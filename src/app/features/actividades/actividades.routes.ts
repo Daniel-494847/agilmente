@@ -1,55 +1,6 @@
 import { Routes } from "@angular/router";
 
-import { requireAdmin } from "../../core/guards/route-guards";
-
-/**
- * Hijas del menú de Operaciones Básicas. Cada tarjeta del menú apunta a una de
- * ellas, y todas renderizan el duelo matemático en modo individual.
- */
-const OPERACIONES_BASICAS_CHILDREN: Routes = [
-  {
-    path: "sumas",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/sumas").then(
-        (m) => m.OperacionesBasicasSumas,
-      ),
-  },
-  {
-    path: "restas",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/restas").then(
-        (m) => m.OperacionesBasicasRestas,
-      ),
-  },
-  {
-    path: "multiplicacion",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/multiplicacion").then(
-        (m) => m.OperacionesBasicasMultiplicacion,
-      ),
-  },
-  {
-    path: "division",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/division").then(
-        (m) => m.OperacionesBasicasDivision,
-      ),
-  },
-  {
-    path: "combinadas",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/combinadas").then(
-        (m) => m.OperacionesBasicasCombinadas,
-      ),
-  },
-  {
-    path: "mezcladas",
-    loadComponent: () =>
-      import("./juegos/operaciones-basicas/mezcladas").then(
-        (m) => m.OperacionesBasicasMezcladas,
-      ),
-  },
-];
+import { requireAdmin } from "@core/guards/route-guards";
 
 export const ACTIVIDADES_ROUTES: Routes = [
   {
@@ -131,15 +82,14 @@ export const ACTIVIDADES_ROUTES: Routes = [
         (m) => m.ConteoFiguras,
       ),
   },
-  // Operaciones básicas: menú de operaciones con rutas hijas por tipo.
-  // Cada hijo juega el formato duelo matemático en modo INDIVIDUAL.
+  // Operaciones básicas: un juego único construido con la plantilla de quiz.
+  // 25 desafíos con dibujos SVG por nivel (sumas, restas y multiplicaciones).
   {
     path: "operaciones-basicas",
     loadComponent: () =>
-      import("./juegos/operaciones-basicas/operaciones-basicas-menu").then(
-        (m) => m.OperacionesBasicasMenu,
+      import("./juegos/operaciones-basicas/operaciones-numeros-naturales").then(
+        (m) => m.OperacionesNaturales,
       ),
-    children: OPERACIONES_BASICAS_CHILDREN,
   },
   {
     path: "operadores-matematicos",

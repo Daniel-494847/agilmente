@@ -2,8 +2,8 @@ import { Injectable } from '@angular/core';
 import { User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 
-import { db, NOMBRES_COLECCION } from '../firebase';
-import { RolUsuario, UsuarioAdmin } from '../models/usuario.model';
+import { db, NOMBRES_COLECCION } from '@core/firebase';
+import { RolUsuario, UsuarioAdmin } from '@core/models/usuario.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserRoleService {

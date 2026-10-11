@@ -55,7 +55,7 @@ export interface ConfiguracionQuiz {
   niveles?: number;
   preguntasPorNivel?: number;
   etiquetasNiveles?: string[];
-  colorTema?: "purple" | "green" | "amber" | "blue" | "pink" | "orange";
+  colorTema?: "purple" | "green" | "amber" | "blue" | "pink" | "orange" | "cyan";
   preguntas: PreguntaQuiz[];
   tiempoLimiteSegundos?: number;
 }

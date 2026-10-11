@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 
-import { db, NOMBRES_COLECCION } from '../../../core/firebase';
-import { ActividadResumen } from '../../../core/models/actividad.model';
-import { ACTIVIDADES_INICIALES } from '../data/actividades.data';
+import { db, NOMBRES_COLECCION } from '@core/firebase';
+import { ActividadResumen } from '@core/models/actividad.model';
+import { ACTIVIDADES_INICIALES } from '@features/actividades/data/actividades.data';
 
 @Injectable({ providedIn: 'root' })
 export class ActividadesService {

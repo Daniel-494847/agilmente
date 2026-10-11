@@ -1,16 +1,16 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AttemptsService } from '../../../../core/services/attempts.service';
-import { GameUiService } from '../../../../core/services/game-ui.service';
-import { Quiz } from '../../../../shared/components/quiz/quiz';
+import { AttemptsService } from '@core/services/attempts.service';
+import { GameUiService } from '@core/services/game-ui.service';
+import { Quiz } from '@shared/components/quiz/quiz';
 import type {
   ConfiguracionQuiz,
   PreguntaQuiz,
   QuizViewModel,
   RejillaQuiz,
   ResultadoQuiz
-} from '../../../../shared/components/quiz/quiz.model';
+} from '@shared/components/quiz/quiz.model';
 
 // ====================== GENERADOR DE CUADRADOS MÁGICOS ======================
 // En un cuadrado mágico, todas las filas, columnas y diagonales suman lo mismo

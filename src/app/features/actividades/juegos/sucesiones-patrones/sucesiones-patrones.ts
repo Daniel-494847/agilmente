@@ -1,14 +1,14 @@
 import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
 import { Router } from "@angular/router";
-import { AttemptsService } from "../../../../core/services/attempts.service";
-import { GameUiService } from "../../../../core/services/game-ui.service";
-import { Quiz } from "../../../../shared/components/quiz/quiz";
+import { AttemptsService } from "@core/services/attempts.service";
+import { GameUiService } from "@core/services/game-ui.service";
+import { Quiz } from "@shared/components/quiz/quiz";
 import {
   ConfiguracionQuiz,
   PreguntaQuiz,
   QuizViewModel,
   TipoPregunta,
-} from "../../../../shared/components/quiz/quiz.model";
+} from "@shared/components/quiz/quiz.model";
 
 // Sucesiones y Patrones (un solo archivo): 25 ejercicios por nivel con gráficos SVG.
 // Cada respuesta y cada explicación se CALCULAN a partir de los datos del ejercicio.
@@ -59,8 +59,35 @@ function svgDe(trazos: Trazo[]): string {
     if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2"/>`;
     return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 13}" font-weight="bold" font-family="sans-serif" fill="${t.fill}">${t.s}</text>`;
   });
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200"><rect width="300" height="200" fill="#fff"/>${piezas.join("")}</svg>`;
+  // El lienzo se RECORTA al dibujo: si no, el SVG de 300x200 con los trazos en
+  // la franja central lleva medio lienzo en blanco y, al escalarlo el quiz, ese
+  // blanco se convierte en dos franjas huecas alrededor de las figuras.
+  const { x, y, w, h } = caja(trazos);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>${piezas.join("")}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+// Caja mínima que encierra los trazos, con un margen para que el borde de las
+// figuras no quede pegado al recorte.
+function caja(trazos: Trazo[]): { x: number; y: number; w: number; h: number } {
+  const M = 8;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const ver = (px: number, py: number) => {
+    x0 = Math.min(x0, px); x1 = Math.max(x1, px);
+    y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+  };
+  for (const t of trazos) {
+    if (t.t === "l") { ver(t.x1!, t.y1!); ver(t.x2!, t.y2!); }
+    else if (t.t === "p") t.pts!.split(" ").forEach(p => { const [px, py] = p.split(",").map(Number); ver(px, py); });
+    else if (t.t === "c") { ver(t.cx! - t.r!, t.cy! - t.r!); ver(t.cx! + t.r!, t.cy! + t.r!); }
+    else {
+      // Texto: se estima su ancho/alto a partir del tamaño de fuente.
+      const hw = (t.s?.length ?? 1) * (t.size ?? 13) * 0.35;
+      ver(t.x! - hw, t.y! - (t.size ?? 13)); ver(t.x! + hw, t.y! + 3);
+    }
+  }
+  if (!Number.isFinite(x0)) return { x: 0, y: 0, w: 300, h: 200 };
+  return { x: r1(x0 - M), y: r1(y0 - M), w: r1(x1 - x0 + 2 * M), h: r1(y1 - y0 + 2 * M) };
 }
 
 // ================== Tipos de los ejercicios ==================

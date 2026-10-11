@@ -14,8 +14,8 @@ import {
   where
 } from 'firebase/firestore';
 
-import { auth, colecciones } from '../../../core/firebase';
-import { DatosMaterial, MaterialBiblioteca } from '../models/biblioteca.model';
+import { auth, colecciones } from '@core/firebase';
+import { DatosMaterial, MaterialBiblioteca } from '@features/biblioteca/models/biblioteca.model';
 
 @Injectable({ providedIn: 'root' })
 export class BibliotecaService {

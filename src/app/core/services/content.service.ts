@@ -1,8 +1,17 @@
 import { Injectable } from '@angular/core';
-import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where
+} from 'firebase/firestore';
 
-import { db, storage, NombreColeccion } from '../firebase';
+import { db, NombreColeccion } from '@core/firebase';
 
 @Injectable({ providedIn: 'root' })
 export class ContentService {
@@ -34,13 +43,15 @@ export class ContentService {
     await setDoc(contenidoRef, { ...contenido, id: contenidoRef.id });
   }
 
-  async eliminar(nombreColeccion: NombreColeccion, id: string): Promise<void> {
-    await deleteDoc(doc(db, nombreColeccion, id));
+  async actualizar(
+    nombreColeccion: NombreColeccion,
+    id: string,
+    datos: Partial<Record<string, unknown>>
+  ): Promise<void> {
+    await updateDoc(doc(db, nombreColeccion, id), datos);
   }
 
-  async subirImagen(file: File): Promise<string> {
-    const fileRef = ref(storage, `galeria/${Date.now()}-${file.name}`);
-    await uploadBytes(fileRef, file);
-    return getDownloadURL(fileRef);
+  async eliminar(nombreColeccion: NombreColeccion, id: string): Promise<void> {
+    await deleteDoc(doc(db, nombreColeccion, id));
   }
 }

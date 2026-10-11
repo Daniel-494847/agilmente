@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { addDoc, collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
-import { auth, db, NOMBRES_COLECCION } from '../firebase';
+import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
 import { UserProgressService } from './user-progress.service';
 
 export interface ResultadoIntento {

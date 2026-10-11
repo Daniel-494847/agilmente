@@ -2,8 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { NOMBRES_COLECCION } from '../../../core/firebase';
-import { ContentService } from '../../../core/services/content.service';
+import { NOMBRES_COLECCION } from '@core/firebase';
+import { ContentService } from '@core/services/content.service';
 
 export interface ComunicadoAdmin {
   id?: string;

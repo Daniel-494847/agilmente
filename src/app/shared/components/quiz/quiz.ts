@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { QuizViewModel } from './quiz.model';
-import { SvgSeguroPipe } from '../../pipes/svg-seguro.pipe';
+import { SvgSeguroPipe } from '@shared/pipes/svg-seguro.pipe';
 
 @Component({
   selector: 'app-quiz',

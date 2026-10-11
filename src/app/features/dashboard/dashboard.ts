@@ -2,11 +2,11 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import { auth, NOMBRES_COLECCION } from '../../core/firebase';
-import { ActividadResumen } from '../../core/models/actividad.model';
-import { ContentService } from '../../core/services/content.service';
-import { ActividadesService } from '../actividades/services/actividades.service';
-import { ActivityCard } from '../../shared/components/activity-card/activity-card';
+import { auth, NOMBRES_COLECCION } from '@core/firebase';
+import { ActividadResumen } from '@core/models/actividad.model';
+import { ContentService } from '@core/services/content.service';
+import { ActividadesService } from '@features/actividades/services/actividades.service';
+import { ActivityCard } from '@shared/components/activity-card/activity-card';
 
 @Component({
   selector: 'app-dashboard',

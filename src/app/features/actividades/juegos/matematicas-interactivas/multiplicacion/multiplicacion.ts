@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { DueloMatematico } from '../duelo-matematico/duelo-matematico';
+import { DueloMatematico } from '@features/actividades/juegos/matematicas-interactivas/duelo-matematico/duelo-matematico';
 
 @Component({
   selector: 'app-multiplicacion',

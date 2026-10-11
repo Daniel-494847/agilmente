@@ -1,10 +1,10 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AttemptsService } from '../../../../core/services/attempts.service';
-import { GameUiService } from '../../../../core/services/game-ui.service';
-import { PreguntaQuiz, QuizViewModel } from '../../../../shared/components/quiz/quiz.model';
-import { Quiz } from '../../../../shared/components/quiz/quiz';
+import { AttemptsService } from '@core/services/attempts.service';
+import { GameUiService } from '@core/services/game-ui.service';
+import { PreguntaQuiz, QuizViewModel } from '@shared/components/quiz/quiz.model';
+import { Quiz } from '@shared/components/quiz/quiz';
 
 const CANTIDAD = 25;
 const PUNTOS: Record<number, number> = { 1: 10, 2: 15, 3: 20 };
@@ -262,7 +262,7 @@ export class Piramides implements OnInit, OnDestroy {
     const filas = revelar ? p.completa : p.oculta;
     return `
       <div class="piramide-caja d-flex flex-column align-items-center w-100">
-        <div class="piramide-render">${this.renderizarFilas(filas)}</div>
+        <div class="piramide-render piramide-filas-${filas.length}">${this.renderizarFilas(filas)}</div>
       </div>
     `;
   }

@@ -16,8 +16,8 @@ import {
   ICONO_TIPO,
   MaterialBiblioteca,
   analizarEnlaceDrive
-} from '../models/biblioteca.model';
-import { BibliotecaService } from '../services/biblioteca.service';
+} from '@features/biblioteca/models/biblioteca.model';
+import { BibliotecaService } from '@features/biblioteca/services/biblioteca.service';
 
 function enlaceDriveValido(control: AbstractControl): ValidationErrors | null {
   const valor = String(control.value ?? '').trim();

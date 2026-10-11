@@ -1,8 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 
-import { ActividadResumen } from '../../../core/models/actividad.model';
-import { ActivityCard } from '../../../shared/components/activity-card/activity-card';
-import { ActividadesService } from '../services/actividades.service';
+import { ActividadResumen } from '@core/models/actividad.model';
+import { ActivityCard } from '@shared/components/activity-card/activity-card';
+import { ActividadesService } from '@features/actividades/services/actividades.service';
 
 @Component({
   selector: 'app-actividades',

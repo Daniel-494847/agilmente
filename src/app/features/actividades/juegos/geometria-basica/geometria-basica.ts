@@ -1,14 +1,14 @@
 import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
 import { Router } from "@angular/router";
-import { AttemptsService } from "../../../../core/services/attempts.service";
-import { GameUiService } from "../../../../core/services/game-ui.service";
-import { Quiz } from "../../../../shared/components/quiz/quiz";
+import { AttemptsService } from "@core/services/attempts.service";
+import { GameUiService } from "@core/services/game-ui.service";
+import { Quiz } from "@shared/components/quiz/quiz";
 import {
   ConfiguracionQuiz,
   PreguntaQuiz,
   QuizViewModel,
   TipoPregunta,
-} from "../../../../shared/components/quiz/quiz.model";
+} from "@shared/components/quiz/quiz.model";
 
 // Geometría Básica (un solo archivo): 25 ejercicios por nivel con gráficos SVG.
 // Cada respuesta se CALCULA con fórmulas a partir de lo que se dibuja.

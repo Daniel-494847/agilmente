@@ -1,14 +1,14 @@
 import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
 import { Router } from "@angular/router";
-import { AttemptsService } from "../../../../core/services/attempts.service";
-import { GameUiService } from "../../../../core/services/game-ui.service";
-import { Quiz } from "../../../../shared/components/quiz/quiz";
+import { AttemptsService } from "@core/services/attempts.service";
+import { GameUiService } from "@core/services/game-ui.service";
+import { Quiz } from "@shared/components/quiz/quiz";
 import {
   ConfiguracionQuiz,
   PreguntaQuiz,
   QuizViewModel,
   TipoPregunta,
-} from "../../../../shared/components/quiz/quiz.model";
+} from "@shared/components/quiz/quiz.model";
 
 const EJERCICIOS_POR_NIVEL = 25;
 const PUNTOS_POR_NIVEL = [10, 15, 20];

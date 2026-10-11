@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { ActividadResumen } from '../../../core/models/actividad.model';
+import { ActividadResumen } from '@core/models/actividad.model';
 
 /** Mapa colorTema → clases Bootstrap */
 const TEMA_CLASES: Record<ActividadResumen['colorTema'], string> = {

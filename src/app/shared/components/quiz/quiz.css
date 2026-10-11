@@ -26,7 +26,11 @@
 }
 
 .quiz-page {
-  --qz-base: clamp(1rem, 0.5vw + 0.85rem, 1.2rem);
+  /* Base escalada por ANCHO y ALTO: crece con la pantalla y se compacta cuando
+     el alto es escaso. Como casi todo lo demás va en `em`, al encoger la base
+     encogen también enunciado, opciones, separaciones y tarjetas: el juego
+     caba completo en vez de cortarse por abajo. */
+  --qz-base: clamp(0.88rem, 0.5vw + 0.6vh + 0.55rem, 1.2rem);
   --qz-enunciado: calc(var(--qz-base) * 1.15);
   --qz-serie: calc(var(--qz-base) * 1.35);
   --qz-titulo: calc(var(--qz-base) * 2);
@@ -71,32 +75,51 @@
   --qz-soft: #ffedd5;
 }
 
+.quiz-page[data-theme='cyan'] {
+  --qz-soft: #cff4fc;
+}
+
 /* ----------------------------------------------------------------------------
    Anchos: la lectura no se estira en pantallas grandes y las tarjetas de
    intro y resultado comparten caja para que la pantalla no "salte" al empezar.
    -------------------------------------------------------------------------- */
-/* `safe center` centra la tarjeta de intro y de resultado en pantallas altas y,
-   cuando el contenido no cabe (móvil pequeño), vuelve arriba: con un `center` a
-   secas la parte superior quedaría cortada y sin poder desplazarse. */
+/* El contenedor empieza en la cabecera: el sobrante —si lo hay— va al pie, no
+   en dos huecos repartidos alrededor del bloque. */
 .quiz-page .container-xl {
   width: 100%;
   max-width: 1240px;
   padding-inline: clamp(0.5rem, 3vw, 3rem);
-  justify-content: safe center;
+  /* El bloque (cabecera + tarjeta) se pega ARRIBA y el sobrante cae al pie.
+     Con `safe center` el navegador lo centraba en el alto completo de la
+     tarjeta y, como la tarjeta ya mide 100dvh, empujaba la cabecera hacia
+     dentro: de ahí el hueco en blanco de arriba y el corte de abajo. */
+  justify-content: flex-start;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
+/* La tarjeta ocupa el alto que le presta el contenedor y centra su contenido con
+   `margin-block: auto` (el mismo truco que usaba antes el contenedor con
+   `safe center`): en pantallas altas el sobrante se reparte a los lados de la
+   tarjeta —y no por encima de la cabecera— y en pantallas cortas la tarjeta se
+   aprieta contra el alto disponible en vez de desbordar y recortarse. */
 .quiz-page .qz-intro-card,
 .quiz-page .qz-result-card {
   width: min(100%, 44rem);
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-block: auto;
+  align-self: center;
+  justify-content: center;
 }
 
 .quiz-page header {
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  flex: 0 0 auto;
+  margin-bottom: 0.25rem;
   /* En modo juego el sidebar se reduce a logo + botón menú y queda fijo
      flotando arriba a la izquierda (12px de margen + 48px de logo + 8px de
      hueco + ~40px del botón ≈ 108px). La cabecera reserva ese ancho para que
@@ -144,11 +167,13 @@
    - .qz-contenido: zona con el contenido principal (enunciado + opciones)
    - .alert: zona fija (feedback con botón "Siguiente" siempre visible)
 
-   Sin scroll interno: todo el contenido debe caber en la pantalla.
+   Idealmente todo cabe sin scroll (las piezas elásticas encogen); si un juego
+   no cabe, .qz-contenido hace scroll interno y la parte inferior siempre se ve.
    En móviles se compacta usando media queries. */
 .quiz-page .qz-question-card {
   gap: 0.75rem;
   flex: 1 1 auto;
+  width: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -156,20 +181,56 @@
   padding: clamp(0.5rem, 1.5vw, 1rem);
 }
 
-/* Zona de contenido: enunciado + opciones (sin scroll) */
+/* Zona de contenido: enunciado + opciones.
+   Primero intenta caber encogiendo las piezas elásticas (figura, rejilla,
+   opciones). Si aun así un juego necesita más alto del que la tarjeta puede
+   prestar, el scroll vertical interno aparece como red de seguridad: la parte
+   inferior NUNCA queda cortada e invisible. Cuando el contenido cabe, no hay
+   barra y nada cambia.
+
+   `justify-content: safe center`: como la tarjeta mide todo el alto de la
+   pantalla (flex-grow-1) y ahora la figura es pequeña, al pegar el contenido
+   arriba sobraba media tarjeta en blanco bajo las opciones. Centrado, el aire
+   se reparte arriba y abajo y el bloque se ve equilibrado. El `safe` evita el
+   problema clásico del centrado con overflow: si el contenido no cabe (figura
+   grande, rejilla ancha), el centrado se desactiva y vuelve a `flex-start`, así
+   el scroll interno muestra el principio en vez de recortarlo. */
 .quiz-page .qz-contenido {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  justify-content: safe center;
   gap: 0.75rem;
+  scrollbar-width: thin;
 }
 
 .quiz-page .qz-enunciado {
   font-size: var(--qz-enunciado);
   line-height: 1.3;
   text-align: center;
+}
+
+/* Fila de opciones: es el elemento elástico de la tarjeta —crece con el hueco
+   libre entre las últimas opciones y el feedback ("Siguiente")—, así que las
+   respuestas llenan toda la pantalla y no queda un vacío al pie.
+
+   La fila es una `.row` de Bootstrap: sus `.col` se estiran por defecto
+   (align-items: stretch) y cada `.btn.qz-answer` lleva `h-100`, de modo que
+   reparte la altura disponible entre todas las opciones. `min-height: 0`
+   permite encogerla cuando la pregunta trae figura/rejilla grande.
+
+   `flex: 0 1 auto` (no `1 1 auto`): cuando la pregunta lleva figura o rejilla,
+   ésa es la zona elástica y la fila de opciones se hinchaba hasta el fondo de
+   la tarjeta dejando un hueco en blanco bajo la última respuesta. Así las
+   opciones ocupan solo lo que miden y el sobrante queda como aire del bloque. */
+.quiz-page .qz-opciones {
+  flex: 0 1 auto;
+  min-height: 0;
+  width: 100%;
+  align-content: stretch;
 }
 
 /* ----------------------------------------------------------------------------
@@ -179,7 +240,10 @@
    juego pasa en `celda.clase`. `--qz-columnas` lo fija el propio enunciado.
    -------------------------------------------------------------------------- */
 .quiz-page .qz-rejilla {
-  --qz-celda: clamp(2.6rem, 9vw, 4.4rem);
+  /* Casilla cuadrada que responde al ANCHO y al ALTO de la ventana:
+     `min(9vw, 10dvh)` la encoge cuando el alto es escaso, así la rejilla
+     entera (lado × celda) cede sitio y el enunciado/opciones no se cortan. */
+  --qz-celda: clamp(2rem, min(9vw, 10dvh), 4.4rem);
 
   display: grid;
   grid-template-columns: repeat(var(--qz-columnas, 3), var(--qz-celda));
@@ -258,16 +322,24 @@
   padding-inline: 1rem;
 }
 
-/* Figura de la pregunta (los SVG de Conteo de Figuras y Geometría
-   Básica): es el elemento flexible de la tarjeta —crece con el hueco
-   libre hasta el doble de su tamaño natural y se achica sola cuando
-   no alcanza—, así que la pregunta cabe entera SIN scroll en
-   cualquier pantalla. `object-fit: contain` la escala sin deformar. */
+/* Figura de la pregunta (los SVG de Conteo de Figuras, Geometría Básica,
+   Sucesiones y Patrones…): mide SOLO lo que mide el dibujo.
+
+   Antes era `flex: 1 1 auto` con `height: 100%` en la imagen: se estiraba a
+   todo el alto libre de la tarjeta (hasta 26rem / 55dvh) aunque el dibujo
+   fuera una fila de figuras de 2cm. Eso dejaba franjas blancas enormes arriba
+   y abajo del gráfico y empujaba el enunciado y las opciones fuera de la
+   pantalla.
+
+   Ahora la figura no crece y la imagen se limita por ALTO y por ANCHO: el
+   gráfico ocupa una franja de tamaño de figura, centrada, y el sitio sobrante
+   se lo quedan el enunciado y las opciones. `max-height` acota por alto de la
+   ventana para que en pantallas bajas el dibujo ceda sitio en vez de
+   desbordar. */
 .quiz-page .qz-figura {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   width: 100%;
-  max-height: 26rem;
   margin-block: 0.25rem;
   display: flex;
   align-items: center;
@@ -275,15 +347,16 @@
 }
 
 .quiz-page .qz-figura img {
-  width: 100%;
-  height: 100%;
+  width: auto;
+  height: auto;
+  max-width: min(100%, 34rem);
+  max-height: min(20rem, 42dvh);
   object-fit: contain;
 }
 
 /* En pantallas pequeñas la figura se compacta para evitar scroll */
 @media (max-width: 575.98px) {
-  .quiz-page .qz-figura {
-    flex: 0 1 auto;
+  .quiz-page .qz-figura img {
     max-height: 8rem;
   }
 }
@@ -324,6 +397,31 @@
   line-height: 1.2;
 }
 
+/* Título del feedback («¡Muy bien!» / «¡Casi! Sigue intentando») y el aviso
+   entero: tienen que poder ENCOGER y partir línea. Antes el título iba con
+   `flex-shrink-0`, así que en pantallas muy estrechas (320px) el título y el
+   botón no cedían y el aviso se salía de la tarjeta (el botón «Siguiente»
+   quedaba cortado por la derecha). Con `min-width: 0` el texto puede partir
+   palabra y con `flex-wrap` el aviso pasa el botón a su propia fila si hace
+   falta, en lugar de desbordar la tarjeta. */
+.quiz-page .qz-feedback-titulo {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.quiz-page .qz-question-card .alert {
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+/* La explicación, cuando el aviso se estrecha, no debe comerse el ancho del
+   botón: deja de ser la única elástica y pasa a ocupar su propia fila. */
+.quiz-page .qz-question-card .alert .qz-boton-avanzar {
+  min-width: 0;
+}
+
 /* ----------------------------------------------------------------------------
    Responsividad — pantallas pequeñas (móviles): SIN SCROLL
 
@@ -337,7 +435,7 @@
    -------------------------------------------------------------------------- */
 @media (max-width: 575.98px) {
   .quiz-page {
-    --qz-base: 0.85rem;
+    --qz-base: 0.94rem;
   }
 
   .quiz-page header {
@@ -364,8 +462,11 @@
   }
 
   /* Figura compacta: en móviles no debe ocupar más de 6rem */
-  .quiz-page .qz-figura {
+  .quiz-page .qz-figura img {
     max-height: 6rem;
+  }
+
+  .quiz-page .qz-figura {
     margin-block: 0.05rem;
   }
 
@@ -400,7 +501,7 @@
 
 @media (max-width: 359.98px) {
   .quiz-page {
-    --qz-base: 0.8rem;
+    --qz-base: 0.88rem;
   }
 
   .quiz-page header {
@@ -411,7 +512,7 @@
     margin-left: 3.5rem;
   }
 
-  .quiz-page .qz-figura {
+  .quiz-page .qz-figura img {
     max-height: 4.5rem;
   }
 }
@@ -501,4 +602,108 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+/* -------------------------------------------------------------------------------
+   Salvaguardas anti-desborde — TODO lo que aporta el juego tiene que caber en la
+   tarjeta en cualquier pantalla:
+
+   - Enunciado, texto de opción y HTML inyectado parten palabras largas
+     (cifras pegadas, URLs, textos de Razonamiento Aplicado) en lugar de
+     ensanchar la tarjeta y crear un scroll horizontal.
+   - `min-width: 0` en las palabras: son elementos flex y sin esto no se
+     encochen por debajo de su contenido, que es la causa clásica de que la
+     fila de opciones se salga de la tarjeta.
+   ------------------------------------------------------------------------------- */
+.quiz-page .qz-enunciado,
+.quiz-page .qz-answer-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* El HTML inyectado (pirámides, tablas…) nunca más ancho que la tarjeta: sus
+   hijos se limitan al 100% del ancho disponible. */
+.quiz-page .qz-html-content {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.quiz-page .qz-html-content > *,
+.quiz-page .qz-custom-content * {
+  max-width: 100%;
+}
+
+/* Rejilla de casilleros: `minmax(0, …)` deja que las columnas se ESTRECHEN
+   cuando no caben (rejillas anchas en móviles) en lugar de desbordar; la
+   casilla rellena su columna y conserva el cuadrado con aspect-ratio. */
+.quiz-page .qz-rejilla {
+  max-width: 100%;
+  grid-template-columns: repeat(var(--qz-columnas, 3), minmax(0, var(--qz-celda)));
+}
+.quiz-page .qz-rejilla-celda {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* Figura: por mucha anchura del SVG, nunca desborda la tarjeta. Este tope es
+   el TECHO exterior (el ancho/alto de la propia tarjeta); el tamaño fino lo
+   pone la regla de `.qz-figura img` de arriba. */
+.quiz-page .qz-figura img {
+  max-width: min(100%, 34rem);
+}
+
+/* -------------------------------------------------------------------------------
+   Pantalla apaisada (móvil horizontal): el alto es el recurso escaso. Se
+   compacta cabecera, tarjeta y figura para que enunciado y opciones quepan sin
+   que la tarjeta recorte contenido.
+   ------------------------------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 560px) {
+  .quiz-page header {
+    margin-bottom: 0.35rem;
+    padding-left: 4rem;
+  }
+
+  .quiz-page .qz-boton-volver {
+    margin-left: 4rem;
+  }
+
+  .quiz-page .qz-question-card {
+    gap: 0.4rem;
+    padding: 0.4rem;
+  }
+
+  .quiz-page .qz-contenido {
+    gap: 0.4rem;
+  }
+
+  .quiz-page .qz-figura img {
+    max-height: min(10rem, 30dvh);
+  }
+
+  .quiz-page .qz-figura {
+    margin-block: 0.1rem;
+  }
+
+  /* El alto es el recurso escaso: el enunciado baja de tamaño para no empujar
+     las opciones, y las opciones se quedan compactas pero NUNCA desaparecen.
+     Antes, con un enunciado largo (p. ej. un sudoku de Juegos Lógicos), el texto
+     se llevaba todo el alto y `.qz-contenido` (overflow: hidden) recortaba la
+     fila de respuestas: el alumno se quedaba sin poder contestar. */
+  .quiz-page .qz-enunciado {
+    font-size: var(--qz-base);
+    line-height: 1.2;
+  }
+
+  .quiz-page .qz-rejilla {
+    --qz-celda: clamp(1.6rem, 7vh, 2.6rem);
+  }
+
+  .quiz-page .qz-opciones {
+    flex: 0 0 auto;
+  }
+
+  .quiz-page .qz-answer {
+    padding-block: 0.15rem;
+  }
 }

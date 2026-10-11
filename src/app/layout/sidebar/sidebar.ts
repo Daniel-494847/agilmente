@@ -2,9 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
-import { auth } from '../../core/firebase';
-import { UserRoleService } from '../../core/auth/user-role.service';
-import { GameUiService } from '../../core/services/game-ui.service';
+import { auth } from '@core/firebase';
+import { UserRoleService } from '@core/auth/user-role.service';
+import { GameUiService } from '@core/services/game-ui.service';
 
 interface ItemMenu {
   etiqueta: string;

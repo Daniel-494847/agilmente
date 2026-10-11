@@ -1,8 +1,8 @@
 import { Component, Input, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { AttemptsService } from '../../../../../core/services/attempts.service';
-import { GameUiService } from '../../../../../core/services/game-ui.service';
+import { AttemptsService } from '@core/services/attempts.service';
+import { GameUiService } from '@core/services/game-ui.service';
 
 type TipoOperacion = 'sumas' | 'restas' | 'multiplicacion' | 'division' | 'combinadas' | 'operaciones-basicas';
 

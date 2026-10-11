@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
-import { auth, colecciones } from '../../../core/firebase';
+import { auth, colecciones } from '@core/firebase';
 
 @Component({
   selector: 'app-login',

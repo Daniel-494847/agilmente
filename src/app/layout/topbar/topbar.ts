@@ -2,9 +2,9 @@ import { Component, Input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import { auth } from '../../core/firebase';
-import { UserRoleService } from '../../core/auth/user-role.service';
-import { UsuarioResumen } from '../../core/models/usuario.model';
+import { auth } from '@core/firebase';
+import { UserRoleService } from '@core/auth/user-role.service';
+import { UsuarioResumen } from '@core/models/usuario.model';
 
 @Component({
   selector: 'app-topbar',

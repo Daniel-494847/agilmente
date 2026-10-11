@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { UnidadEducativaService } from '../services/unidad-educativa.service';
+import { UnidadEducativaService } from '@features/unidad-educativa/services/unidad-educativa.service';
 
 @Component({
   selector: 'app-unidad-educativa-admin',

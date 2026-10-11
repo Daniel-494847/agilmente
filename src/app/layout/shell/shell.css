@@ -1,8 +1,22 @@
-/* Solo layout de modo juego a pantalla completa */
+/* Solo layout de modo juego a pantalla completa.
+
+   La fila de nivel superior lleva `min-vh-100` y en modo juego eso la deja
+   MÁS ALTA que la ventana cuando el shell tiene scroll o zoom, así que el
+   alto real (`height: 100dvh`) se queda corto y la tarjeta acaba recortada
+   por abajo. Con la altura fijada a 100dvh y `min-height: 0` el alto manda
+   la ventana, no el contenido. */
 :host .game-active {
   height: 100vh;
   height: 100dvh;
   min-height: 0 !important;
+  overflow: hidden;
+}
+
+/* Con el quiz a pantalla completa (position: fixed) la columna no debe
+   reservar el alto del contenido: solo el de la ventana. */
+:host .game-active > .flex-grow-1 {
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 

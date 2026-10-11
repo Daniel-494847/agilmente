@@ -2,8 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { ActividadResumen } from '../../../core/models/actividad.model';
-import { ActividadesService } from '../services/actividades.service';
+import { ActividadResumen } from '@core/models/actividad.model';
+import { ActividadesService } from '@features/actividades/services/actividades.service';
 
 @Component({
   selector: 'app-actividades-admin',

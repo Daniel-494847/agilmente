@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { requireAdmin } from '../../core/guards/route-guards';
+import { requireAdmin } from '@core/guards/route-guards';
 
 export const BIBLIOTECA_ROUTES: Routes = [
   {

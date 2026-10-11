@@ -1,4 +1,4 @@
-import { ActividadResumen } from '../../../core/models/actividad.model';
+import { ActividadResumen } from '@core/models/actividad.model';
 
 /** Única fuente de verdad del catálogo de actividades. */
 export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
@@ -21,9 +21,9 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     ruta: '/razonamiento-logico/conteo-figuras'
   },
   {
-    id: 4,
+    id: 3,
     titulo: 'Operaciones Básicas',
-    descripcion: 'Practica sumas, restas, multiplicaciones y divisiones en solitario contra el reloj.',
+    descripcion: 'Suma, resta y multiplica resolviendo desafíos con dibujos, por niveles.',
     icono: 'bi-plus-slash-minus',
     imagen: '/images/Operaciones-con-Numeros-Naturales.webp',
     colorTema: 'blue',

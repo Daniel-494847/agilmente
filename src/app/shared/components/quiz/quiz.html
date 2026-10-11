@@ -1,4 +1,4 @@
-<main class="quiz-page position-fixed top-0 start-0 end-0 bottom-0 overflow-auto p-2 p-md-3" [attr.data-theme]="vista.colorTema" style="z-index: 1040">
+<main class="quiz-page position-fixed top-0 start-0 end-0 bottom-0 overflow-auto p-0" [attr.data-theme]="vista.colorTema" style="z-index: 1040">
   @if (vista.mostrarConfeti) {
     <div class="confeti" aria-hidden="true">
       @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
@@ -122,7 +122,7 @@
               @if (pregunta.contenidoHtml) {
                 <div class="qz-html-content" [innerHTML]="pregunta.contenidoHtml"></div>
               }
-              <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-1 w-100" role="listbox">
+              <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-1 w-100 qz-opciones" role="listbox">
                 @for (op of pregunta.opciones; track op.id; let i = $index) {
                   <div class="col">
                     <button
@@ -138,7 +138,7 @@
                       (click)="respuestaSeleccionada.emit(op.id)"
                     >
                       <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
-                      <span class="flex-grow-1">{{ op.texto }}</span>
+                      <span class="flex-grow-1 qz-answer-text">{{ op.texto }}</span>
                       @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
                         <i class="bi bi-check-circle-fill"></i>
                       }
@@ -153,7 +153,7 @@
           } @else {
             <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:
                  sin eso las opciones se pegaban al enunciado. -->
-            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0 w-100" role="listbox">
+            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0 w-100 qz-opciones" role="listbox">
               @for (op of pregunta.opciones; track op.id; let i = $index) {
                 <div class="col">
                   <button
@@ -169,7 +169,7 @@
                     (click)="respuestaSeleccionada.emit(op.id)"
                   >
                     <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
-                    <span class="flex-grow-1">{{ op.texto }}</span>
+                    <span class="flex-grow-1 qz-answer-text">{{ op.texto }}</span>
                     @if (vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId) {
                       <i class="bi bi-check-circle-fill"></i>
                     }
@@ -184,8 +184,8 @@
         </div>
 
         @if (vista.estado === 'feedback') {
-          <div class="alert mb-0 border-0 rounded-4 d-flex align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
-            <p class="fw-bold mb-0 flex-shrink-0">
+          <div class="alert mb-0 border-0 rounded-4 d-flex flex-wrap align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
+            <p class="fw-bold mb-0 qz-feedback-titulo">
               @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
               @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! Sigue intentando }
             </p>

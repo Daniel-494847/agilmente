@@ -41,9 +41,10 @@ La apariencia se cambia mediante los campos de `PreguntaQuiz`, no con otra panta
 - `contenidoHtml` para contenido personalizado en estado `jugando`
 
 Excepciones conocidas: `matematicas-interactivas/*` (sumas, restas, multiplicación,
-división, combinadas, duelo) y `operaciones-basicas/*` usan keypad numérico propio
-porque son retos de rapidez/competencia, no quizzes de opción múltiple. Si se
-convierten en quiz, deben migrar a `app-quiz`.
+división, combinadas, duelo) usan keypad numérico propio porque son retos de
+rapidez/competencia, no quizzes de opción múltiple. Si se convierten en quiz,
+deben migrar a `app-quiz`. (`operaciones-basicas` ya migró: es un único
+`OperacionesNaturales` construido con la plantilla.)
 
 ## Regla: todos los botones son `.btn` de Bootstrap
 
@@ -94,8 +95,7 @@ de Bootstrap (`btn-primary`, `btn-success`, `btn-warning`, `btn-outline-dark`,
 - **Angular 22** standalone, **zoneless**, sin `NgModule` de feature
 - **TypeScript ~6.0** con `strict`, `noImplicitOverride`, `noImplicitReturns`
 - **Bootstrap 5.3** + bootstrap-icons (sin CSS propio para botones)
-- **Firebase 12** (Firestore + Storage)
-- **KaTeX** para renderizado de matemáticas
+- **Firebase 12** (Firestore) + **Cloudinary** (subida de imágenes)
 - **Vitest** + jsdom para tests
 
 ### Estructura de carpetas
@@ -154,7 +154,7 @@ src/app/
 | `sucesiones-patrones/` | `SucesionesPatrones` | Secuencias y relaciones entre imágenes/números |
 | `sucesiones/` | `Sucesiones` | Completar secuencias numéricas |
 | `conteo-figuras/` | `ConteoFiguras` | Contar figuras, segmentos, ángulos, triángulos |
-| `operaciones-basicas/` | `OperacionesBasicasMenu` + hijos | Sumas, restas, multiplicación, división, combinadas, mezcladas |
+| `operaciones-basicas/` | `OperacionesNaturales` | Operaciones Básicas: quiz único de 25 desafíos con dibujos SVG por nivel (sumas, restas y multiplicaciones) |
 | `matematicas-interactivas/` | `MatematicasInteractivas` + hijos | Duelos por equipos: sumas, restas, multiplicación, división, combinadas |
 | `actividades-mentales/` | `ActividadesMentales` | Cálculo mental: series, conteo rápido, comparaciones |
 | `geometria-basica/` | `GeometriaBasica` | Figuras, perímetros, relaciones geométricas |
@@ -177,7 +177,7 @@ para permitir contenido dinámico.
 |---|---|---|---|
 | 1 | Sucesiones y Patrones | `/razonamiento-logico/sucesiones-patrones` | purple |
 | 2 | Conteo de Figuras | `/razonamiento-logico/conteo-figuras` | green |
-| 4 | Operaciones Básicas | `/razonamiento-logico/operaciones-basicas` | blue |
+| 3 | Operaciones Básicas | `/razonamiento-logico/operaciones-basicas` | blue |
 | 5 | Actividades Mentales | `/razonamiento-logico/actividades-mentales` | green |
 | 6 | Geometría Básica | `/razonamiento-logico/geometria-basica` | orange |
 | 7 | Conjuntos | `/razonamiento-logico/conjuntos` | pink |
@@ -190,7 +190,7 @@ para permitir contenido dinámico.
 | 13 | Matemáticas Interactivas | `/razonamiento-logico/matematicas-interactivas` | green |
 | 14 | Juegos Mentales | `/razonamiento-logico/juegos-mentales` | pink |
 
-**Nota:** El ID 3 no existe (salto en la numeración histórico).
+**Nota:** El ID 4 no existe (salto en la numeración histórico).
 
 ### Rutas
 
@@ -209,13 +209,7 @@ Todas las rutas de actividades cuelgan de `/razonamiento-logico/...` con lazy lo
 │   ├── division                → Division
 │   └── combinadas              → Combinadas
 ├── conteo-figuras              → ConteoFiguras
-├── operaciones-basicas        → OperacionesBasicasMenu
-│   ├── sumas                   → OperacionesBasicasSumas
-│   ├── restas                  → OperacionesBasicasRestas
-│   ├── multiplicacion          → OperacionesBasicasMultiplicacion
-│   ├── division                → OperacionesBasicasDivision
-│   ├── combinadas              → OperacionesBasicasCombinadas
-│   └── mezcladas               → OperacionesBasicasMezcladas
+├── operaciones-basicas        → OperacionesNaturales (quiz único con dibujos SVG)
 ├── operadores-matematicos      → OperadoresMatematicos
 ├── actividades-mentales        → ActividadesMentales
 ├── geometria-basica            → GeometriaBasica
@@ -246,7 +240,8 @@ Rutas raíz (`app.routes.ts`):
 | Servicio | Ubicación | Rol |
 |---|---|---|
 | `AttemptsService` | `core/services/` | Registra intentos de juego en Firestore (`iniciar` / `finalizar`). Guarda puntaje, nivel, respuestas, duración. |
-| `ContentService` | `core/services/` | CRUD genérico de Firestore + subida de imágenes a Storage. |
+| `ContentService` | `core/services/` | CRUD genérico de Firestore (`obtener`, `listar`, `listarPublicados`, `guardar`, `actualizar`, `eliminar`). |
+| `CloudinaryService` | `core/services/` | Sube imágenes a Cloudinary con preset unsigned `images-agilmente` (cloud `kww1uxz3`). Signals `subiendo`/`progreso`/`error` y URLs optimizadas (`urlOptimizada`, `urlCuadrado`). |
 | `FullscreenService` | `core/services/` | Maneja pantalla completa del navegador. Signal `activo` y `soportado`. |
 | `GameUiService` | `core/services/` | Signal `jugando` (boolean). Cuando es `true`, el shell colapsa el sidebar. |
 | `UserProgressService` | `core/services/` | Calcula puntos/nivel del usuario desde intentos finalizados. Títulos: Explorador → Aprendiz → Pensador → Estratega → Maestro lógico → Leyenda. |

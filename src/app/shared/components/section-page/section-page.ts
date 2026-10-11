@@ -1,8 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { ContentService } from '../../../core/services/content.service';
-import { NOMBRES_COLECCION } from '../../../core/firebase';
+import { ContentService } from '@core/services/content.service';
+import { NOMBRES_COLECCION } from '@core/firebase';
 
 interface SectionItem {
   title: string;

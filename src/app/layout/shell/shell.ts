@@ -2,13 +2,13 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
-import { auth } from '../../core/firebase';
-import { UsuarioResumen } from '../../core/models/usuario.model';
-import { UserRoleService } from '../../core/auth/user-role.service';
-import { GameUiService } from '../../core/services/game-ui.service';
-import { UserProgressService } from '../../core/services/user-progress.service';
-import { Sidebar } from '../sidebar/sidebar';
-import { Topbar } from '../topbar/topbar';
+import { auth } from '@core/firebase';
+import { UsuarioResumen } from '@core/models/usuario.model';
+import { UserRoleService } from '@core/auth/user-role.service';
+import { GameUiService } from '@core/services/game-ui.service';
+import { UserProgressService } from '@core/services/user-progress.service';
+import { Sidebar } from '@layout/sidebar/sidebar';
+import { Topbar } from '@layout/topbar/topbar';
 
 @Component({
   selector: 'app-shell',

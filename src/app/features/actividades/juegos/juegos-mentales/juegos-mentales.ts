@@ -1,9 +1,9 @@
 ﻿import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
-import { AttemptsService } from '../../../../core/services/attempts.service';
-import { FullscreenService } from '../../../../core/services/fullscreen.service';
-import { GameUiService } from '../../../../core/services/game-ui.service';
+import { AttemptsService } from '@core/services/attempts.service';
+import { FullscreenService } from '@core/services/fullscreen.service';
+import { GameUiService } from '@core/services/game-ui.service';
 
 type Modo = 'suma' | 'resta' | 'multiplicacion' | 'combinadas';
 

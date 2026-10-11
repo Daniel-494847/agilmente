@@ -25,9 +25,13 @@
   max-width: 680px;
 }
 
+/* 4 modos en una fila cuando hay ancho; en pantallas estrechas se reparten en
+   columnas que quepan. Antes iban fijos `repeat(4, 1fr)` y en móviles (375px)
+   la 4ª tarjeta —«Combinadas»— se salía del viewport (desborde horizontal).
+   `minmax(0, 1fr)` permite además que cada columna encoja de verdad. */
 .jm-modos {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
   gap: 0.75rem;
 }
 
@@ -47,6 +51,9 @@
 
 .jm-modo-nombre {
   font-size: 0.85rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .jm-modo-apagado {
