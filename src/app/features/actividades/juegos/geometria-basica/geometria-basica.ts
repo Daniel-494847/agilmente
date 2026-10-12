@@ -51,14 +51,18 @@ function rng(semilla: number) {
 }
 
 // ---------- Convierte los trazos en una imagen SVG (data URI) para el quiz ----------
+// El dibujo NO lleva fondo propio: la figura se pinta sobre el fondo del tema de
+// la plantilla, así deja de verse un recuadro blanco sobre el degradado. Los
+// trazos y las etiquetas van algo más gruesos/grandes porque en móvil la imagen
+// se reduce y a tamaño original (13px de etiqueta) las medidas no se leían.
 function svgDe(trazos: Trazo[]): string {
   const piezas = trazos.map(t => {
-    if (t.t === 'l') return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="2" stroke-linecap="round"${t.dash ? ' stroke-dasharray="6 5"' : ''}/>`;
-    if (t.t === 'p') return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2" stroke-linejoin="round"/>`;
-    if (t.t === 'c') return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2"/>`;
-    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="13" font-weight="bold" font-family="sans-serif" fill="#0d6efd">${t.s}</text>`;
+    if (t.t === 'l') return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="3" stroke-linecap="round"${t.dash ? ' stroke-dasharray="7 6"' : ''}/>`;
+    if (t.t === 'p') return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    if (t.t === 'c') return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3"/>`;
+    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="20" font-weight="bold" font-family="sans-serif" fill="#084298" stroke="#ffffff" stroke-width="4" paint-order="stroke">${t.s}</text>`;
   });
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200"><rect width="300" height="200" fill="#fff"/>${piezas.join('')}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">${piezas.join('')}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

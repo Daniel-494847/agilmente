@@ -240,9 +240,7 @@ function construirSudoku(nivel: number, e: number): PreguntaQuiz {
 
   return {
     id: `jl-${nivel}-${e}`,
-    enunciado:
-      `Sudoku ${n}×${n}: ¿qué ${cfg.objeto} va en la casilla ❓?\n` +
-      `No se repite ningún valor en la fila, la columna ni la caja (las cajas están separadas por líneas gruesas).`,
+    enunciado: `Sudoku ${n}×${n}: ¿qué ${cfg.objeto} va en la casilla?`,
     tipo: "opcion-multiple" as TipoPregunta,
     nivel,
     opciones: valores.map((v, k) => ({ id: IDS_OPCION[k], texto: cfg.simbolos[v - 1] })),
@@ -339,7 +337,12 @@ export class JuegosLogicos implements OnInit, OnDestroy {
   }
 
   private inicial(n: number): QuizViewModel {
-    const list = this.config.preguntas.filter((p) => p.nivel === n);
+    // Al elegir o reiniciar un nivel se mezcla el orden de sus 25 ejercicios.
+    const list = this.mezclar(this.config.preguntas.filter((p) => p.nivel === n));
+    this.config.preguntas = [
+      ...this.config.preguntas.filter((p) => p.nivel !== n),
+      ...list,
+    ];
     return {
       config: this.config,
       estado: "intro",
@@ -375,6 +378,16 @@ export class JuegosLogicos implements OnInit, OnDestroy {
       }
     }
     return out;
+  }
+
+  /** Baraja el orden de una lista (Fisher-Yates) con el azar de la partida. */
+  private mezclar<T>(a: T[]): T[] {
+    const c = [...a];
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
   }
 
   volver() {

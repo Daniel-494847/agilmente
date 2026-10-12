@@ -51,19 +51,22 @@ function rng(semilla: number) {
   };
 }
 
-// Convierte los trazos en una imagen SVG (data URI) para el quiz
+// Convierte los trazos en una imagen SVG (data URI) para el quiz.
+// Sin rectángulo de fondo blanco: la figura se pinta sobre el fondo del tema de
+// la plantilla, así no se ve un parche claro alrededor de las figuras. Trazo y
+// etiqueta van algo más gruesos/grandes porque en móvil la imagen se reduce.
 function svgDe(trazos: Trazo[]): string {
   const piezas = trazos.map(t => {
-    if (t.t === "l") return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="2" stroke-linecap="round"/>`;
-    if (t.t === "p") return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2" stroke-linejoin="round"/>`;
-    if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2"/>`;
-    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 13}" font-weight="bold" font-family="sans-serif" fill="${t.fill}">${t.s}</text>`;
+    if (t.t === "l") return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="3" stroke-linecap="round"/>`;
+    if (t.t === "p") return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3"/>`;
+    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 20}" font-weight="bold" font-family="sans-serif" fill="${t.fill}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${t.s}</text>`;
   });
   // El lienzo se RECORTA al dibujo: si no, el SVG de 300x200 con los trazos en
   // la franja central lleva medio lienzo en blanco y, al escalarlo el quiz, ese
   // blanco se convierte en dos franjas huecas alrededor de las figuras.
   const { x, y, w, h } = caja(trazos);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>${piezas.join("")}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}">${piezas.join("")}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

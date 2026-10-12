@@ -23,6 +23,17 @@ textarea {
   font-family: inherit;
 }
 
+/* Los iconos de bootstrap-icons se pintan con fuente. Bootstrap 5.3 define
+   `button { font-family: inherit }` y se carga DESPUÉS del CSS de los iconos, así
+   que ganaba por orden y los iconos dentro de un <button> salían vacíos (en el
+   sidebar en modo juego eso dejaba un cuadrado verde sin la hamburguesa).
+   Se reafirma la fuente de los iconos aquí, que es lo último en cargarse. */
+button.bi::before,
+button [class^='bi-']::before,
+button [class*=' bi-']::before {
+  font-family: 'bootstrap-icons' !important;
+}
+
 /* ---------------------------------------------------------------------------
    Pirámides — dibujo compacto que NUNCA se aplasta ni obliga a hacer scroll.
 

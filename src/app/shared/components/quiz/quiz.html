@@ -8,12 +8,17 @@
   }
 
   <div class="container-xl h-100 d-flex flex-column">
-    <header class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <!-- Cabecera en UNA sola fila. La distribución la pone el CSS de `.qz-header`
+         (no utilidades de Bootstrap) porque cambia por tamaño: en escritorio
+         «Volver» a la izquierda y el marcador (puntos, temporizador) + sonido a la
+         derecha; en móvil «Volver» CENTRADO y el marcador a la derecha. Ver
+         quiz.css. -->
+    <header class="qz-header">
       <button type="button" class="btn btn-outline-dark fw-semibold rounded-4 qz-boton-volver" (click)="volverAtras()">
         <i class="bi bi-arrow-left"></i> Volver
       </button>
 
-      <div class="d-flex align-items-center gap-2">
+      <div class="d-flex flex-nowrap align-items-center gap-2 qz-header-marcador">
         <span class="badge rounded-pill text-bg-warning px-3 py-2 fw-semibold">
           <i class="bi bi-star-fill"></i> {{ vista.resultado.puntaje }} pts
         </span>
@@ -97,6 +102,13 @@
             </span>
           </div>
 
+          <!-- ORDEN de lectura: primero el ENUNCIADO, luego la rejilla o la figura.
+               Antes iba al revés (figura antes que texto), así que en Geometría
+               Básica o Juegos Lógicos el dibujo empujaba la pregunta 280px hacia
+               abajo y el alumno leía primero el gráfico sin saber qué le pedían.
+               El enunciado es lo primero en todas las pantallas. -->
+          <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
+
           @if (pregunta.rejilla; as rejilla) {
             <div class="qz-rejilla" role="group" [attr.aria-label]="rejilla.descripcion ?? 'Rejilla del ejercicio'"
                  [style.--qz-columnas]="rejilla.lado">
@@ -114,20 +126,18 @@
             </figure>
           }
 
-          <h2 class="qz-enunciado fw-bold mb-0">{{ pregunta.enunciado }}</h2>
-
           @if (pregunta.tipo === 'personalizado') {
             <div class="qz-custom-content mt-2 d-flex flex-column">
               <ng-content select="[quiz-custom]"></ng-content>
               @if (pregunta.contenidoHtml) {
                 <div class="qz-html-content" [innerHTML]="pregunta.contenidoHtml"></div>
               }
-              <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-1 w-100 qz-opciones" role="listbox">
+              <div class="row row-cols-2 gx-2 gx-md-3 gy-2 mt-1 w-100 qz-opciones" role="listbox">
                 @for (op of pregunta.opciones; track op.id; let i = $index) {
                   <div class="col">
                     <button
                       type="button"
-                      class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
+                      class="btn qz-answer w-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
                       [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
                       [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
                       [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"
@@ -152,13 +162,22 @@
             </div>
           } @else {
             <!-- mt-0 neutraliza el margen negativo que la gutter vertical de .row impone:
-                 sin eso las opciones se pegaban al enunciado. -->
-            <div class="row row-cols-1 row-cols-sm-2 gx-2 gx-md-3 gy-2 mt-0 w-100 qz-opciones" role="listbox">
+                 sin eso las opciones se pegaban al enunciado.
+
+                 `row-cols-2`: DOS columnas en cualquier ancho, también en móvil
+                 (antes `row-cols-1 row-cols-sm-2` dejaba una sola columna por
+                 debajo de 576px).
+
+                 El botón NO lleva `h-100`: esa utilidad lo estiraba al alto de la
+                 columna y era lo que inflaba cada respuesta a ~250px en móvil. El
+                 estirado (solo donde interesa, en escritorio) lo pone el CSS de la
+                 plantilla con `.qz-opciones .col > .qz-answer`. -->
+            <div class="row row-cols-2 gx-2 gx-md-3 gy-2 mt-0 w-100 qz-opciones" role="listbox">
               @for (op of pregunta.opciones; track op.id; let i = $index) {
                 <div class="col">
                   <button
                     type="button"
-                    class="btn qz-answer w-100 h-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
+                    class="btn qz-answer w-100 d-flex align-items-center gap-3 text-start fw-semibold rounded-3"
                     [class.btn-outline-dark]="vista.estado !== 'feedback' && vista.seleccionada !== op.id"
                     [class.btn-primary]="vista.estado !== 'feedback' && vista.seleccionada === op.id"
                     [class.btn-success]="vista.estado === 'feedback' && op.id === pregunta.respuestaCorrectaId"

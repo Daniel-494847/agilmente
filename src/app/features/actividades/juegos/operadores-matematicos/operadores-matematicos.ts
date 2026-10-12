@@ -52,15 +52,17 @@ function rng(semilla: number) {
   };
 }
 
-// Convierte los trazos en una imagen SVG (data URI) para el quiz
+// Convierte los trazos en una imagen SVG (data URI) para el quiz.
+// Sin fondo propio (se pinta sobre el del tema) y con trazo/etiqueta más grandes:
+// en móvil la figura se reduce y a 13px las medidas no se leían.
 function svgDe(trazos: Trazo[]): string {
   const piezas = trazos.map(t => {
-    if (t.t === "l") return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="2" stroke-linecap="round"/>`;
-    if (t.t === "p") return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2" stroke-linejoin="round"/>`;
-    if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="2"/>`;
-    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 13}" font-weight="bold" font-family="sans-serif" fill="${t.fill}">${t.s}</text>`;
+    if (t.t === "l") return `<line x1="${t.x1}" y1="${t.y1}" x2="${t.x2}" y2="${t.y2}" stroke="${t.stroke}" stroke-width="3" stroke-linecap="round"/>`;
+    if (t.t === "p") return `<polygon points="${t.pts}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3" stroke-linejoin="round"/>`;
+    if (t.t === "c") return `<circle cx="${t.cx}" cy="${t.cy}" r="${t.r}" fill="${t.fill}" stroke="${t.stroke}" stroke-width="3"/>`;
+    return `<text x="${t.x}" y="${t.y}" text-anchor="middle" font-size="${t.size ?? 20}" font-weight="bold" font-family="sans-serif" fill="${t.fill}" stroke="#ffffff" stroke-width="4" paint-order="stroke">${t.s}</text>`;
   });
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200"><rect width="300" height="200" fill="#fff"/>${piezas.join("")}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">${piezas.join("")}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

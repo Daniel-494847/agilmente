@@ -91,7 +91,12 @@ export class ActividadesMentales implements OnInit, OnDestroy {
       });
   }
   private inicial(n: number): QuizViewModel {
-    const list = this.config.preguntas.filter((p) => p.nivel === n);
+    // Al elegir o reiniciar un nivel se mezcla el orden de sus ejercicios.
+    const list = this.mezclar(this.config.preguntas.filter((p) => p.nivel === n));
+    this.config.preguntas = [
+      ...this.config.preguntas.filter((p) => p.nivel !== n),
+      ...list,
+    ];
     const total = list.length;
     return {
       config: this.config,
@@ -142,6 +147,17 @@ export class ActividadesMentales implements OnInit, OnDestroy {
     }
     return out;
   }
+
+  /** Baraja el orden de una lista (Fisher-Yates) con el azar de la partida. */
+  private mezclar<T>(a: T[]): T[] {
+    const c = [...a];
+    for (let i = c.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [c[i], c[j]] = [c[j], c[i]];
+    }
+    return c;
+  }
+
   volver() {
     void this.router.navigateByUrl("/razonamiento-logico");
   }

@@ -288,6 +288,8 @@ export class Piramides implements OnInit, OnDestroy {
 
   seleccionarNivel(nivel: number): void {
     this.nivelActual = nivel;
+    // Cada vez que se elige el nivel se baraja el orden de sus ejercicios.
+    this.piramidesPorNivel[nivel - 1] = mezclar(this.piramidesPorNivel[nivel - 1]);
     const preguntas = this.obtenerPreguntas(nivel);
     const vm = this.vm();
     this.vm.set({
@@ -400,6 +402,8 @@ export class Piramides implements OnInit, OnDestroy {
 
   reiniciar(): void {
     const vm = this.vm();
+    // Al reiniciar se baraja de nuevo el orden de los ejercicios.
+    this.piramidesPorNivel[this.nivelActual - 1] = mezclar(this.piramidesPorNivel[this.nivelActual - 1]);
     const preguntas = this.obtenerPreguntas(this.nivelActual);
     this.vm.set({
       ...vm,
