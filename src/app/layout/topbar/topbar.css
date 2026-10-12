@@ -1,0 +1,50 @@
+/* Topbar — SOLO layout para móvil (los colores de badges y botones siguen
+   siendo las variantes de Bootstrap del propio HTML). */
+
+/* El bloque del saludo puede estrecharse sin empujar los badges de
+   puntos/nivel fuera de la tarjeta. */
+.topbar-usuario {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.topbar-usuario > div:last-child {
+  min-width: 0;
+}
+
+.topbar-usuario h2 {
+  overflow-wrap: anywhere;
+}
+
+/* El grupo de acciones nunca se estrecha: o cabe, o baja entero a su fila. */
+.topbar-acciones {
+  flex-shrink: 0;
+}
+
+/* Avatar de 46px en escritorio; el mismo círculo en móvil. */
+.topbar-avatar {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+@media (max-width: 575.98px) {
+  header.topbar {
+    margin: 0.5rem;
+    padding: 0.75rem;
+    gap: 0.6rem;
+  }
+
+  .topbar-usuario {
+    flex: 1 1 auto;
+  }
+
+  /* En móvil los badges (puntos, nivel, admin) ocupan su propia fila,
+     alineados a la izquierda y con libertad para envolverse: así nunca
+     se enciman ni se salen de la tarjeta. */
+  .topbar-acciones {
+    flex: 1 0 100%;
+    justify-content: flex-start;
+  }
+}

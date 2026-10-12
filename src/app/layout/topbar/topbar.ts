@@ -10,7 +10,8 @@ import { UsuarioResumen } from '@core/models/usuario.model';
   selector: 'app-topbar',
   standalone: true,
   imports: [RouterLink],
-  templateUrl: './topbar.html'
+  templateUrl: './topbar.html',
+  styleUrl: './topbar.css'
 })
 export class Topbar {
   /** Puntos, nivel y título vienen del progreso real del usuario. */

@@ -119,3 +119,19 @@
   display: flex !important;
   flex-direction: column;
 }
+
+/* En pantallas de móvil el widget flotante encoge (logo 36px y botón algo más
+   pequeño) para que la cabecera del quiz reserve solo 6rem y quepan "Volver",
+   los puntos y el sonido sin desordenarse. */
+@media (max-width: 575.98px) {
+  .sidebar--modo-juego .brand-icon img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sidebar--modo-juego .menu-toggle {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.9rem;
+  }
+}

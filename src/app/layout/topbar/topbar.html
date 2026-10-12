@@ -1,7 +1,7 @@
-<header class="sticky-top m-3 p-3 rounded-4 bg-white border shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3">
+<header class="topbar sticky-top m-3 p-3 rounded-4 bg-white border shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-3">
   @if (esVisitante()) {
-    <div class="d-flex align-items-center gap-3">
-      <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center border border-3 border-light shadow-sm" style="width: 46px; height: 46px">
+    <div class="topbar-usuario d-flex align-items-center gap-3">
+      <div class="topbar-avatar rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center border border-3 border-light shadow-sm">
         <i class="bi bi-lightbulb-fill"></i>
       </div>
       <div>
@@ -10,11 +10,11 @@
       </div>
     </div>
   } @else {
-    <div class="d-flex align-items-center gap-3">
+    <div class="topbar-usuario d-flex align-items-center gap-3">
       @if (usuario.avatarUrl) {
-        <img [src]="usuario.avatarUrl" [alt]="usuario.nombre" class="rounded-circle border border-3 border-light shadow-sm" width="46" height="46" />
+        <img [src]="usuario.avatarUrl" [alt]="usuario.nombre" class="topbar-avatar rounded-circle border border-3 border-light shadow-sm" />
       } @else {
-        <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center border border-3 border-light shadow-sm" style="width: 46px; height: 46px">
+        <div class="topbar-avatar rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center border border-3 border-light shadow-sm">
           {{ usuario.nombre.charAt(0) }}
         </div>
       }
@@ -31,7 +31,7 @@
     </div>
   }
 
-  <div class="d-flex align-items-center gap-2 flex-wrap">
+  <div class="topbar-acciones d-flex align-items-center gap-2 flex-wrap">
     @if (esVisitante()) {
       <a routerLink="/login" class="btn btn-primary btn-sm">Iniciar sesión</a>
       <a routerLink="/login" [queryParams]="{ registro: '1' }" class="btn btn-outline-primary btn-sm">Registrarse</a>

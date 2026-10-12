@@ -13,6 +13,12 @@
   flex-direction: column;
   overflow: hidden;
   background: #f3f8f4;
+
+  /* Reserva frente al widget flotante del sidebar en modo juego (logo +
+     hamburguesa fijos arriba-izquierda, z-index 1050, que cubren este
+     duelo). La usa el enlace «Volver» de .back-link; en móvil el widget
+     encoge y el hueco baja — ver sidebar.css. */
+  --duelo-zona-widget: 7.5rem;
 }
 
 /* ---------- Pantalla de inicio ---------- */
@@ -164,12 +170,17 @@
   gap: .5rem;
 }
 
-/* Enlace "volver": `btn btn-link` pone el aspecto, aquí solo la colocación. */
+/* Enlace "volver": `btn btn-link` pone el aspecto, aquí solo la colocación.
+   El margin-left lo aleja del widget flotante del sidebar en modo juego
+   (arriba-izquierda): sin él, en escritorio y móvil la flecha «Volver»
+   quedaba debajo del logo/menú flotante. Solo se mueve el enlace, no toda
+   la cabecera, para que el título y el temporizador sigan centrados. */
 .back-link {
   justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: .4rem;
+  margin-left: var(--duelo-zona-widget, 7.5rem);
 }
 
 /* Solo el tamaño cuadrado: el aspecto es el de `btn btn-outline-secondary`. */
@@ -573,6 +584,13 @@
 }
 
 @media (max-width: 600px) {
+  /* El widget flotante del sidebar encoge en móvil (logo 36px, ver
+     sidebar.css): 12 + 36 + 8 + ~32 ≈ 88px, así que 6rem (96px) bastan
+     y la flecha «Volver» no se queda sin sitio en pantallas estrechas. */
+  :host {
+    --duelo-zona-widget: 6rem;
+  }
+
   .duelo-page,
   .start-page {
     padding: .3rem;

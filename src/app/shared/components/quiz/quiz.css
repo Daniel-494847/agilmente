@@ -14,15 +14,16 @@
    btn-outline-dark). El tamaño lo manda este `font-size` (el padding va en em
    y crece con él).
 
-   En modo juego el sidebar es un widget flotante arriba-izquierda
-   (`sidebar.css`: logo 3rem + gap + hamburguesa, a `left: .75rem`). El
-   `margin-left` deja sitio para que el botón quede justo al lado de la
-   hamburguesa sin superponerse. */
+   El hueco frente al widget flotante del sidebar en modo juego (logo +
+   hamburguesa, ~108px fijos arriba a la izquierda) lo reserva UNA sola vez el
+   `padding-left` de `.quiz-page header`. Antes también había un `margin-left`
+   aquí, y los dos juntos empujaban la cabecera hasta 14.5rem: en móvil la fila
+   se quedaba sin sitio, los badges se colocaban bajo el widget flotante y la
+   cabecera se desordenaba. */
 .quiz-page .qz-boton-volver {
   font-size: 1em;
   padding: 0.25em 0.8em;
   line-height: 1.2;
-  margin-left: 7rem;
 }
 
 .quiz-page {
@@ -36,6 +37,11 @@
   --qz-titulo: calc(var(--qz-base) * 2);
 
   --qz-soft: var(--bs-primary-bg-subtle);
+
+  /* Ancho reservado para el widget flotante del sidebar en modo juego
+     (logo + hamburguesa, fijo arriba a la izquierda). Lo usa el
+     padding-left de la cabecera; en móvil el widget encoge y el hueco baja. */
+  --qz-zona-widget: 7.5rem;
 
   font-size: var(--qz-base);
   color: var(--bs-emphasis-color);
@@ -121,10 +127,19 @@
   flex: 0 0 auto;
   margin-bottom: 0.25rem;
   /* En modo juego el sidebar se reduce a logo + botón menú y queda fijo
-     flotando arriba a la izquierda (12px de margen + 48px de logo + 8px de
-     hueco + ~40px del botón ≈ 108px). La cabecera reserva ese ancho para que
-     "Volver" no quede debajo del menú: se separa 12px más (7.5rem en total). */
-  padding-left: 7.5rem;
+     flotando arriba a la izquierda (12px de margen + logo + 8px de hueco +
+     ~40px del botón ≈ 108px en escritorio y ~90px en móvil, donde el widget
+     encoge — ver sidebar.css). Este padding-left es el ÚNICO hueco reservado
+     para que "Volver" y los badges no queden debajo del menú: duplicarlo
+     (antes el botón añadía su propio margin-left) estrechaba la fila y en
+     móvil forzaba un wrap que desordenaba la cabecera. */
+  padding-left: var(--qz-zona-widget, 7.5rem);
+}
+
+/* Los badges (puntos, temporizador) y el botón de sonido nunca se estrechan:
+   si algo tiene que ceder ancho cuando la pantalla aprieta, es "Volver". */
+.quiz-page header > div {
+  flex-shrink: 0;
 }
 
 /* Bootstrap fija `--bs-btn-font-size: 1rem` en cada .btn, así que sin esto los
@@ -436,16 +451,14 @@
 @media (max-width: 575.98px) {
   .quiz-page {
     --qz-base: 0.94rem;
+    /* El widget flotante encoge en móvil (logo 36px): 12 + 36 + 8 + ~34 ≈ 90px,
+       así que 6rem (96px) bastan y sobra ancho para los badges de la cabecera. */
+    --qz-zona-widget: 6rem;
   }
 
   .quiz-page header {
-    padding-left: 4rem;
     margin-bottom: 0.25rem;
     gap: 0.3rem;
-  }
-
-  .quiz-page .qz-boton-volver {
-    margin-left: 4rem;
   }
 
   .quiz-page .container-xl {
@@ -502,14 +515,6 @@
 @media (max-width: 359.98px) {
   .quiz-page {
     --qz-base: 0.88rem;
-  }
-
-  .quiz-page header {
-    padding-left: 3.5rem;
-  }
-
-  .quiz-page .qz-boton-volver {
-    margin-left: 3.5rem;
   }
 
   .quiz-page .qz-figura img {
@@ -661,11 +666,6 @@
 @media (orientation: landscape) and (max-height: 560px) {
   .quiz-page header {
     margin-bottom: 0.35rem;
-    padding-left: 4rem;
-  }
-
-  .quiz-page .qz-boton-volver {
-    margin-left: 4rem;
   }
 
   .quiz-page .qz-question-card {
