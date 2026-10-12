@@ -95,7 +95,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
-  color: #be185d;
+  color: #000;
 }
 
 .jm-iniciar {
@@ -181,7 +181,7 @@
 .jm-numero {
   font-size: clamp(4rem, 15vw, 10rem);
   font-weight: 900;
-  color: #be185d;
+  color: #000;
   line-height: 1;
   min-height: 1.2em;
 }
@@ -259,7 +259,7 @@
 .jm-hueco-valor {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #be185d;
+  color: #000;
 }
 
 .jm-teclado {

@@ -38,7 +38,7 @@ export class Sidebar {
       etiqueta: 'Inicio',
       icono: 'bi-house-door',
       tono: 'primary',
-      ruta: '/inicio'
+      ruta: '/'
     },
     {
       etiqueta: 'Razonamiento lógico',
@@ -166,7 +166,7 @@ export class Sidebar {
       }
       localStorage.removeItem('agilmente_user_name');
       this.cerrarMenuMovil();
-      await this.router.navigateByUrl('/inicio');
+      await this.router.navigateByUrl('/');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }

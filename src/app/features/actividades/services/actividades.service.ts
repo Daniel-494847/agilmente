@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore'
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import { ActividadResumen } from '@core/models/actividad.model';
-import { ACTIVIDADES_INICIALES } from '@features/actividades/data/actividades.data';
+import { ACTIVIDADES_INICIALES, compararActividades } from '@features/actividades/data/actividades.data';
 
 /** Actividad con el slug con el que guarda sus intentos (lo que llega en `intentos.actividadId`). */
 export interface ActividadJugable extends ActividadResumen {
@@ -24,13 +24,13 @@ export class ActividadesService {
           const inicial = porId.get(data.id);
           return { ...inicial, ...data, imagen: inicial?.imagen ?? data.imagen };
         })
-        .sort((a, b) => a.id - b.id);
+        .sort(compararActividades);
       const ids = new Set(guardadas.map((a) => a.id));
       const faltantes = ACTIVIDADES_INICIALES.filter((a) => !ids.has(a.id));
-      return [...guardadas, ...faltantes].sort((a, b) => a.id - b.id);
+      return [...guardadas, ...faltantes].sort(compararActividades);
     } catch (error) {
       console.error('No se pudieron cargar las actividades:', error);
-      return [...ACTIVIDADES_INICIALES];
+      return [...ACTIVIDADES_INICIALES].sort(compararActividades);
     }
   }
 

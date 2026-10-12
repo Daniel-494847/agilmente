@@ -19,7 +19,8 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/shell/shell').then((m) => m.Shell),
     children: [
       {
-        path: 'inicio',
+        path: '',
+        pathMatch: 'full',
         loadChildren: () =>
           import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES)
       },
@@ -66,9 +67,8 @@ export const routes: Routes = [
           import('./features/administracion/administracion.routes').then(
             (m) => m.ADMINISTRACION_ROUTES
           )
-      },
-      { path: '', redirectTo: 'inicio', pathMatch: 'full' }
+      }
     ]
   },
-  { path: '**', redirectTo: 'inicio' }
+  { path: '**', redirectTo: '/' }
 ];

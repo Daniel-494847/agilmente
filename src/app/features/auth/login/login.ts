@@ -73,7 +73,7 @@ export class Login {
           { merge: true }
         );
       }
-      this.router.navigateByUrl('/inicio');
+      this.router.navigateByUrl('/');
     } catch {
       this.errorMessage.set('Credenciales incorrectas o error de conexión.');
     } finally {
@@ -100,7 +100,7 @@ export class Login {
         ultimoIngreso: serverTimestamp()
       });
       localStorage.setItem('agilmente_user_name', nombreCompleto.trim());
-      this.router.navigateByUrl('/inicio');
+      this.router.navigateByUrl('/');
     } catch {
       this.errorMessage.set('No se pudo completar el registro.');
     } finally {
@@ -130,7 +130,7 @@ export class Login {
         await setDoc(doc(colecciones.usuarios, uid), { ultimoIngreso: serverTimestamp() }, { merge: true });
       }
       localStorage.setItem('agilmente_user_name', data.nombreCompleto);
-      this.router.navigateByUrl('/inicio');
+      this.router.navigateByUrl('/');
     } catch {
       this.errorMessage.set('No se pudo iniciar con Google.');
     } finally {

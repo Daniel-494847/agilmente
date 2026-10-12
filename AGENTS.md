@@ -200,6 +200,11 @@ para permitir contenido dinámico.
 
 **Nota:** El ID 4 no existe (salto en la numeración histórico).
 
+**Orden de aparición:** El inicio (`Dashboard`) y el listado (`/razonamiento-logico`) ordenan
+las tarjetas con `compararActividades` (en `actividades.data.ts`). Primero van los slugs de
+`ORDEN_DESTACADO` (juegos-mentales, matematicas-interactivas, actividades-mentales,
+cuadrados-magicos, juegos-logicos, piramides) en ese orden; el resto queda ordenado por `id`.
+
 ### Rutas
 
 Todas las rutas de actividades cuelgan de `/razonamiento-logico/...` con lazy loading:
@@ -232,7 +237,7 @@ Todas las rutas de actividades cuelgan de `/razonamiento-logico/...` con lazy lo
 Rutas raíz (`app.routes.ts`):
 - `/login` → Login (fuera del shell, `redirectIfAuthenticated`)
 - `/` → Shell (con sidebar + topbar)
-  - `/inicio` → Dashboard
+  - `/` (vacío, la raíz) → Dashboard (ya no existe `/inicio`; esa ruta redirige a `/`)
   - `/razonamiento-logico` → Actividades
   - `/biblioteca` → Biblioteca
   - `/galeria` → Galería

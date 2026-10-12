@@ -120,3 +120,30 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     ruta: '/razonamiento-logico/juegos-mentales'
   }
 ];
+
+/**
+ * Orden de aparición preferido (inicio y listado): primero estos juegos, en
+ * este orden. Los juegos que no están en la lista se muestran después,
+ * ordenados por `id`.
+ */
+const ORDEN_DESTACADO = [
+  'juegos-mentales',
+  'matematicas-interactivas',
+  'actividades-mentales',
+  'cuadrados-magicos',
+  'juegos-logicos',
+  'piramides'
+];
+
+/** Posición de una actividad en el orden destacado (las no listadas van al final). */
+function posicionDestacada(actividad: ActividadResumen): number {
+  const slug = actividad.ruta.split('/').filter(Boolean).pop() ?? '';
+  const indice = ORDEN_DESTACADO.indexOf(slug);
+  return indice === -1 ? ORDEN_DESTACADO.length : indice;
+}
+
+/** Comparador para el orden de vitrina del inicio y del listado de actividades. */
+export function compararActividades(a: ActividadResumen, b: ActividadResumen): number {
+  return posicionDestacada(a) - posicionDestacada(b) || a.id - b.id;
+}
+
