@@ -15,4 +15,5 @@ export interface UsuarioAdmin {
   nombreCompleto: string;
   email: string;
   rol: RolUsuario;
+  avatarUrl?: string;
 }

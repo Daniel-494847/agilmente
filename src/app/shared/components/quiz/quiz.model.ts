@@ -56,6 +56,12 @@ export interface ConfiguracionQuiz {
   preguntasPorNivel?: number;
   etiquetasNiveles?: string[];
   colorTema?: "purple" | "green" | "amber" | "blue" | "pink" | "orange" | "cyan";
+  /**
+   * Multiplicador del tamaño del enunciado respecto a la base de la plantilla.
+   * Por defecto 1.15. La plantilla lo aplica como variable CSS en `.quiz-page`,
+   * así que la apariencia de cada juego se configura aquí y no con CSS por juego.
+   */
+  escalaEnunciado?: number;
   preguntas: PreguntaQuiz[];
   tiempoLimiteSegundos?: number;
 }

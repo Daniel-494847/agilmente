@@ -10,7 +10,7 @@ Componente base: `src/app/shared/components/quiz/`
 
 | Archivo | Rol |
 |---|---|
-| `quiz.ts` | Componente `Quiz` (`app-quiz`). Solo inputs/outputs, sin lógica. |
+| `quiz.ts` | Componente `Quiz` (`app-quiz`). Solo inputs/outputs y el getter que traduce `ConfiguracionQuiz` a variables CSS. |
 | `quiz.html` / `quiz.css` | Presentación (intro, jugando, feedback, resultado). |
 | `quiz.model.ts` | `ConfiguracionQuiz`, `PreguntaQuiz`, `QuizViewModel`, `ResultadoQuiz`. |
 
@@ -22,7 +22,7 @@ Componente base: `src/app/shared/components/quiz/`
    `feedback` → `resultado`.
 3. Enlaza los eventos: `volver`, `nivelElegido`, `empezar`, `respuestaSeleccionada`,
    `avanzar`, `reiniciar`, `alternarSonido`.
-4. En `ngOnInit` llama `gameUi.setJugando(true)` y en `ngDestroy`
+4. En `ngOnInit` llama `gameUi.setJugando(true)` y en `ngOnDestroy`
    `gameUi.setJugando(false)` (el shell colapsa el sidebar en modo juego).
 5. Registra el intento con `AttemptsService` (`iniciar` / `finalizar`).
 6. La única lógica específica del juego es la **generación de `preguntas`**.
@@ -39,10 +39,17 @@ La apariencia se cambia mediante los campos de `PreguntaQuiz`, no con otra panta
 - `imagen` en la pregunta para SVG o imágenes
 - `rejilla` para retos de tabla (sudokus, cuadrados mágicos)
 - `contenidoHtml` para contenido personalizado en estado `jugando`
+- `escalaEnunciado` en `ConfiguracionQuiz` para agrandar/achicar el enunciado
+  respecto a la base de la plantilla (por defecto 1.15). La plantilla lo aplica
+  como variable CSS en `.quiz-page`: **ningún juego añade su propio CSS de quiz**
+  (dimensionado del enunciado, colores, botones). Única excepción tolerada: el CSS
+  global de un widget complejo inyectado por `contenidoHtml`, cuando el Sanitizer
+  de Angular elimina los `style` inline (ver `.piramide-*` en `styles.css`).
 
 Excepciones conocidas: `matematicas-interactivas/*` (sumas, restas, multiplicación,
-división, combinadas, duelo) usan keypad numérico propio porque son retos de
-rapidez/competencia, no quizzes de opción múltiple. Si se convierten en quiz,
+división y combinadas, todas sobre el componente compartido `DueloMatematico`) usan
+keypad numérico propio porque son retos de rapidez/competencia, no quizzes de opción
+múltiple. Si se convierten en quiz,
 deben migrar a `app-quiz`. (`operaciones-basicas` ya migró: es un único
 `OperacionesNaturales` construido con la plantilla.)
 
@@ -116,7 +123,9 @@ src/app/
 │   │   └── usuario.model.ts
 │   └── services/
 │       ├── attempts.service.ts
+│       ├── cloudinary.service.ts
 │       ├── content.service.ts
+│       ├── estadisticas.service.ts
 │       ├── fullscreen.service.ts
 │       ├── game-ui.service.ts
 │       └── user-progress.service.ts
@@ -125,15 +134,15 @@ src/app/
 │   │   ├── data/actividades.data.ts    # Catálogo ACTIVIDADES_INICIALES
 │   │   ├── services/actividades.service.ts
 │   │   ├── actividades.routes.ts
-│   │   └── juegos/                     # 15 juegos/actividades
+│   │   └── juegos/                     # 14 juegos/actividades
 │   ├── administracion/
-│   ├── auth/
+│   ├── auth/                 # login + perfil/ (mi perfil y su edición)
 │   ├── avisos/
 │   ├── biblioteca/
 │   ├── dashboard/
 │   ├── galeria/
-│   ├── progreso/
-│   └── unidad-educativa/
+│   ├── progreso/             # progreso.ts: avance y % por juego (estudiante)
+│   └── unidad-educativa/     # unidad-educativa.ts: información institucional
 ├── layout/                   # Shell de la app (sidebar + topbar)
 │   ├── shell/
 │   ├── sidebar/
@@ -141,27 +150,27 @@ src/app/
 └── shared/                   # Componentes y datos compartidos
     ├── components/
     │   ├── activity-card/    # Tarjeta de actividad
-    │   ├── quiz/             # Plantilla base de juego
-    │   └── section-page/     # Página de sección genérica
-    └── data/
-        └── section-pages.data.ts
+    │   └── quiz/             # Plantilla base de juego
+    ├── data/
+    │   └── section-pages.data.ts  # Encabezados y enlaces de las secciones del estudiante
+    └── pipes/
+        └── svg-seguro.pipe.ts # Sanea los SVG (data URI) que pinta la plantilla
 ```
 
-### Juegos/actividades existentes (15)
+### Juegos/actividades existentes (14)
 
 | Carpeta | Componente | Descripción |
 |---|---|---|
 | `sucesiones-patrones/` | `SucesionesPatrones` | Secuencias y relaciones entre imágenes/números |
-| `sucesiones/` | `Sucesiones` | Completar secuencias numéricas |
 | `conteo-figuras/` | `ConteoFiguras` | Contar figuras, segmentos, ángulos, triángulos |
 | `operaciones-basicas/` | `OperacionesNaturales` | Operaciones Básicas: quiz único de 25 desafíos con dibujos SVG por nivel (sumas, restas y multiplicaciones) |
 | `matematicas-interactivas/` | `MatematicasInteractivas` + hijos | Duelos por equipos: sumas, restas, multiplicación, división, combinadas |
 | `actividades-mentales/` | `ActividadesMentales` | Cálculo mental: series, conteo rápido, comparaciones |
 | `geometria-basica/` | `GeometriaBasica` | Figuras, perímetros, relaciones geométricas |
 | `conjuntos/` | `Conjuntos` | Pertenencia, unión, intersección |
-| `juegos-logicos/` | `JuegosLogicos` | Sudokus y cuadrados mágicos |
+| `juegos-logicos/` | `JuegosLogicos` | Sudokus: deduce la casilla que falta |
 | `razonamiento-aplicado/` | `RazonamientoAplicado` | Problemas de la vida diaria |
-| `seriaciones/` | `Seriaciones` | Ordenar elementos por regla |
+| `seriaciones/` | `Seriaciones` | Series numéricas, de letras y de figuras que siguen una regla (75 ejercicios) |
 | `piramides/` | `Piramides` | Pirámides numéricas |
 | `cuadrados-magicos/` | `CuadradosMagicos` | Cuadrados mágicos (usa plantilla quiz) |
 | `operadores-matematicos/` | `OperadoresMatematicos` | Operadores matemáticos |
@@ -170,7 +179,7 @@ src/app/
 ### Catálogo de actividades
 
 `src/app/features/actividades/data/actividades.data.ts` define `ACTIVIDADES_INICIALES`
-(14 actividades). `ActividadesService.listar()` combina este catálogo con Firestore
+(13 actividades). `ActividadesService.listar()` combina este catálogo con Firestore
 para permitir contenido dinámico.
 
 | ID | Título | Ruta | ColorTema |
@@ -184,7 +193,6 @@ para permitir contenido dinámico.
 | 8 | Juegos Lógicos | `/razonamiento-logico/juegos-logicos` | orange |
 | 9 | Razonamiento Aplicado | `/razonamiento-logico/razonamiento-aplicado` | purple |
 | 10 | Seriaciones | `/razonamiento-logico/seriaciones` | green |
-| 11 | Sucesiones | `/razonamiento-logico/sucesiones` | blue |
 | 12 | Pirámides | `/razonamiento-logico/piramides` | amber |
 | 15 | Cuadrados Mágicos | `/razonamiento-logico/cuadrados-magicos` | purple |
 | 13 | Matemáticas Interactivas | `/razonamiento-logico/matematicas-interactivas` | green |
@@ -217,7 +225,6 @@ Todas las rutas de actividades cuelgan de `/razonamiento-logico/...` con lazy lo
 ├── juegos-logicos              → JuegosLogicos
 ├── razonamiento-aplicado       → RazonamientoAplicado
 ├── seriaciones                 → Seriaciones
-├── sucesiones                  → Sucesiones
 ├── piramides                   → Piramides
 └── cuadrados-magicos           → CuadradosMagicos
 ```
@@ -229,10 +236,10 @@ Rutas raíz (`app.routes.ts`):
   - `/razonamiento-logico` → Actividades
   - `/biblioteca` → Biblioteca
   - `/galeria` → Galería
-  - `/progreso` → Progreso
+  - `/progreso` → Progreso (puntos, nivel y % por juego; `administrar` → contenido, `[requireAdmin]`)
   - `/avisos` → Avisos
-  - `/unidad-educativa` → Unidad Educativa
-  - `/perfil` → Perfil
+  - `/unidad-educativa` → UnidadEducativa (info institucional; `administrar` → edición, `[requireAdmin]`)
+  - `/perfil` → Perfil (datos y avance; `administrar` → editar mi perfil, `[requireAuth]`)
   - `/administracion` → Administración
 
 ### Servicios
@@ -242,6 +249,7 @@ Rutas raíz (`app.routes.ts`):
 | `AttemptsService` | `core/services/` | Registra intentos de juego en Firestore (`iniciar` / `finalizar`). Guarda puntaje, nivel, respuestas, duración. |
 | `ContentService` | `core/services/` | CRUD genérico de Firestore (`obtener`, `listar`, `listarPublicados`, `guardar`, `actualizar`, `eliminar`). |
 | `CloudinaryService` | `core/services/` | Sube imágenes a Cloudinary con preset unsigned `images-agilmente` (cloud `kww1uxz3`). Signals `subiendo`/`progreso`/`error` y URLs optimizadas (`urlOptimizada`, `urlCuadrado`). |
+| `EstadisticasService` | `core/services/` | Agrega los `intentos` finalizados (`resumenPorUsuario` para el admin, `resumenDeUsuario` para el propio estudiante): puntos, nivel, intentos, aciertos, tiempo y desglose por actividad con porcentaje y mejor nivel. Alimenta «Gestión de usuarios» y «Mi Progreso». |
 | `FullscreenService` | `core/services/` | Maneja pantalla completa del navegador. Signal `activo` y `soportado`. |
 | `GameUiService` | `core/services/` | Signal `jugando` (boolean). Cuando es `true`, el shell colapsa el sidebar. |
 | `UserProgressService` | `core/services/` | Calcula puntos/nivel del usuario desde intentos finalizados. Títulos: Explorador → Aprendiz → Pensador → Estratega → Maestro lógico → Leyenda. |
@@ -254,7 +262,7 @@ Rutas raíz (`app.routes.ts`):
 |---|---|---|
 | `Quiz` | `app-quiz` | Plantilla base para todos los juegos. Recibe `QuizViewModel` y emite eventos. |
 | `ActivityCard` | `app-activity-card` | Tarjeta de actividad con colorTema → clases Bootstrap. |
-| `SectionPage` | `app-section-page` | Página de sección genérica (progreso, unidad educativa, perfil). Carga contenido desde Firestore. |
+| `SvgSeguroPipe` (pipe) | `svgSeguro` | Convierte un SVG crudo o un `data:` URI en una URL segura apta para `<img [src]>`. |
 
 ### Firebase
 
@@ -275,8 +283,8 @@ Rutas raíz (`app.routes.ts`):
 
 1. **Standalone components** — Sin NgModules. Cada feature es una carpeta con sus rutas.
 2. **Zoneless** — Todo dato asíncrono vive en `signal`, nunca en campo plano.
-3. **Plantilla de Quiz** — Todos los juegos usan `app-quiz` con `ConfiguracionQuiz` + `QuizViewModel`. La variedad se logra con `tipo`, `opciones[].imagen`, `niveles`, `rejilla`, `contenidoHtml`.
-4. **Admin por feature** — Cada módulo tiene su propia ruta `administrar` con guard `requireAdmin`.
+3. **Plantilla de Quiz** — Todos los juegos usan `app-quiz` con `ConfiguracionQuiz` + `QuizViewModel`. La variedad se logra con `tipo`, `opciones[].imagen`, `niveles`, `rejilla`, `contenidoHtml` y `escalaEnunciado`.
+4. **Admin por feature** — Cada módulo tiene su propia ruta `administrar` con guard `requireAdmin`. Excepción: `/perfil/administrar` (edita los datos propios) usa `requireAuth`.
 5. **Shell con sidebar/topbar** — El sidebar se colapsa en modo juego (`GameUiService.jugando`).
 6. **Bootstrap 5.3** — Sin CSS propio para botones (`.btn` + variantes). Colores vía variables CSS del componente.
 7. **Lazy loading** — Todas las rutas usan `loadComponent` / `loadChildren`.

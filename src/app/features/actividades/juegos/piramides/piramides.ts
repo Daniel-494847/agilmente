@@ -248,7 +248,7 @@ export class Piramides implements OnInit, OnDestroy {
       id: `piramide-${nivel}-${idx}-${p.clave.slice(0, 8)}`,
       enunciado: p.pregunta,
       tipo: 'personalizado',
-      contenidoHtml: this.renderizarPiramide(p, nivel, false),
+      contenidoHtml: this.renderizarPiramide(p, false),
       opciones: p.opciones.map((op) => ({ id: String(op), texto: String(op) })),
       respuestaCorrectaId: String(p.correcta),
       explicacion: `Pasos: ${p.pasos.join(' → ')}`,
@@ -258,7 +258,7 @@ export class Piramides implements OnInit, OnDestroy {
     };
   }
 
-  private renderizarPiramide(p: Piramide, nivel: number, revelar = false): string {
+  private renderizarPiramide(p: Piramide, revelar = false): string {
     const filas = revelar ? p.completa : p.oculta;
     return `
       <div class="piramide-caja d-flex flex-column align-items-center w-100">
@@ -345,9 +345,8 @@ export class Piramides implements OnInit, OnDestroy {
     // explicación («8 + 2 = 10») pero el 10 no aparecía en ningún casillero, así
     // que no podía comprobar de dónde salía la respuesta.
     const piramide = pregunta.datos?.piramide as Piramide | undefined;
-    const nivel = (pregunta.datos?.nivel as number) ?? this.nivelActual;
     const revelada: PreguntaQuiz = piramide
-      ? { ...pregunta, contenidoHtml: this.renderizarPiramide(piramide, nivel, true) }
+      ? { ...pregunta, contenidoHtml: this.renderizarPiramide(piramide, true) }
       : pregunta;
 
     this.vm.set({

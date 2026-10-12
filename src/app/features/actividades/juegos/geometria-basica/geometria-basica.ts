@@ -354,13 +354,6 @@ const perimetroIsosceles = (igual: number, base: number): Base => {
   };
 };
 
-const perimetroEquilatero = (l: number): Base => ({
-  tema: 'Perímetro', pregunta: 'Este triángulo equilátero tiene sus 3 lados iguales. ¿Cuál es su perímetro?',
-  trazos: triLados(l, l, l, ['igual', 'igual', `${l} cm`]),
-  valor: 3 * l, unidad: 'cm', paso: 3, trampas: [2 * l],
-  explicacion: `Los tres lados miden ${l} cm: 3 × ${l} = ${3 * l} cm.`,
-});
-
 const areaTrapecio = (B: number, b: number, h: number): Base => ({
   tema: 'Área', pregunta: '¿Cuál es el área del trapecio?', trazos: trapecioDibujo(B, b, h),
   valor: ((B + b) * h) / 2, unidad: 'cm²', paso: 3, trampas: [(B + b) * h],

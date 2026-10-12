@@ -33,8 +33,6 @@ const GRIS = "#6c757d";
 const CAJA = "#e7f1ff";
 const HUECO = "#fff3cd";
 const r1 = (n: number) => Math.round(n * 10) / 10;
-const linea = (x1: number, y1: number, x2: number, y2: number): Trazo =>
-  ({ t: "l", x1: r1(x1), y1: r1(y1), x2: r1(x2), y2: r1(y2), stroke: INK });
 const poligono = (p: number[][], fill = "none"): Trazo =>
   ({ t: "p", pts: p.map(q => `${r1(q[0])},${r1(q[1])}`).join(" "), fill, stroke: INK });
 const texto = (x: number, y: number, s: string, size = 13, fill = INK): Trazo =>

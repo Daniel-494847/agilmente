@@ -6,8 +6,7 @@ import { secciones } from '@shared/data/section-pages.data';
 export const UNIDAD_EDUCATIVA_ROUTES: Routes = [
   {
     path: '',
-    loadComponent: () =>
-      import('../../shared/components/section-page/section-page').then((m) => m.SectionPage),
+    loadComponent: () => import('./unidad-educativa').then((m) => m.UnidadEducativa),
     data: secciones.unidadEducativa
   },
   {

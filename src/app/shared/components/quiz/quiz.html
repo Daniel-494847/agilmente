@@ -1,4 +1,4 @@
-<main class="quiz-page position-fixed top-0 start-0 end-0 bottom-0 overflow-auto p-0" [attr.data-theme]="vista.colorTema" style="z-index: 1040">
+<main class="quiz-page position-fixed top-0 start-0 end-0 bottom-0 overflow-auto p-0" [attr.data-theme]="vista.colorTema" [style.--qz-enunciado]="estiloEnunciado" style="z-index: 1040">
   @if (vista.mostrarConfeti) {
     <div class="confeti" aria-hidden="true">
       @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {

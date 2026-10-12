@@ -457,6 +457,7 @@ export class SucesionesPatrones implements OnInit, OnDestroy {
     niveles: 3,
     preguntasPorNivel: 25,
     etiquetasNiveles: ["Básico", "Intermedio", "Avanzado"],
+    escalaEnunciado: 1.725,
     preguntas: [],
   };
 

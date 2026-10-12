@@ -34,7 +34,8 @@ export class UserRoleService {
           uid: d.id,
           nombreCompleto: String(data['nombreCompleto'] ?? ''),
           email: String(data['email'] ?? ''),
-          rol: this.normalizarRol(data['rol'])
+          rol: this.normalizarRol(data['rol']),
+          avatarUrl: String(data['avatarUrl'] ?? '') || undefined
         };
       })
       .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));

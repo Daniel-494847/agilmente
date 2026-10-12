@@ -27,3 +27,10 @@ export const requireAdmin: CanActivateFn = async () => {
     ? true
     : router.createUrlTree(['/inicio']);
 };
+
+/** Exige sesión iniciada (para páginas que solo editan datos propios, como el perfil). */
+export const requireAuth: CanActivateFn = async () => {
+  const router = inject(Router);
+  const user = await obtenerUsuarioActual();
+  return user ? true : router.createUrlTree(['/login']);
+};

@@ -137,11 +137,6 @@ export const ACTIVIDADES_ROUTES: Routes = [
       import("./juegos/seriaciones/seriaciones").then((m) => m.Seriaciones),
   },
   {
-    path: "sucesiones",
-    loadComponent: () =>
-      import("./juegos/sucesiones/sucesiones").then((m) => m.Sucesiones),
-  },
-  {
     path: "piramides",
     loadComponent: () =>
       import("./juegos/piramides/piramides").then((m) => m.Piramides),

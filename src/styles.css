@@ -117,26 +117,3 @@ textarea {
   text-align: center;
   padding: 0;
 }
-
-/* -------------------------------------------------------------------
-   Sucesiones y Patrones: las preguntas se ven un 50% más grandes.
-   El tamaño lo define la plantilla del quiz en `.quiz-page`
-   (`--qz-enunciado` = base × 1.15); aquí se pide × 1.5, y sólo
-   dentro de este juego — el selector con el elemento del componente
-   gana en especificidad a los estilos encapsulados de la plantilla.
-   (Las figuras son SVG y las hace grandes la plantilla en `.qz-figura`.)
-   ------------------------------------------------------------------- */
-app-sucesiones-patrones .quiz-page {
-  --qz-enunciado: calc(var(--qz-base) * 1.725);
-}
-
-/* -------------------------------------------------------------------
-   Seriaciones: el enunciado lleva la serie completa ("Completa la
-   serie: 2, 3, 4, 5, ?"), un texto largo frente a opciones que son
-   solo números. Para que la pregunta no domine, se muestra a la base
-   (--qz-base) en lugar del 115% que pone la plantilla. Sube o baja
-   el multiplicador aquí si hace falta.
-   ------------------------------------------------------------------- */
-app-seriaciones .quiz-page {
-  --qz-enunciado: var(--qz-base);
-}

@@ -589,21 +589,21 @@ interface SetOrden {
 }
 const SETS_ORDEN: SetOrden[] = [
   {
-    criterio: "altura",
+    criterio: "la altura",
     items: [["👧", "Ana"], ["👦", "Luis"], ["🧒", "Mía"], ["👨", "Pedro"], ["👩", "Sofía"]],
     valores: rango(110, 170, 5),
     fmt: (n) => `${n} cm`,
     paso: 5,
   },
   {
-    criterio: "precio",
+    criterio: "el precio",
     items: [["🧸", "Oso"], ["🚗", "Auto"], ["🪁", "Cometa"], ["🎲", "Dados"], ["⚽", "Pelota"]],
     valores: rango(10, 60, 5),
     fmt: (n) => `Bs ${n}`,
     paso: 5,
   },
   {
-    criterio: "distancia",
+    criterio: "la distancia",
     items: [["🏫", "Escuela"], ["🏪", "Tienda"], ["⛲", "Plaza"], ["🏥", "Hospital"], ["🌳", "Parque"]],
     valores: rango(1, 12),
     fmt: (n) => `${n} km`,
@@ -621,7 +621,7 @@ function nivel2(c: Ctx): Parcial {
       const its = mezclar(set.items, rnd).map(([emoji, nombre], i) => ({ emoji, nombre, valor: vals[i] }));
       const asc = [...its].sort((a, b) => a.valor - b.valor);
       const svg = svgTarjetas(its.map((i) => ({ emoji: i.emoji, titulo: i.nombre, detalle: set.fmt(i.valor) })));
-      const pista = `Ordena las tarjetas según el ${set.criterio}.`;
+      const pista = `Ordena las tarjetas según ${set.criterio}.`;
       const resumen = `De menor a mayor: ${asc.map((i) => `${i.emoji} ${set.fmt(i.valor)}`).join(" < ")}.`;
       if (v <= 2) {
         const rank = [1, 2, 3][v]; // posición en orden ascendente (0-based)

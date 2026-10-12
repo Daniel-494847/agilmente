@@ -6,8 +6,7 @@ import { secciones } from '@shared/data/section-pages.data';
 export const PROGRESO_ROUTES: Routes = [
   {
     path: '',
-    loadComponent: () =>
-      import('../../shared/components/section-page/section-page').then((m) => m.SectionPage),
+    loadComponent: () => import('./progreso').then((m) => m.Progreso),
     data: secciones.progreso
   },
   {

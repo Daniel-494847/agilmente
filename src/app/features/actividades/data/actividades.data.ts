@@ -59,7 +59,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
   {
     id: 8,
     titulo: 'Juegos Lógicos',
-    descripcion: 'Resuelve sudokus y cuadrados mágicos.',
+    descripcion: 'Resuelve sudokus deduciendo la casilla que falta.',
     icono: 'bi-grid-3x3',
     imagen: '/images/Juegos-Logicos.webp',
     colorTema: 'orange',
@@ -84,15 +84,6 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     ruta: '/razonamiento-logico/seriaciones'
   },
   {
-    id: 11,
-    titulo: 'Sucesiones',
-    descripcion: 'Descubre la regla y completa secuencias numéricas.',
-    icono: 'bi-123',
-    imagen: '/images/Sucesiones.webp',
-    colorTema: 'blue',
-    ruta: '/razonamiento-logico/sucesiones'
-  },
-  {
     id: 12,
     titulo: 'Pirámides',
     descripcion: 'Completa pirámides numéricas usando sus relaciones matemáticas.',
@@ -106,6 +97,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Cuadrados Mágicos',
     descripcion: 'Completa cuadrados donde todas las líneas suman el número mágico.',
     icono: 'bi-grid-3x3-gap',
+    imagen: '/images/cuadrados-magicos.webp',
     colorTema: 'purple',
     ruta: '/razonamiento-logico/cuadrados-magicos'
   },
@@ -114,6 +106,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Matemáticas Interactivas',
     descripcion: 'Duelos por equipos de sumas, restas, multiplicación, división y más.',
     icono: 'bi-joystick',
+    imagen: '/images/matematicas-interactivas.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/matematicas-interactivas'
   },
@@ -122,6 +115,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Juegos Mentales',
     descripcion: 'Entrena tu agilidad mental sumando y restando números positivos y negativos.',
     icono: 'bi-calculator',
+    imagen: '/images/juegos-mentales.webp',
     colorTema: 'pink',
     ruta: '/razonamiento-logico/juegos-mentales'
   }

@@ -29,6 +29,17 @@ export class Quiz {
   @Output() alternarSonido = new EventEmitter<void>();
 
   /**
+   * Tamaño del enunciado configurado por el juego (`config.escalaEnunciado`).
+   * La plantilla lo publica como variable CSS en `.quiz-page`; sin valor queda
+   * el 1.15 por defecto. Así cada juego ajusta su apariencia desde su
+   * `ConfiguracionQuiz`, sin reglas CSS propias ni selectores por juego.
+   */
+  get estiloEnunciado(): string | null {
+    const escala = this.vm?.config?.escalaEnunciado;
+    return escala ? `calc(var(--qz-base) * ${escala})` : null;
+  }
+
+  /**
    * «Volver» baja un nivel dentro del juego en vez de salir de él:
    * desde «jugando», «feedback» o «resultado» regresa al menú del
    * juego (intro) sin abandonarlo; desde el menú pide al juego que
