@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -28,6 +28,7 @@ interface UsuarioConEstadisticas extends UsuarioAdmin {
   templateUrl: './usuarios-admin.html'
 })
 export class UsuariosAdmin implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly roles = inject(UserRoleService);
   private readonly actividades = inject(ActividadesService);
   private readonly estadisticas = inject(EstadisticasService);
@@ -66,7 +67,9 @@ export class UsuariosAdmin implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
-    onAuthStateChanged(auth, (user) => this.miUid.set(user?.uid ?? null));
+    this.miUid.set(auth.currentUser?.uid ?? null);
+    const unsub = onAuthStateChanged(auth, (user) => this.miUid.set(user?.uid ?? null));
+    this.destroyRef.onDestroy(() => unsub());
     await this.cargar();
   }
 
@@ -97,7 +100,15 @@ export class UsuariosAdmin implements OnInit {
 
       this.titulos.set(titulos);
       this.usuarios.set(
-        lista.map((u) => ({ ...u, stats: stats.get(u.uid) ?? crearEstadisticasVacias() }))
+        lista.map((u) => {
+          const s = stats.get(u.uid) ?? crearEstadisticasVacias();
+          if (u.puntos !== undefined && u.puntos > 0) {
+            s.puntos = Math.max(s.puntos, u.puntos);
+            if (u.nivel) s.nivel = Math.max(s.nivel, u.nivel);
+            if (u.tituloNivel) s.tituloNivel = u.tituloNivel;
+          }
+          return { ...u, stats: s };
+        })
       );
     } catch {
       this.error.set('No se pudieron cargar los usuarios.');

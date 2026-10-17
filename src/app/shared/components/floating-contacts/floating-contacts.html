@@ -1,0 +1,63 @@
+@if (visible()) {
+  <!-- Fondo invisible: cierra el menú al pulsar fuera -->
+  @if (abierto() && secundarios().length > 0) {
+    <div class="contacto-fondo" (click)="cerrar()" aria-hidden="true"></div>
+  }
+
+  <div class="position-fixed bottom-0 end-0 p-3 d-flex flex-column-reverse align-items-end gap-2 fab-contenedor">
+    <!-- Botón principal: abre el canal directamente (WhatsApp si existe) -->
+    @if (principal(); as p) {
+      <a
+        [href]="contacto.urlDe(p)"
+        class="btn btn-lg rounded-circle shadow-lg d-inline-flex align-items-center justify-content-center flex-shrink-0 fab-boton"
+        [class]="'btn-' + contacto.colorDe(p.tipo)"
+        [attr.target]="contacto.abreEnNuevaPestana(p) ? '_blank' : null"
+        [attr.rel]="contacto.abreEnNuevaPestana(p) ? 'noopener noreferrer' : null"
+        [attr.aria-label]="p.nombre"
+        [attr.title]="p.nombre"
+        (click)="cerrar()"
+      >
+        <i class="bi fs-3 {{ contacto.iconoDe(p) }}" aria-hidden="true"></i>
+      </a>
+    }
+
+    <!-- Botón + / × que despliega u oculta los canales secundarios -->
+    @if (secundarios().length > 0) {
+      <button
+        type="button"
+        class="btn btn-dark btn-lg rounded-circle shadow-lg d-inline-flex align-items-center justify-content-center flex-shrink-0 fab-boton"
+        (click)="alternar()"
+        [attr.aria-expanded]="abierto()"
+        [attr.aria-label]="abierto() ? 'Ocultar canales de contacto' : 'Mostrar más canales de contacto'"
+      >
+        <i
+          class="bi fs-3 fab-toggle-icono"
+          [class.bi-plus-lg]="!abierto()"
+          [class.bi-x-lg]="abierto()"
+          aria-hidden="true"
+        ></i>
+      </button>
+
+      <!-- Desplegable: el resto de canales (solo icono, sin etiqueta) -->
+      <div
+        class="d-flex flex-column-reverse align-items-end gap-2 fab-menu"
+        [class.fab-menu--abierto]="abierto()"
+      >
+        @for (c of secundarios(); track c.id) {
+          <a
+            [href]="contacto.urlDe(c)"
+            class="btn btn-lg rounded-circle shadow d-inline-flex align-items-center justify-content-center flex-shrink-0 fab-boton"
+            [class]="'btn-' + contacto.colorDe(c.tipo)"
+            [attr.target]="contacto.abreEnNuevaPestana(c) ? '_blank' : null"
+            [attr.rel]="contacto.abreEnNuevaPestana(c) ? 'noopener noreferrer' : null"
+            [attr.aria-label]="c.nombre"
+            [attr.title]="c.nombre"
+            (click)="cerrar()"
+          >
+            <i class="bi fs-3 {{ contacto.iconoDe(c) }}" aria-hidden="true"></i>
+          </a>
+        }
+      </div>
+    }
+  </div>
+}

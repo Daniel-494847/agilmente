@@ -53,6 +53,37 @@
     </div>
 
     <div class="col-12 col-lg-4 d-flex flex-column gap-3">
+      @if (contactos().length) {
+        <section class="card border-0 shadow-sm rounded-4 p-3">
+          <header class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-telephone me-1"></i> Contactos</h2>
+            <a routerLink="/contactos" class="small fw-bold text-decoration-none">Ver todos</a>
+          </header>
+          <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+            @for (c of contactos().slice(0, 4); track c.id) {
+              <li>
+                <a
+                  [href]="contacto.urlDe(c)"
+                  class="d-flex align-items-center gap-2 text-decoration-none text-body"
+                  [attr.target]="contacto.abreEnNuevaPestana(c) ? '_blank' : null"
+                  [attr.rel]="contacto.abreEnNuevaPestana(c) ? 'noopener noreferrer' : null"
+                >
+                  <span class="d-inline-flex align-items-center justify-content-center rounded-2 flex-shrink-0"
+                        [class]="'bg-' + contacto.colorDe(c.tipo) + '-subtle'"
+                        style="width: 32px; height: 32px">
+                    <i class="bi {{ contacto.iconoDe(c) }} text-{{ contacto.colorDe(c.tipo) }}"></i>
+                  </span>
+                  <span class="min-w-0">
+                    <span class="small fw-semibold d-block text-truncate">{{ c.nombre }}</span>
+                    <span class="text-muted d-block text-truncate" style="font-size: 11px">{{ c.valor }}</span>
+                  </span>
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       <section class="card border-0 shadow-sm rounded-4 p-3">
         <header class="d-flex justify-content-between align-items-center mb-3">
           <h2 class="fs-6 fw-bold mb-0"><i class="bi bi-images me-1"></i> Galería</h2>

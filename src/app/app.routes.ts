@@ -57,6 +57,11 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'contactos',
+        loadChildren: () =>
+          import('./features/contactos/contactos.routes').then((m) => m.CONTACTOS_ROUTES)
+      },
+      {
         path: 'perfil',
         loadChildren: () =>
           import('./features/auth/auth.routes').then((m) => m.PERFIL_ROUTES)

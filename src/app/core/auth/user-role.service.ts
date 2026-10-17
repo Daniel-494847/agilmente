@@ -1,12 +1,15 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { User } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
-import { RolUsuario, UsuarioAdmin } from '@core/models/usuario.model';
+import { RolUsuario, UsuarioAdmin, normalizarRol } from '@core/models/usuario.model';
+import { UsuarioService } from '@core/services/usuario.service';
 
 @Injectable({ providedIn: 'root' })
 export class UserRoleService {
+  private readonly usuarios = inject(UsuarioService);
+
   /** Rol del usuario según su documento en Firestore. Por defecto «estudiante». */
   async obtenerRol(user: User | null): Promise<RolUsuario> {
     if (!user) {
@@ -14,7 +17,7 @@ export class UserRoleService {
     }
     try {
       const userDoc = await getDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid));
-      return this.normalizarRol(userDoc.data()?.['rol']);
+      return normalizarRol(userDoc.data()?.['rol']);
     } catch {
       return 'estudiante';
     }
@@ -30,12 +33,16 @@ export class UserRoleService {
     return snapshot.docs
       .map((d) => {
         const data = d.data();
+        const puntos = Math.max(0, Math.floor(Number(data['puntos']) || 0));
         return {
           uid: d.id,
           nombreCompleto: String(data['nombreCompleto'] ?? ''),
           email: String(data['email'] ?? ''),
-          rol: this.normalizarRol(data['rol']),
-          avatarUrl: String(data['avatarUrl'] ?? '') || undefined
+          rol: normalizarRol(data['rol']),
+          avatarUrl: String(data['avatarUrl'] ?? '') || undefined,
+          puntos,
+          nivel: Number(data['nivel']) || 1,
+          tituloNivel: String(data['tituloNivel'] ?? 'Explorador')
         };
       })
       .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));
@@ -43,11 +50,7 @@ export class UserRoleService {
 
   /** Cambia el rol de un usuario. El permiso lo pone la regla de Firestore (solo administrador). */
   async cambiarRol(uid: string, rol: RolUsuario): Promise<void> {
-    await updateDoc(doc(db, NOMBRES_COLECCION.usuarios, uid), { rol });
-  }
-
-  private normalizarRol(rol: unknown): RolUsuario {
-    const r = String(rol ?? '').trim().toLowerCase();
-    return r === 'administrador' || r === 'docente' ? r : 'estudiante';
+    await this.usuarios.cambiarRol(uid, rol);
   }
 }
+

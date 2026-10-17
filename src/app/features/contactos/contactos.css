@@ -1,0 +1,14 @@
+.contacto-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.contacto-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.contacto-icono {
+  width: 48px;
+  height: 48px;
+  font-size: 1.4rem;
+}

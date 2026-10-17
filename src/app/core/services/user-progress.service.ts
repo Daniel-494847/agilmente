@@ -1,7 +1,9 @@
-import { Injectable, signal } from '@angular/core';
-import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { Injectable, inject, signal } from '@angular/core';
+import { doc, getDoc, increment, updateDoc } from 'firebase/firestore';
 
 import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
+import { calcularNivelYTitulo } from '@core/models/usuario.model';
+import { UsuarioService } from './usuario.service';
 
 export interface ProgresoUsuario {
   puntos: number;
@@ -9,20 +11,10 @@ export interface ProgresoUsuario {
   tituloNivel: string;
 }
 
-/** Puntos necesarios por nivel (nivel N requiere (N-1)*100 puntos acumulados). */
-const PUNTOS_POR_NIVEL = 100;
-
-const TITULOS: { minNivel: number; titulo: string }[] = [
-  { minNivel: 1, titulo: 'Explorador' },
-  { minNivel: 3, titulo: 'Aprendiz' },
-  { minNivel: 5, titulo: 'Pensador' },
-  { minNivel: 8, titulo: 'Estratega' },
-  { minNivel: 12, titulo: 'Maestro lógico' },
-  { minNivel: 20, titulo: 'Leyenda' }
-];
-
 @Injectable({ providedIn: 'root' })
 export class UserProgressService {
+  private readonly usuarios = inject(UsuarioService);
+
   /** Estado reactivo para la topbar y otras vistas. */
   readonly progreso = signal<ProgresoUsuario>({
     puntos: 0,
@@ -30,7 +22,7 @@ export class UserProgressService {
     tituloNivel: 'Explorador'
   });
 
-  /** Suma puntajes de intentos finalizados y actualiza signal + doc usuario. */
+  /** Carga puntos/nivel directo del documento del usuario (1 sola lectura en Firestore). */
   async refrescar(): Promise<ProgresoUsuario> {
     const user = auth.currentUser;
     if (!user) {
@@ -40,59 +32,54 @@ export class UserProgressService {
     }
 
     try {
-      const snap = await getDocs(
-        query(
-          collection(db, NOMBRES_COLECCION.intentos),
-          where('estudianteUid', '==', user.uid),
-          where('estado', '==', 'finalizado')
-        )
-      );
-
-      let puntos = 0;
-      snap.forEach((d) => {
-        const p = Number(d.data()['puntaje'] ?? 0);
-        if (!Number.isNaN(p) && p > 0) {
-          puntos += p;
-        }
-      });
-
-      const calculado = this.calcularDesdePuntos(puntos);
-      this.progreso.set(calculado);
-
-      // Persistir en el perfil para lecturas rápidas y consistencia
-      try {
-        await updateDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid), {
-          puntos: calculado.puntos,
-          nivel: calculado.nivel,
-          tituloNivel: calculado.tituloNivel
-        });
-      } catch {
-        // Puede fallar si el doc no existe aún; no bloquear la UI
+      const snap = await getDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid));
+      if (snap.exists()) {
+        const d = snap.data();
+        const puntos = Math.max(0, Math.floor(Number(d['puntos']) || 0));
+        const calculado = this.calcularDesdePuntos(puntos);
+        this.progreso.set(calculado);
+        return calculado;
       }
 
-      return calculado;
+      const inicial = this.calcularDesdePuntos(0);
+      this.progreso.set(inicial);
+      return inicial;
     } catch (error) {
       console.error('No se pudo cargar el progreso:', error);
       return this.progreso();
     }
   }
 
-  /** Tras finalizar un quiz: suma puntos del intento y refresca totales. */
+  /** Tras finalizar un quiz: incrementa puntos atómicamente y actualiza signal + doc. */
   async registrarPuntosDelIntento(puntajeObtenido: number): Promise<ProgresoUsuario> {
-    // El intento ya se guardó en Firestore; recalcular suma real
-    void puntajeObtenido;
-    return this.refrescar();
+    const user = auth.currentUser;
+    const puntosGanados = Math.max(0, Math.floor(Number(puntajeObtenido) || 0));
+    if (!user || puntosGanados <= 0) {
+      return this.progreso();
+    }
+
+    try {
+      const userRef = doc(db, NOMBRES_COLECCION.usuarios, user.uid);
+      const nuevosPuntos = this.progreso().puntos + puntosGanados;
+      const nuevoProgreso = this.calcularDesdePuntos(nuevosPuntos);
+      this.progreso.set(nuevoProgreso);
+
+      await updateDoc(userRef, {
+        puntos: increment(puntosGanados),
+        nivel: nuevoProgreso.nivel,
+        tituloNivel: nuevoProgreso.tituloNivel
+      });
+
+      return nuevoProgreso;
+    } catch (error) {
+      console.error('No se pudo actualizar progreso atómicamente:', error);
+      return this.refrescar();
+    }
   }
 
   calcularDesdePuntos(puntos: number): ProgresoUsuario {
     const puntosSeguros = Math.max(0, Math.floor(puntos));
-    const nivel = Math.max(1, Math.floor(puntosSeguros / PUNTOS_POR_NIVEL) + 1);
-    let tituloNivel = TITULOS[0].titulo;
-    for (const t of TITULOS) {
-      if (nivel >= t.minNivel) {
-        tituloNivel = t.titulo;
-      }
-    }
+    const { nivel, tituloNivel } = calcularNivelYTitulo(puntosSeguros);
     return { puntos: puntosSeguros, nivel, tituloNivel };
   }
 

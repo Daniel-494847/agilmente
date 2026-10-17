@@ -1,5 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  limit,
+  query,
+  where,
+  type QueryConstraint
+} from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import { UserProgressService } from './user-progress.service';
@@ -84,12 +91,18 @@ export class EstadisticasService {
   private readonly progreso = inject(UserProgressService);
 
   /**
-   * Agrega los intentos finalizados de TODOS los usuarios por `estudianteUid`.
-   * Solo funciona con permisos de administrador (regla de Firestore sobre `intentos`).
+   * Agrega los intentos finalizados de los usuarios por `estudianteUid`.
+   * Aplica un límite de consultas (por defecto 50) para proteger el rendimiento
+   * y la cuota de lecturas en Firestore.
    */
-  async resumenPorUsuario(): Promise<Map<string, EstadisticasUsuario>> {
+  async resumenPorUsuario(limite = 50): Promise<Map<string, EstadisticasUsuario>> {
+    const restricciones: QueryConstraint[] = [where('estado', '==', 'finalizado')];
+    if (limite && limite > 0) {
+      restricciones.push(limit(limite));
+    }
+
     const snapshot = await getDocs(
-      query(collection(db, NOMBRES_COLECCION.intentos), where('estado', '==', 'finalizado'))
+      query(collection(db, NOMBRES_COLECCION.intentos), ...restricciones)
     );
 
     const acumulado = new Map<string, Acumulado>();

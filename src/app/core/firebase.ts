@@ -25,7 +25,8 @@ export const NOMBRES_COLECCION = {
   fotosGaleria: 'fotosGaleria',
   contenidoSecciones: 'contenidoSecciones',
   intentos: 'intentos',
-  unidadEducativa: 'unidad-educativa'
+  unidadEducativa: 'unidad-educativa',
+  contactos: 'contactos'
 } as const;
 
 export type NombreColeccion = (typeof NOMBRES_COLECCION)[keyof typeof NOMBRES_COLECCION];

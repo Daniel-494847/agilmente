@@ -2,6 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ------------------------------------------------------------------
+    // Funciones auxiliares
+    // ------------------------------------------------------------------
     function autenticado() {
       return request.auth != null;
     }
@@ -12,11 +15,27 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
     }
 
+    // ==================================================================
+    // 1. PERFILES  (usuarios)
+    //    Todo documento DEBE tener: email, nombreCompleto, rol, puntos,
+    //    nivel, tituloNivel y ultimoIngreso. La creación los exige; el
+    //    UsuarioService los garantiza también al actualizar.
+    // ==================================================================
     match /usuarios/{uid} {
       allow read: if autenticado() && (request.auth.uid == uid || esAdministrador());
       allow create: if autenticado()
         && request.auth.uid == uid
-        && request.resource.data.rol in ['estudiante', 'docente'];
+        && request.resource.data.rol in ['estudiante', 'docente']
+        && request.resource.data.keys().hasAll([
+             'email', 'nombreCompleto', 'rol', 'puntos',
+             'nivel', 'tituloNivel', 'ultimoIngreso'
+           ])
+        && request.resource.data.email is string
+        && request.resource.data.nombreCompleto is string
+        && request.resource.data.puntos is int
+        && request.resource.data.nivel is int
+        && request.resource.data.tituloNivel is string
+        && request.resource.data.ultimoIngreso is timestamp;
       allow update: if esAdministrador()
         || (autenticado()
           && request.auth.uid == uid
@@ -24,36 +43,60 @@ service cloud.firestore {
       allow delete: if esAdministrador();
     }
 
+    // ==================================================================
+    // 2. CONTENIDO DE LA COMUNIDAD
+    //    Lectura: cualquiera para 'actividades' y 'unidad-educativa';
+    //    para el resto solo lo publicado (o todo, si eres administrador).
+    //    Escritura: solo administrador.
+    // ==================================================================
+
+    // Catálogo de juegos (se combina con ACTIVIDADES_INICIALES).
     match /actividades/{id} {
       allow read: if true;
       allow create, update, delete: if esAdministrador();
     }
 
-    match /biblioteca/{id} {
-      allow read: if esAdministrador() || resource.data.publicado == true;
-      allow create, update, delete: if esAdministrador();
-    }
-
-    match /comunicados/{id} {
-      allow read: if esAdministrador() || resource.data.publicado == true || resource.data.destacado == true;
-      allow create, update, delete: if esAdministrador();
-    }
-
-    match /fotosGaleria/{id} {
-      allow read: if esAdministrador() || resource.data.publicado == true;
-      allow create, update, delete: if esAdministrador();
-    }
-
+    // Información institucional (doc fijo 'principal').
     match /unidad-educativa/{id} {
       allow read: if true;
       allow create, update, delete: if esAdministrador();
     }
 
+    // Contenido editable de las páginas de sección (progreso, etc.).
     match /contenidoSecciones/{id} {
       allow read: if true;
       allow create, update, delete: if esAdministrador();
     }
 
+    // Recursos digitales.
+    match /biblioteca/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    // Avisos / comunicados (los destacados también se leen públicamente).
+    match /comunicados/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true || resource.data.destacado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    // Fotos de la galería.
+    match /fotosGaleria/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    // Canales de contacto y redes sociales.
+    match /contactos/{id} {
+      allow read: if esAdministrador() || resource.data.publicado == true;
+      allow create, update, delete: if esAdministrador();
+    }
+
+    // ==================================================================
+    // 3. PARTIDAS  (intentos de juego)
+    //    El estudiante crea su intento, lo finaliza con su propio
+    //    puntaje y solo lee los suyos; el administrador los lee todos.
+    // ==================================================================
     match /intentos/{id} {
       allow create: if autenticado()
         && request.resource.data.estudianteUid == request.auth.uid

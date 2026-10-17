@@ -139,6 +139,7 @@ src/app/
 │   ├── auth/                 # login + perfil/ (mi perfil y su edición)
 │   ├── avisos/
 │   ├── biblioteca/
+│   ├── contactos/            # Sección Contactos + admin/ (canales y redes sociales)
 │   ├── dashboard/
 │   ├── galeria/
 │   ├── progreso/             # progreso.ts: avance y % por juego (estudiante)
@@ -179,7 +180,7 @@ src/app/
 ### Catálogo de actividades
 
 `src/app/features/actividades/data/actividades.data.ts` define `ACTIVIDADES_INICIALES`
-(13 actividades). `ActividadesService.listar()` combina este catálogo con Firestore
+(14 actividades). `ActividadesService.listar()` combina este catálogo con Firestore
 para permitir contenido dinámico.
 
 | ID | Título | Ruta | ColorTema |
@@ -187,6 +188,7 @@ para permitir contenido dinámico.
 | 1 | Sucesiones y Patrones | `/razonamiento-logico/sucesiones-patrones` | purple |
 | 2 | Conteo de Figuras | `/razonamiento-logico/conteo-figuras` | green |
 | 3 | Operaciones Básicas | `/razonamiento-logico/operaciones-basicas` | blue |
+| 4 | Operadores Matemáticos | `/razonamiento-logico/operadores-matematicos` | blue |
 | 5 | Actividades Mentales | `/razonamiento-logico/actividades-mentales` | green |
 | 6 | Geometría Básica | `/razonamiento-logico/geometria-basica` | orange |
 | 7 | Conjuntos | `/razonamiento-logico/conjuntos` | pink |
@@ -197,8 +199,6 @@ para permitir contenido dinámico.
 | 15 | Cuadrados Mágicos | `/razonamiento-logico/cuadrados-magicos` | purple |
 | 13 | Matemáticas Interactivas | `/razonamiento-logico/matematicas-interactivas` | green |
 | 14 | Juegos Mentales | `/razonamiento-logico/juegos-mentales` | pink |
-
-**Nota:** El ID 4 no existe (salto en la numeración histórico).
 
 **Orden de aparición:** El inicio (`Dashboard`) y el listado (`/razonamiento-logico`) ordenan
 las tarjetas con `compararActividades` (en `actividades.data.ts`). Primero van los slugs de
@@ -243,6 +243,7 @@ Rutas raíz (`app.routes.ts`):
   - `/galeria` → Galería
   - `/progreso` → Progreso (puntos, nivel y % por juego; `administrar` → contenido, `[requireAdmin]`)
   - `/avisos` → Avisos
+  - `/contactos` → Contactos (canales publicados; `administrar` → CRUD, `[requireAdmin]`)
   - `/unidad-educativa` → UnidadEducativa (info institucional; `administrar` → edición, `[requireAdmin]`)
   - `/perfil` → Perfil (datos y avance; `administrar` → editar mi perfil, `[requireAuth]`)
   - `/administracion` → Administración
@@ -259,6 +260,7 @@ Rutas raíz (`app.routes.ts`):
 | `GameUiService` | `core/services/` | Signal `jugando` (boolean). Cuando es `true`, el shell colapsa el sidebar. |
 | `UserProgressService` | `core/services/` | Calcula puntos/nivel del usuario desde intentos finalizados. Títulos: Explorador → Aprendiz → Pensador → Estratega → Maestro lógico → Leyenda. |
 | `ActividadesService` | `features/actividades/services/` | Combina `ACTIVIDADES_INICIALES` con Firestore. |
+| `ContactoService` | `features/contactos/services/` | Metadatos por tipo de contacto (etiqueta, icono, color) y `urlDe()`: `wa.me`, `tel:`, `mailto:` y URLs de redes sociales. |
 | `UserRoleService` | `core/auth/` | Obtiene/cambia rol de usuario (estudiante/docente/administrador). |
 
 ### Componentes compartidos
@@ -283,6 +285,15 @@ Rutas raíz (`app.routes.ts`):
 | `contenidoSecciones` | Contenido de páginas de sección |
 | `intentos` | Registro de intentos de juego |
 | `unidad-educativa` | Info institucional (doc `principal`) |
+| `contactos` | Canales de contacto y redes sociales (WhatsApp, Facebook, teléfono, correo…) |
+
+**Reglas de seguridad:** cada colección de `NOMBRES_COLECCION` **debe** tener su
+`match /<coleccion>/{id}` en `firestore.rules`. Firestore deniega por defecto (HTTP 403)
+todo lo no declarado, así que una colección sin regla no se puede leer ni escribir ni
+siendo administrador (fue el fallo de «Contactos»: faltaba su `match`). El patrón estándar
+de contenido es `allow read: if esAdministrador() || resource.data.publicado == true;` +
+`allow create, update, delete: if esAdministrador();`. Publicar con
+`firebase deploy --only firestore:rules --project agilmente-123`.
 
 ### Patrones clave
 

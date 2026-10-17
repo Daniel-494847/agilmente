@@ -1,4 +1,4 @@
-import { Component, Input, signal } from '@angular/core';
+import { Component, DestroyRef, Input, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -14,13 +14,16 @@ import { UsuarioResumen } from '@core/models/usuario.model';
   styleUrl: './topbar.css'
 })
 export class Topbar {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly userRoleService = inject(UserRoleService);
+
   /** Puntos, nivel y título vienen del progreso real del usuario. */
   @Input({ required: true }) usuario!: UsuarioResumen;
   readonly esVisitante = signal(true);
   readonly esAdministrador = signal(false);
 
-  constructor(private readonly userRoleService: UserRoleService) {
-    onAuthStateChanged(auth, async (user) => {
+  constructor() {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       this.esVisitante.set(!user);
       if (!user) {
         this.esAdministrador.set(false);
@@ -32,5 +35,7 @@ export class Topbar {
         this.esAdministrador.set(false);
       }
     });
+
+    this.destroyRef.onDestroy(() => unsub());
   }
 }

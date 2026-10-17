@@ -2,10 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { updateProfile } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
-import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
+import { auth } from '@core/firebase';
 import { CloudinaryService } from '@core/services/cloudinary.service';
+import { UsuarioService } from '@core/services/usuario.service';
 
 @Component({
   selector: 'app-perfil-admin',
@@ -77,6 +77,7 @@ import { CloudinaryService } from '@core/services/cloudinary.service';
 export class PerfilAdmin implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly cloudinary = inject(CloudinaryService);
+  private readonly usuarios = inject(UsuarioService);
 
   readonly email = signal('');
   readonly guardando = signal(false);
@@ -101,12 +102,8 @@ export class PerfilAdmin implements OnInit {
     this.avatarActual.set(avatar);
     this.previewUrl.set(avatar);
     try {
-      const userDoc = await getDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid));
-      if (userDoc.exists()) {
-        this.form.controls.nombreCompleto.setValue(
-          String(userDoc.data()['nombreCompleto'] ?? user.displayName ?? '')
-        );
-      }
+      const perfil = await this.usuarios.leerCompleto(user.uid);
+      this.form.controls.nombreCompleto.setValue(perfil.nombreCompleto || user.displayName || '');
     } catch {
       this.error.set('No se pudo cargar el perfil.');
     }
@@ -150,10 +147,8 @@ export class PerfilAdmin implements OnInit {
         avatarUrl = resultado.secure_url;
       }
 
-      const datos: Record<string, string> = { nombreCompleto };
-      if (avatarUrl) datos['avatarUrl'] = avatarUrl;
-
-      await updateDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid), datos);
+      // UsuarioService garantiza el esquema completo (email, puntos, nivel, etc.).
+      await this.usuarios.guardarPerfil(user.uid, { nombreCompleto, avatarUrl });
       await updateProfile(user, {
         displayName: nombreCompleto,
         photoURL: avatarUrl || null

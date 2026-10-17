@@ -30,11 +30,20 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     ruta: '/razonamiento-logico/operaciones-basicas'
   },
   {
+    id: 4,
+    titulo: 'Operadores Matemáticos',
+    descripcion: 'Descubre el valor de figuras y símbolos resolviendo ecuaciones y operadores.',
+    icono: 'bi-calculator-fill',
+    imagen: '/images/Operadores-Matematicos.webp',
+    colorTema: 'blue',
+    ruta: '/razonamiento-logico/operadores-matematicos'
+  },
+  {
     id: 5,
     titulo: 'Actividades Mentales',
     descripcion: 'Entrena tu cálculo mental con series, conteo rápido, comparaciones y patrones.',
     icono: 'bi-brain',
-    imagen: '/images/Operadores-Matematicos.webp',
+    imagen: '/images/agilmente.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/actividades-mentales'
   },

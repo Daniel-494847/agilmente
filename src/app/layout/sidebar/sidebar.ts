@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
@@ -83,6 +84,13 @@ export class Sidebar {
       rutaAdmin: '/unidad-educativa/administrar'
     },
     {
+      etiqueta: 'Contactos',
+      icono: 'bi-telephone',
+      tono: 'success',
+      ruta: '/contactos',
+      rutaAdmin: '/contactos/administrar'
+    },
+    {
       etiqueta: 'Perfil',
       icono: 'bi-person-circle',
       tono: 'success',
@@ -98,6 +106,8 @@ export class Sidebar {
     }
   ];
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor(
     private readonly router: Router,
     private readonly userRoleService: UserRoleService
@@ -105,7 +115,7 @@ export class Sidebar {
     this.rutaActual.set(this.router.url);
     this.enRutaJuego.set(this.esRutaJuego(this.router.url));
 
-    this.router.events.subscribe((event) => {
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.rutaActual.set(event.urlAfterRedirects);
         this.enRutaJuego.set(this.esRutaJuego(event.urlAfterRedirects));
@@ -113,7 +123,7 @@ export class Sidebar {
       }
     });
 
-    onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       this.sesionIniciada.set(!!user);
       if (!user) {
         this.esAdministrador.set(false);
@@ -124,6 +134,10 @@ export class Sidebar {
       } catch {
         this.esAdministrador.set(false);
       }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      unsubscribeAuth();
     });
   }
 

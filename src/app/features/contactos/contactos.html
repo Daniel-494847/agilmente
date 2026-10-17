@@ -1,0 +1,54 @@
+<main class="min-vh-100 bg-light p-3 p-md-5">
+  <div class="container" style="max-width: 960px">
+    <header class="text-center mb-4">
+      <span class="badge text-bg-primary">Canales</span>
+      <h1 class="h2 fw-bold mt-3 mb-2">{{ titulo() }}</h1>
+      <p class="text-secondary mb-0">{{ descripcion() }}</p>
+      @if (esAdmin()) {
+      <a routerLink="/contactos/administrar" class="btn btn-outline-primary btn-sm mt-3">
+        <i class="bi bi-pencil-square me-1"></i> Administrar contactos
+      </a>
+      }
+    </header>
+
+    @if (cargando()) {
+    <p class="text-secondary text-center" role="status">
+      <span class="spinner-border spinner-border-sm me-2"></span>Cargando contactos...
+    </p>
+    } @else if (error()) {
+    <div class="alert alert-warning text-center" role="alert">{{ error() }}</div>
+    } @else if (ordenados().length === 0) {
+    <div class="alert alert-light border text-center">
+      Todavía no se han publicado canales de contacto.
+    </div>
+    } @else {
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+      @for (c of ordenados(); track c.id) {
+      <div class="col">
+        <a [href]="contacto.urlDe(c)"
+          class="card border-0 shadow-sm rounded-4 h-100 p-3 text-decoration-none contacto-card"
+          [attr.target]="contacto.abreEnNuevaPestana(c) ? '_blank' : null"
+          [attr.rel]="contacto.abreEnNuevaPestana(c) ? 'noopener noreferrer' : null">
+          <div class="d-flex align-items-center gap-3">
+            <span class="contacto-icono d-inline-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+              [class]="'bg-' + contacto.colorDe(c.tipo) + '-subtle'">
+              <i class="bi {{ contacto.iconoDe(c) }} text-{{ contacto.colorDe(c.tipo) }}"></i>
+            </span>
+            <div class="min-w-0">
+              <div class="fw-semibold text-body text-truncate">{{ c.nombre }}</div>
+              <div class="small text-secondary text-break">{{ contacto.valorVisible(c) }}</div>
+            </div>
+            @if (contacto.abreEnNuevaPestana(c)) {
+            <i class="bi bi-box-arrow-up-right ms-auto small text-secondary" aria-hidden="true"></i>
+            }
+          </div>
+          @if (c.descripcion) {
+          <p class="small text-secondary mt-3 mb-0">{{ c.descripcion }}</p>
+          }
+        </a>
+      </div>
+      }
+    </div>
+    }
+  </div>
+</main>

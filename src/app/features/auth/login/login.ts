@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -8,9 +8,9 @@ import {
   signInWithPopup,
   signOut
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
-import { auth, colecciones } from '@core/firebase';
+import { auth } from '@core/firebase';
+import { UsuarioService } from '@core/services/usuario.service';
 
 @Component({
   selector: 'app-login',
@@ -18,6 +18,7 @@ import { auth, colecciones } from '@core/firebase';
   templateUrl: './login.html'
 })
 export class Login {
+  private readonly usuarios = inject(UsuarioService);
   readonly form;
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal('');
@@ -55,24 +56,10 @@ export class Login {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const user = credential.user;
-      const userDoc = await getDoc(doc(colecciones.usuarios, user.uid));
-      if (!userDoc.exists()) {
-        // Autenticado sin documento: se crea con el rol por defecto.
-        const nombre = localStorage.getItem('agilmente_user_name') ?? '';
-        await setDoc(doc(colecciones.usuarios, user.uid), {
-          email,
-          nombreCompleto: nombre,
-          rol: 'estudiante',
-          creadoEn: serverTimestamp(),
-          ultimoIngreso: serverTimestamp()
-        });
-      } else {
-        await setDoc(
-          doc(colecciones.usuarios, user.uid),
-          { ultimoIngreso: serverTimestamp() },
-          { merge: true }
-        );
-      }
+      // Crea el documento si falta o completa los campos obligatorios si está incompleto.
+      await this.usuarios.crearOReparar(user, {
+        nombreCompleto: localStorage.getItem('agilmente_user_name')
+      });
       this.router.navigateByUrl('/');
     } catch {
       this.errorMessage.set('Credenciales incorrectas o error de conexión.');
@@ -92,13 +79,10 @@ export class Login {
     this.errorMessage.set('');
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(colecciones.usuarios, credential.user.uid), {
-        email,
-        nombreCompleto: nombreCompleto.trim(),
-        rol: 'estudiante',
-        creadoEn: serverTimestamp(),
-        ultimoIngreso: serverTimestamp()
-      });
+      await this.usuarios.crearOReparar(
+        { uid: credential.user.uid, email },
+        { nombreCompleto: nombreCompleto.trim(), rol: 'estudiante' }
+      );
       localStorage.setItem('agilmente_user_name', nombreCompleto.trim());
       this.router.navigateByUrl('/');
     } catch {
@@ -116,20 +100,12 @@ export class Login {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const credential = await signInWithPopup(auth, provider);
-      const uid = credential.user.uid;
-      const userDoc = await getDoc(doc(colecciones.usuarios, uid));
-      const data = {
-        email: credential.user.email ?? '',
-        nombreCompleto: credential.user.displayName ?? 'Usuario',
-        rol: 'estudiante',
-        ultimoIngreso: serverTimestamp()
-      };
-      if (!userDoc.exists()) {
-        await setDoc(doc(colecciones.usuarios, uid), data);
-      } else {
-        await setDoc(doc(colecciones.usuarios, uid), { ultimoIngreso: serverTimestamp() }, { merge: true });
-      }
-      localStorage.setItem('agilmente_user_name', data.nombreCompleto);
+      const nombre = credential.user.displayName ?? 'Usuario';
+      await this.usuarios.crearOReparar(
+        { uid: credential.user.uid, email: credential.user.email },
+        { nombreCompleto: nombre, avatarUrl: credential.user.photoURL }
+      );
+      localStorage.setItem('agilmente_user_name', nombre);
       this.router.navigateByUrl('/');
     } catch {
       this.errorMessage.set('No se pudo iniciar con Google.');

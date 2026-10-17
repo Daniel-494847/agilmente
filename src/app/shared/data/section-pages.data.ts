@@ -3,6 +3,7 @@ const menuItems = [
   { title: 'Mi Progreso', description: 'Seguimiento de logros y avances.', icon: 'bi-bar-chart', route: '/progreso' },
   { title: 'Avisos y Comunicados', description: 'Novedades y recordatorios de la comunidad.', icon: 'bi-bell', route: '/avisos' },
   { title: 'Unidad Educativa', description: 'Información institucional y contacto.', icon: 'bi-building', route: '/unidad-educativa' },
+  { title: 'Contactos', description: 'Canales oficiales, WhatsApp y redes sociales.', icon: 'bi-telephone', route: '/contactos' },
   { title: 'Perfil', description: 'Configuración y datos del estudiante.', icon: 'bi-person-circle', route: '/perfil' }
 ];
 
@@ -21,6 +22,12 @@ export const secciones = {
     description: 'Conoce la comunidad, valores y espacios de aprendizaje.',
     badge: 'Institución',
     items: itemsRelacionados('/unidad-educativa')
+  },
+  contactos: {
+    title: 'Contactos',
+    description: 'Comunícate con la comunidad educativa por nuestros canales oficiales.',
+    badge: 'Canales',
+    items: itemsRelacionados('/contactos')
   },
   perfil: {
     title: 'Perfil',

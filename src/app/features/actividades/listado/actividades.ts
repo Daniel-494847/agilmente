@@ -12,8 +12,7 @@ import { ActividadesService } from '@features/actividades/services/actividades.s
 export class Actividades implements OnInit {
   private readonly service = inject(ActividadesService);
 
-  // La app es zoneless: la carga asíncrona debe vivir en signals para que
-  // la vista se vuelva a renderizar cuando llegan las actividades.
+   // la vista se vuelva a renderizar cuando llegan las actividades.
   readonly actividades = signal<ActividadResumen[]>([]);
   readonly cargando = signal(true);
 

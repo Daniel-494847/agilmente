@@ -1,4 +1,5 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -9,14 +10,16 @@ import { GameUiService } from '@core/services/game-ui.service';
 import { UserProgressService } from '@core/services/user-progress.service';
 import { Sidebar } from '@layout/sidebar/sidebar';
 import { Topbar } from '@layout/topbar/topbar';
+import { FloatingContacts } from '@shared/components/floating-contacts/floating-contacts';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, Sidebar, Topbar],
+  imports: [RouterOutlet, Sidebar, Topbar, FloatingContacts],
   templateUrl: './shell.html',
   styleUrl: './shell.css'
 })
 export class Shell {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly progress = inject(UserProgressService);
   private readonly gameUi = inject(GameUiService);
   private readonly userRoleService = inject(UserRoleService);
@@ -45,13 +48,13 @@ export class Shell {
       }));
     });
 
-    this.router.events.subscribe((event) => {
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
       if (event instanceof NavigationEnd) {
         this.isAuthenticated.set(!!auth.currentUser);
       }
     });
 
-    onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       this.isAuthenticated.set(!!user);
       if (user) {
         const nombreGuardado =
@@ -77,6 +80,10 @@ export class Shell {
           avatarUrl: ''
         });
       }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      unsubscribeAuth();
     });
   }
 

@@ -1,0 +1,63 @@
+/* Botones flotantes de contacto.
+
+   Regla del proyecto: aquí SOLO se toca tamaño y movimiento. El color, el
+   borde, el redondeo, el padding y el tamaño de fuente los ponen las
+   utilidades y variantes de Bootstrap (.btn, .btn-lg, .btn-*, .rounded-circle,
+   .fs-3, .flex-shrink-0...). Solo queda aquí el ancho del círculo, que
+   Bootstrap no ofrece como utilidad. */
+
+.fab-contenedor {
+  z-index: 1055;
+}
+
+/* Fondo invisible detrás del menú: cerrar al pulsar fuera. */
+.contacto-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 1054;
+  background: transparent;
+}
+
+/* Tamaño del círculo (Bootstrap no tiene utilidad de ancho fijo para btn).
+   Todos los botones —principal, toggle y secundarios— comparten el mismo
+   tamaño para que el grupo se vea uniforme. */
+.fab-boton {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.fab-boton:hover,
+.fab-boton:focus-visible {
+  transform: translateY(-2px);
+}
+
+/* Menú desplegable: cerrado no ocupa sitio (display:none) y al abrirse se
+   desliza hacia arriba con una animación de entrada. */
+.fab-menu {
+  display: none;
+}
+
+.fab-menu--abierto {
+  display: flex;
+  animation: fab-aparecer 0.2s ease;
+}
+
+@keyframes fab-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* El icono + / × gira 90° al abrir el menú. */
+.fab-toggle-icono {
+  transition: transform 0.2s ease;
+}
+
+.fab-boton[aria-expanded='true'] .fab-toggle-icono {
+  transform: rotate(90deg);
+}

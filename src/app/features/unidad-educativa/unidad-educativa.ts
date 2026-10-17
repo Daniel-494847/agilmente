@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -25,6 +25,7 @@ interface EnlaceSeccion {
   templateUrl: './unidad-educativa.html'
 })
 export class UnidadEducativa implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly servicio = inject(UnidadEducativaService);
   private readonly roles = inject(UserRoleService);
@@ -45,9 +46,10 @@ export class UnidadEducativa implements OnInit {
     this.badge.set((data['badge'] as string) ?? this.badge());
     this.enlaces.set((data['items'] as EnlaceSeccion[]) ?? []);
 
-    onAuthStateChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       this.esAdmin.set(user ? await this.roles.esAdministrador(user) : false);
     });
+    this.destroyRef.onDestroy(() => unsub());
 
     try {
       this.datos.set(await this.servicio.obtener());
