@@ -1,1 +1,0 @@
-import"./chunk-bjc0i6Km.js";import"./chunk-DQGTWtPI.js";import"./chunk-CZhlXzhw.js";import"./chunk-V-cWFVUR.js";import{r as w}from"./main-IELMYS5N.js";var e=[{path:``,loadComponent:()=>import(`./chunk-DQj0gLkI.js`).then(t=>t.Biblioteca)},{path:`administrar`,loadComponent:()=>import(`./chunk-BVLWRgrz.js`).then(t=>t.BibliotecaAdmin),canActivate:[w]}];export{e as BIBLIOTECA_ROUTES};
