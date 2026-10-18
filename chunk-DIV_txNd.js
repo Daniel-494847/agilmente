@@ -1,0 +1,1 @@
+import"./chunk-bjc0i6Km.js";import"./chunk-DQGTWtPI.js";import"./chunk-CZhlXzhw.js";import"./chunk-V-cWFVUR.js";import{r as w}from"./main-IELMYS5N.js";var i=[{path:`usuarios`,loadComponent:()=>import(`./chunk-HjYka_Zr.js`).then(t=>t.UsuariosAdmin),canActivate:[w]}];export{i as ADMINISTRACION_ROUTES};
