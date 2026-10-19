@@ -60,16 +60,19 @@ export class UserProgressService {
 
     try {
       const userRef = doc(db, NOMBRES_COLECCION.usuarios, user.uid);
-      const nuevosPuntos = this.progreso().puntos + puntosGanados;
-      const nuevoProgreso = this.calcularDesdePuntos(nuevosPuntos);
-      this.progreso.set(nuevoProgreso);
-
       await updateDoc(userRef, {
         puntos: increment(puntosGanados),
-        nivel: nuevoProgreso.nivel,
-        tituloNivel: nuevoProgreso.tituloNivel
+        nivel: this.calcularDesdePuntos(this.progreso().puntos + puntosGanados).nivel,
+        tituloNivel: this.calcularDesdePuntos(this.progreso().puntos + puntosGanados).tituloNivel
       });
 
+      // Releer el documento para sincronizar el signal con el estado real de Firestore.
+      const snap = await getDoc(userRef);
+      const puntos = snap.exists()
+        ? Math.max(0, Math.floor(Number(snap.data()['puntos']) || 0))
+        : this.progreso().puntos + puntosGanados;
+      const nuevoProgreso = this.calcularDesdePuntos(puntos);
+      this.progreso.set(nuevoProgreso);
       return nuevoProgreso;
     } catch (error) {
       console.error('No se pudo actualizar progreso atómicamente:', error);

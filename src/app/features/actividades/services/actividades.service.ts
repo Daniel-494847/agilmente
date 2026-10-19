@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
@@ -14,7 +14,14 @@ export interface ActividadJugable extends ActividadResumen {
 export class ActividadesService {
   private readonly collectionName = NOMBRES_COLECCION.actividades;
 
+  /** Caché en memoria con TTL para evitar lecturas repetidas a Firestore. */
+  private readonly TTL_MS = 5 * 60 * 1000;
+  private cache: { data: ActividadResumen[]; ts: number } | null = null;
+
   async listar(): Promise<ActividadResumen[]> {
+    if (this.cache && Date.now() - this.cache.ts < this.TTL_MS) {
+      return this.cache.data;
+    }
     try {
       const snapshot = await getDocs(collection(db, this.collectionName));
       const porId = new Map(ACTIVIDADES_INICIALES.map((a) => [a.id, a]));
@@ -27,10 +34,14 @@ export class ActividadesService {
         .sort(compararActividades);
       const ids = new Set(guardadas.map((a) => a.id));
       const faltantes = ACTIVIDADES_INICIALES.filter((a) => !ids.has(a.id));
-      return [...guardadas, ...faltantes].sort(compararActividades);
+      const resultado = [...guardadas, ...faltantes].sort(compararActividades);
+      this.cache = { data: resultado, ts: Date.now() };
+      return resultado;
     } catch (error) {
       console.error('No se pudieron cargar las actividades:', error);
-      return [...ACTIVIDADES_INICIALES].sort(compararActividades);
+      const fallback = [...ACTIVIDADES_INICIALES].sort(compararActividades);
+      this.cache = { data: fallback, ts: Date.now() };
+      return fallback;
     }
   }
 
@@ -111,10 +122,12 @@ export class ActividadesService {
 
   async guardar(actividad: ActividadResumen): Promise<void> {
     await setDoc(doc(db, this.collectionName, String(actividad.id)), actividad);
+    this.cache = null;
   }
 
   async eliminar(id: number): Promise<void> {
     await deleteDoc(doc(db, this.collectionName, String(id)));
+    this.cache = null;
   }
 
   async guardarIniciales(): Promise<void> {

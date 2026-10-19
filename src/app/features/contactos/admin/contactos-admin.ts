@@ -3,17 +3,17 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { NOMBRES_COLECCION } from '@core/firebase';
-import { ContentService } from '@core/services/content.service';
 import { Contacto, TipoContacto } from '@features/contactos/models/contacto.model';
 import { ContactoService } from '@features/contactos/services/contacto.service';
+import { ContenidoAdminBase } from '@shared/components/contenido-admin-base';
 
 @Component({
   selector: 'app-contactos-admin',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './contactos-admin.html'
 })
-export class ContactosAdmin implements OnInit {
-  private readonly content = inject(ContentService);
+export class ContactosAdmin extends ContenidoAdminBase<Contacto> implements OnInit {
+  protected readonly coleccion = NOMBRES_COLECCION.contactos;
   private readonly fb = inject(FormBuilder);
   readonly contacto = inject(ContactoService);
 
@@ -81,7 +81,7 @@ export class ContactosAdmin implements OnInit {
         datos.creadoEn = Date.now();
       }
 
-      await this.content.guardar(NOMBRES_COLECCION.contactos, datos);
+      await this.guardarItem(datos as Contacto);
       this.mensaje.set(this.editandoId() ? 'Contacto actualizado.' : 'Contacto agregado.');
       this.cancelar();
       await this.cargar();
@@ -95,7 +95,7 @@ export class ContactosAdmin implements OnInit {
 
   async cambiarPublicacion(contacto: Contacto): Promise<void> {
     try {
-      await this.content.actualizar(NOMBRES_COLECCION.contactos, contacto.id, {
+      await this.actualizarItem(contacto.id, {
         publicado: !contacto.publicado
       });
       await this.cargar();
@@ -110,7 +110,7 @@ export class ContactosAdmin implements OnInit {
       return;
     }
     try {
-      await this.content.eliminar(NOMBRES_COLECCION.contactos, contacto.id);
+      await this.eliminarItem(contacto.id);
       if (this.editandoId() === contacto.id) this.cancelar();
       await this.cargar();
       this.mensaje.set('Contacto eliminado.');
@@ -123,7 +123,7 @@ export class ContactosAdmin implements OnInit {
   private async cargar(): Promise<void> {
     this.cargando.set(true);
     try {
-      this.contactos.set(await this.content.listar<Contacto>(NOMBRES_COLECCION.contactos));
+      this.contactos.set(await this.listarItems());
     } catch (e) {
       console.error('No se pudo cargar la lista de contactos:', e);
       this.error.set('No se pudo cargar la lista de contactos.');

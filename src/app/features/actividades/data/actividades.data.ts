@@ -7,7 +7,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Sucesiones y Patrones',
     descripcion: 'Descubre secuencias y relaciones entre imágenes y números.',
     icono: 'bi-diagram-3',
-    imagen: '/images/Sucesiones-y-Patrones.webp',
+    imagen: 'images/Sucesiones-y-Patrones.webp',
     colorTema: 'purple',
     ruta: '/razonamiento-logico/sucesiones-patrones'
   },
@@ -16,7 +16,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Conteo de Figuras',
     descripcion: 'Cuenta figuras, segmentos, ángulos y triángulos.',
     icono: 'bi-shapes',
-    imagen: '/images/Conteo-de-Figuras.webp',
+    imagen: 'images/Conteo-de-Figuras.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/conteo-figuras'
   },
@@ -25,7 +25,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Operaciones Básicas',
     descripcion: 'Suma, resta y multiplica resolviendo desafíos con dibujos, por niveles.',
     icono: 'bi-plus-slash-minus',
-    imagen: '/images/Operaciones-con-Numeros-Naturales.webp',
+    imagen: 'images/Operaciones-con-Numeros-Naturales.webp',
     colorTema: 'blue',
     ruta: '/razonamiento-logico/operaciones-basicas'
   },
@@ -34,7 +34,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Operadores Matemáticos',
     descripcion: 'Descubre el valor de figuras y símbolos resolviendo ecuaciones y operadores.',
     icono: 'bi-calculator-fill',
-    imagen: '/images/Operadores-Matematicos.webp',
+    imagen: 'images/Operadores-Matematicos.webp',
     colorTema: 'blue',
     ruta: '/razonamiento-logico/operadores-matematicos'
   },
@@ -43,7 +43,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Actividades Mentales',
     descripcion: 'Entrena tu cálculo mental con series, conteo rápido, comparaciones y patrones.',
     icono: 'bi-brain',
-    imagen: '/images/agilmente.webp',
+    imagen: 'images/agilmente.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/actividades-mentales'
   },
@@ -52,7 +52,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Geometría Básica',
     descripcion: 'Explora figuras, perímetros y relaciones geométricas.',
     icono: 'bi-triangle',
-    imagen: '/images/Geometria-Basica.webp',
+    imagen: 'images/Geometria-Basica.webp',
     colorTema: 'orange',
     ruta: '/razonamiento-logico/geometria-basica'
   },
@@ -61,7 +61,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Conjuntos',
     descripcion: 'Aprende sobre pertenencia, unión e intersección.',
     icono: 'bi-union',
-    imagen: '/images/Conjuntos.webp',
+    imagen: 'images/Conjuntos.webp',
     colorTema: 'pink',
     ruta: '/razonamiento-logico/conjuntos'
   },
@@ -70,7 +70,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Juegos Lógicos',
     descripcion: 'Resuelve sudokus deduciendo la casilla que falta.',
     icono: 'bi-grid-3x3',
-    imagen: '/images/Juegos-Logicos.webp',
+    imagen: 'images/Juegos-Logicos.webp',
     colorTema: 'orange',
     ruta: '/razonamiento-logico/juegos-logicos'
   },
@@ -79,7 +79,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Razonamiento Aplicado',
     descripcion: 'Ordena información y resuelve problemas de la vida diaria.',
     icono: 'bi-lightbulb',
-    imagen: '/images/Razonamiento-Aplicado.webp',
+    imagen: 'images/Razonamiento-Aplicado.webp',
     colorTema: 'purple',
     ruta: '/razonamiento-logico/razonamiento-aplicado'
   },
@@ -88,7 +88,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Seriaciones',
     descripcion: 'Ordena elementos identificando la regla que los relaciona.',
     icono: 'bi-sort-down',
-    imagen: '/images/Seriaciones.webp',
+    imagen: 'images/Seriaciones.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/seriaciones'
   },
@@ -97,7 +97,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Pirámides',
     descripcion: 'Completa pirámides numéricas usando sus relaciones matemáticas.',
     icono: 'bi-triangle',
-    imagen: '/images/Piramides.webp',
+    imagen: 'images/Piramides.webp',
     colorTema: 'amber',
     ruta: '/razonamiento-logico/piramides'
   },
@@ -106,7 +106,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Cuadrados Mágicos',
     descripcion: 'Completa cuadrados donde todas las líneas suman el número mágico.',
     icono: 'bi-grid-3x3-gap',
-    imagen: '/images/cuadrados-magicos.webp',
+    imagen: 'images/cuadrados-magicos.webp',
     colorTema: 'purple',
     ruta: '/razonamiento-logico/cuadrados-magicos'
   },
@@ -115,7 +115,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Matemáticas Interactivas',
     descripcion: 'Duelos por equipos de sumas, restas, multiplicación, división y más.',
     icono: 'bi-joystick',
-    imagen: '/images/matematicas-interactivas.webp',
+    imagen: 'images/matematicas-interactivas.webp',
     colorTema: 'green',
     ruta: '/razonamiento-logico/matematicas-interactivas'
   },
@@ -124,9 +124,17 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
     titulo: 'Juegos Mentales',
     descripcion: 'Entrena tu agilidad mental sumando y restando números positivos y negativos.',
     icono: 'bi-calculator',
-    imagen: '/images/juegos-mentales.webp',
+    imagen: 'images/juegos-mentales.webp',
     colorTema: 'pink',
     ruta: '/razonamiento-logico/juegos-mentales'
+  },
+  {
+    id: 16,
+    titulo: 'Relaciones y Analogías',
+    descripcion: 'Completa analogías numéricas y de figuras descubriendo la regla matemática que las relaciona.',
+    icono: 'bi-link-45deg',
+    colorTema: 'purple',
+    ruta: '/razonamiento-logico/relaciones-analogias'
   }
 ];
 

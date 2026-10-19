@@ -34,5 +34,18 @@ export const secciones = {
     description: 'Consulta tus datos personales y ajustes de cuenta.',
     badge: 'Cuenta',
     items: itemsRelacionados('/perfil')
+  },
+  docente: {
+    title: 'Módulo Docente',
+    description: 'Genera fichas imprimibles con el mismo formato y gráficos de los juegos',
+    badge: 'Docente',
+    items: [
+      {
+        title: 'Generador de fichas',
+        description: 'Crea ejercicios imprimibles por tipo, nivel y cantidad',
+        icon: 'bi-journal-text',
+        route: '/docente'
+      }
+    ]
   }
 };

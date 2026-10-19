@@ -30,6 +30,11 @@ export const routes: Routes = [
           import('./features/actividades/actividades.routes').then((m) => m.ACTIVIDADES_ROUTES)
       },
       {
+        path: 'docente',
+        loadChildren: () =>
+          import('./features/docente/docente.routes').then((m) => m.DOCENTE_ROUTES)
+      },
+      {
         path: 'biblioteca',
         loadChildren: () =>
           import('./features/biblioteca/biblioteca.routes').then((m) => m.BIBLIOTECA_ROUTES)

@@ -23,7 +23,21 @@ export class CloudinaryService {
    * @param file Archivo de imagen a subir
    * @param folder Carpeta opcional en Cloudinary (ej: 'biblioteca', 'galeria')
    */
+  /** Tamaño máximo permitido por imagen (5 MB). */
+  private readonly TAMANO_MAXIMO_BYTES = 5 * 1024 * 1024;
+
   async subirImagen(file: File, folder?: string): Promise<CloudinaryUploadResult> {
+    if (!file.type.startsWith('image/')) {
+      const mensaje = 'Solo se permiten archivos de imagen.';
+      this.error.set(mensaje);
+      throw new Error(mensaje);
+    }
+    if (file.size > this.TAMANO_MAXIMO_BYTES) {
+      const mensaje = 'La imagen supera los 5 MB permitidos.';
+      this.error.set(mensaje);
+      throw new Error(mensaje);
+    }
+
     this.subiendo.set(true);
     this.progreso.set(0);
     this.error.set(null);

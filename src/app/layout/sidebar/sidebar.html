@@ -4,7 +4,7 @@
 >
   <div class="d-flex align-items-center gap-2 mb-4 brand-block">
     <div class="brand-icon" aria-hidden="true">
-      <img src="/images/agilmente.webp" alt="" width="48" height="48" class="rounded" />
+      <img src="images/agilmente.webp" alt="" width="48" height="48" class="rounded" />
     </div>
     @if (!enRutaJuego()) {
       <div class="d-flex flex-column lh-sm">
@@ -27,7 +27,7 @@
   <div class="sidebar-panel flex-grow-1" [class.d-none]="!menuAbierto() && false" [class.sidebar-panel--open]="menuAbierto()">
     <nav id="sidebar-menu" class="nav flex-column gap-2">
       @for (item of menu; track item.ruta) {
-        @if (!item.soloAdmin || esModoAdmin()) {
+        @if ((!item.soloAdmin || esModoAdmin()) && (!item.soloDocente || esDocente())) {
           <button
             type="button"
             class="btn menu-item d-flex align-items-center gap-2 text-start rounded-3 fw-semibold"

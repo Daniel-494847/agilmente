@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { NOMBRES_COLECCION } from '@core/firebase';
-import { ContentService } from '@core/services/content.service';
+import { ContenidoAdminBase } from '@shared/components/contenido-admin-base';
 
 export interface ComunicadoAdmin {
   id?: string;
@@ -19,8 +19,8 @@ export interface ComunicadoAdmin {
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './avisos-admin.html'
 })
-export class AvisosAdmin implements OnInit {
-  private readonly content = inject(ContentService);
+export class AvisosAdmin extends ContenidoAdminBase<ComunicadoAdmin> implements OnInit {
+  protected readonly coleccion = NOMBRES_COLECCION.comunicados;
   private readonly fb = inject(FormBuilder);
 
   readonly items = signal<ComunicadoAdmin[]>([]);
@@ -45,7 +45,7 @@ export class AvisosAdmin implements OnInit {
   async cargar(): Promise<void> {
     this.cargando.set(true);
     try {
-      const lista = await this.content.listar<ComunicadoAdmin>(NOMBRES_COLECCION.comunicados);
+      const lista = await this.listarItems();
       this.items.set(lista);
     } catch {
       this.error.set('No se pudieron cargar los avisos.');
@@ -89,7 +89,7 @@ export class AvisosAdmin implements OnInit {
     try {
       const datos = this.form.getRawValue();
       const id = this.editandoId() ?? undefined;
-      await this.content.guardar(NOMBRES_COLECCION.comunicados, { id, ...datos });
+      await this.guardarItem({ id, ...datos });
       this.mensaje.set(id ? 'Aviso actualizado.' : 'Aviso creado.');
       this.cancelar();
       await this.cargar();
@@ -103,7 +103,7 @@ export class AvisosAdmin implements OnInit {
   async eliminar(item: ComunicadoAdmin): Promise<void> {
     if (!item.id || !confirm(`¿Eliminar «${item.titulo}»?`)) return;
     try {
-      await this.content.eliminar(NOMBRES_COLECCION.comunicados, item.id);
+      await this.eliminarItem(item.id);
       await this.cargar();
     } catch {
       this.error.set('No se pudo eliminar.');
@@ -113,7 +113,7 @@ export class AvisosAdmin implements OnInit {
   async togglePublicado(item: ComunicadoAdmin): Promise<void> {
     if (!item.id) return;
     try {
-      await this.content.guardar(NOMBRES_COLECCION.comunicados, {
+      await this.guardarItem({
         ...item,
         publicado: !item.publicado
       });

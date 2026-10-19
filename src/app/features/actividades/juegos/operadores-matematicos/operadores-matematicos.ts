@@ -1,12 +1,13 @@
-import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
+import { Component } from "@angular/core";
 import { Router } from "@angular/router";
 import { AttemptsService } from "@core/services/attempts.service";
 import { GameUiService } from "@core/services/game-ui.service";
+import { QuizEngine } from '@core/services/quiz-engine.service';
+import { JuegoQuizBase } from '@core/services/juego-quiz-base';
 import { Quiz } from "@shared/components/quiz/quiz";
 import {
   ConfiguracionQuiz,
   PreguntaQuiz,
-  QuizViewModel,
   TipoPregunta,
 } from "@shared/components/quiz/quiz.model";
 
@@ -455,27 +456,23 @@ const EJERCICIOS: Record<Nivel, Ejercicio[]> = {
   selector: "app-operadores-matematicos",
   standalone: true,
   imports: [Quiz],
+  providers: [QuizEngine],
   template: `
     <app-quiz
-      [vista]="vista()"
-      (volver)="volver()"
-      (nivelElegido)="nivelElegido($event)"
-      (empezar)="empezar()"
-      (respuestaSeleccionada)="respuestaSeleccionada($event)"
-      (avanzar)="avanzar()"
-      (reiniciar)="reiniciar()"
-      (alternarSonido)="alternarSonido()"
+      [vista]="engine.vista()"
+      (volver)="engine.volver()"
+      (nivelElegido)="engine.nivelElegido($event)"
+      (empezar)="engine.empezar()"
+      (respuestaSeleccionada)="engine.responder($event)"
+      (avanzar)="engine.avanzar()"
+      (reiniciar)="engine.reiniciar()"
+      (alternarSonido)="engine.alternarSonido()"
     />
   `,
 })
-export class OperadoresMatematicos implements OnInit, OnDestroy {
-  private readonly gameUi = inject(GameUiService);
-  private readonly attempts = inject(AttemptsService);
-  private readonly router = inject(Router);
-  private intentoId: string | null = null;
-  private intentoInicio = 0;
+export class OperadoresMatematicos extends JuegoQuizBase {
 
-  readonly config: ConfiguracionQuiz = {
+  protected readonly config: ConfiguracionQuiz = {
     titulo: "Operadores Matemáticos",
     descripcion: "Usa operadores para resolver problemas lógicos.",
     colorTema: "blue",
@@ -484,88 +481,12 @@ export class OperadoresMatematicos implements OnInit, OnDestroy {
     etiquetasNiveles: ["Básico", "Intermedio", "Avanzado"],
     preguntas: [],
   };
+  protected readonly slug = 'operadores-matematicos';
 
-  readonly vista = signal<QuizViewModel>({
-    config: {} as ConfiguracionQuiz,
-    estado: "intro",
-    indice: 0,
-    nivelSeleccionado: 1,
-    preguntaActual: null,
-    total: 0,
-    etiquetasNiveles: [],
-    resultado: {
-      correctas: 0,
-      incorrectas: 0,
-      total: 0,
-      puntaje: 0,
-      porcentaje: 0,
-      respuestas: [],
-    },
-    estrellas: 0,
-    colorTema: "blue",
-    seleccionada: null,
-    esCorrecta: null,
-    mostrarConfeti: false,
-    sonidosActivos: true,
-    segundosRestantes: 0,
-  });
 
-  ngOnInit(): void {
-    this.config.preguntas = this.generar();
-    this.vista.set(this.inicial(1));
-    this.gameUi.setJugando(true);
-    void this.attempts.iniciar("operadores-matematicos").then((s) => {
-      this.intentoId = s?.id ?? null;
-      this.intentoInicio = s?.inicio ?? Date.now();
-    });
-  }
-  ngOnDestroy(): void {
-    this.gameUi.setJugando(false);
-    if (this.intentoId)
-      void this.attempts.finalizar(this.intentoId, this.intentoInicio, {
-        actividadId: "operadores-matematicos",
-        puntaje: this.vista().resultado.puntaje,
-        nivel: this.vista().nivelSeleccionado,
-        respuestasCorrectas: this.vista().resultado.correctas,
-        respuestasIncorrectas: this.vista().resultado.incorrectas,
-      });
-  }
 
-  private inicial(n: number): QuizViewModel {
-    // Al elegir o reiniciar un nivel se mezcla el orden de sus 25 ejercicios
-    const list = this.mezclar(this.config.preguntas.filter((p) => p.nivel === n));
-    this.config.preguntas = [
-      ...this.config.preguntas.filter((p) => p.nivel !== n),
-      ...list,
-    ];
-    return {
-      config: this.config,
-      estado: "intro",
-      indice: 0,
-      nivelSeleccionado: n,
-      preguntaActual: list[0] ?? null,
-      total: list.length,
-      etiquetasNiveles: this.config.etiquetasNiveles ?? [],
-      resultado: {
-        correctas: 0,
-        incorrectas: 0,
-        total: list.length,
-        puntaje: 0,
-        porcentaje: 0,
-        respuestas: [],
-      },
-      estrellas: 0,
-      colorTema: "blue",
-      seleccionada: null,
-      esCorrecta: null,
-      mostrarConfeti: false,
-      sonidosActivos: true,
-      segundosRestantes: 0,
-    };
-  }
-
-  // Convierte los 75 ejercicios (25 por nivel) al formato PreguntaQuiz
-  private generar(): PreguntaQuiz[] {
+// Convierte los 75 ejercicios (25 por nivel) al formato PreguntaQuiz
+  protected generar(): PreguntaQuiz[] {
     const niveles: Nivel[] = ["basico", "intermedio", "avanzado"];
     const ids = ["a", "b", "c", "d"];
     const out: PreguntaQuiz[] = [];
@@ -595,76 +516,6 @@ export class OperadoresMatematicos implements OnInit, OnDestroy {
     return c;
   }
 
-  volver() {
-    void this.router.navigateByUrl("/razonamiento-logico");
-  }
-  nivelElegido(n: number) {
-    this.vista.set(this.inicial(n));
-  }
-  empezar() {
-    this.vista.update((s) => ({ ...s, estado: "jugando" }));
-  }
-  respuestaSeleccionada(id: string) {
-    const v = this.vista();
-    const p = v.preguntaActual;
-    if (!p) return;
-    const es = id === p.respuestaCorrectaId;
-    this.vista.update((s) => ({
-      ...s,
-      seleccionada: id,
-      esCorrecta: es,
-      estado: "feedback",
-      // El marcador se acumula aqui: avanzar() solo cierra la partida.
-      resultado: {
-        ...s.resultado,
-        correctas: s.resultado.correctas + (es ? 1 : 0),
-        incorrectas: s.resultado.incorrectas + (es ? 0 : 1),
-        puntaje: s.resultado.puntaje + (es ? (p.puntos ?? 10) : 0),
-        respuestas: [
-          ...s.resultado.respuestas,
-          { preguntaId: p.id, opcionId: id, correcta: es },
-        ],
-      },
-    }));
-  }
-  avanzar() {
-    const v = this.vista();
-    const list = this.config.preguntas.filter(
-      (p) => p.nivel === v.nivelSeleccionado,
-    );
-    const sig = v.indice + 1;
-    if (sig < list.length) {
-      this.vista.update((s) => ({
-        ...s,
-        indice: sig,
-        preguntaActual: list[sig],
-        estado: "jugando",
-        seleccionada: null,
-        esCorrecta: null,
-      }));
-    } else {
-      const c = v.resultado.correctas;
-      const t = list.length;
-      const pct = t === 0 ? 0 : Math.round((c / t) * 100);
-      this.vista.update((s) => ({
-        ...s,
-        estado: "resultado",
-        resultado: {
-          ...s.resultado,
-          correctas: c,
-          incorrectas: t - c,
-          total: t,
-          porcentaje: pct,
-        },
-        estrellas: pct >= 90 ? 3 : pct >= 70 ? 2 : pct >= 50 ? 1 : 0,
-        mostrarConfeti: pct >= 70,
-      }));
-    }
-  }
-  reiniciar() {
-    this.vista.set(this.inicial(this.vista().nivelSeleccionado));
-  }
-  alternarSonido() {
-    this.vista.update((s) => ({ ...s, estado: s.estado, sonidosActivos: !s.sonidosActivos }));
-  }
+
+
 }

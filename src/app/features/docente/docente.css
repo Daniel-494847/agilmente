@@ -1,0 +1,114 @@
+/* Módulo Docente: solo lo que Bootstrap no da (fondo con el mismo lenguaje
+   visual de los 14 juegos, icono circular del tipo, hoja carta vertical,
+   línea manuscrita, tope de imagen, 2 columnas e impresión en carta).
+
+   El COLOR de botones y fondos lo ponen las variantes de Bootstrap; aquí
+   solo hay medidas y la variable --doc-soft que tiñe el degradado según el
+   colorTema del juego seleccionado (mismo patrón que .quiz-page en quiz.css). */
+.docente-page {
+  --doc-soft: var(--bs-primary-bg-subtle);
+
+  background-color: var(--bs-tertiary-bg);
+  background-image:
+    radial-gradient(ellipse at 88% 0%, var(--doc-soft), transparent 55%),
+    radial-gradient(ellipse at 6% 100%, var(--bs-info-bg-subtle), transparent 48%);
+  background-attachment: fixed;
+}
+
+.docente-page[data-theme='purple'] { --doc-soft: #e9d5ff; }
+.docente-page[data-theme='green'] { --doc-soft: var(--bs-success-bg-subtle); }
+.docente-page[data-theme='amber'] { --doc-soft: var(--bs-warning-bg-subtle); }
+.docente-page[data-theme='blue'] { --doc-soft: var(--bs-primary-bg-subtle); }
+.docente-page[data-theme='pink'] { --doc-soft: #fce7f3; }
+.docente-page[data-theme='orange'] { --doc-soft: #ffedd5; }
+
+/* Icono circular del tipo de actividad. Solo medida: el color lo dan las
+   clases bg-*-subtle / text-* del tema (TEMA_CLASES). El padding a 0 y el
+   color: inherit son parches contra .badge (fija color #fff y padding). */
+.doc-icono-tipo {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  color: inherit;
+  border: 1px solid currentColor;
+}
+
+.hoja-carta {
+  /* Carta vertical: 216 × 279 mm. En pantalla se limita al ancho y a una
+     proporción vertical para previsualizar la hoja tal como saldrá impresa. */
+  width: 100%;
+  max-width: 216mm;
+  min-height: 279mm;
+}
+
+/* La hoja se comporta como flexbox (la tarjeta .card ya lo es): el cuerpo
+   ocupa toda la altura de la carta y el pie queda anclado al fondo, a
+   1 cm del borde inferior, incluso cuando la hoja está vacía. El cuerpo no
+   lleva padding inferior (la plantilla usa px/pt) para que esos 1 cm se
+   midan desde el borde mismo del papel. */
+.hoja-carta > .card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.hoja-carta footer {
+  margin-bottom: 1cm;
+}
+
+.linea-manuscrita {
+  min-height: 1.3em;
+  border-bottom: 1.5px solid #495057;
+}
+
+.ej-imagen {
+  max-width: 95mm;
+  max-height: 48mm;
+  width: auto;
+  height: auto;
+}
+
+.respuestas-2col {
+  columns: 2;
+  column-gap: 12mm;
+  line-height: 2;
+  list-style-position: inside;
+}
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0;
+  }
+
+  /* El papel debe salir blanco: el degradado del fondo no se imprime. */
+  .docente-page {
+    background: #fff !important;
+    background-image: none !important;
+  }
+
+  .docente-hojas {
+    row-gap: 0 !important;
+  }
+
+  .hoja-carta {
+    /* En papel: hoja carta vertical exacta (216 × 279 mm), una por página. */
+    width: 216mm;
+    height: 279mm;                 /* altura exacta: el pie siempre cae al final */
+    max-width: 216mm;
+    margin-inline: auto;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* El anclaje del pie al fondo (flex + margen inferior de 1 cm) es común a
+     pantalla y papel: está en las reglas base de .hoja-carta. */
+
+  .hoja-carta:last-of-type {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

@@ -39,7 +39,13 @@ service cloud.firestore {
       allow update: if esAdministrador()
         || (autenticado()
           && request.auth.uid == uid
-          && request.resource.data.rol == resource.data.rol);
+          && request.resource.data.rol == resource.data.rol
+          && request.resource.data.email == resource.data.email
+          // El propio usuario solo puede incrementar sus puntos (no decrecer ni inflar).
+          && request.resource.data.puntos >= resource.data.puntos
+          && request.resource.data.puntos <= resource.data.puntos + 500
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['nombreCompleto', 'avatarUrl', 'ultimoIngreso', 'puntos', 'nivel', 'tituloNivel']));
       allow delete: if esAdministrador();
     }
 

@@ -1,10 +1,8 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
 
-import { auth } from '@core/firebase';
-import { UserRoleService } from '@core/auth/user-role.service';
+import { AuthService } from '@core/auth/auth.service';
 import { GameUiService } from '@core/services/game-ui.service';
 
 interface ItemMenu {
@@ -16,6 +14,8 @@ interface ItemMenu {
   rutaAdmin?: string;
   /** Si es true, solo la ven los administradores (es un enlace de administración). */
   soloAdmin?: boolean;
+  /** Si es true, solo la ven docentes y administradores. */
+  soloDocente?: boolean;
 }
 
 @Component({
@@ -27,9 +27,11 @@ interface ItemMenu {
 })
 export class Sidebar {
   private readonly gameUi = inject(GameUiService);
+  private readonly auth = inject(AuthService);
   readonly menuAbierto = signal(false);
-  readonly sesionIniciada = signal(false);
-  readonly esAdministrador = signal(false);
+  readonly sesionIniciada = this.auth.isAuthenticated;
+  readonly esAdministrador = this.auth.esAdministrador;
+  readonly esDocente = this.auth.esDocente;
   readonly esModoJuego = this.gameUi.jugando;
   readonly enRutaJuego = signal(false);
   readonly rutaActual = signal('');
@@ -47,6 +49,13 @@ export class Sidebar {
       tono: 'warning',
       ruta: '/razonamiento-logico',
       rutaAdmin: '/razonamiento-logico/administrar'
+    },
+    {
+      etiqueta: 'Módulo Docente',
+      icono: 'bi-journal-text',
+      tono: 'info',
+      ruta: '/docente',
+      soloDocente: true
     },
     {
       etiqueta: 'Biblioteca Digital',
@@ -108,10 +117,7 @@ export class Sidebar {
 
   private readonly destroyRef = inject(DestroyRef);
 
-  constructor(
-    private readonly router: Router,
-    private readonly userRoleService: UserRoleService
-  ) {
+  constructor(private readonly router: Router) {
     this.rutaActual.set(this.router.url);
     this.enRutaJuego.set(this.esRutaJuego(this.router.url));
 
@@ -121,23 +127,6 @@ export class Sidebar {
         this.enRutaJuego.set(this.esRutaJuego(event.urlAfterRedirects));
         this.cerrarMenuMovil();
       }
-    });
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      this.sesionIniciada.set(!!user);
-      if (!user) {
-        this.esAdministrador.set(false);
-        return;
-      }
-      try {
-        this.esAdministrador.set(await this.userRoleService.esAdministrador(user));
-      } catch {
-        this.esAdministrador.set(false);
-      }
-    });
-
-    this.destroyRef.onDestroy(() => {
-      unsubscribeAuth();
     });
   }
 
@@ -174,15 +163,8 @@ export class Sidebar {
   }
 
   async cerrarSesion(): Promise<void> {
-    try {
-      if (auth.currentUser) {
-        await signOut(auth);
-      }
-      localStorage.removeItem('agilmente_user_name');
-      this.cerrarMenuMovil();
-      await this.router.navigateByUrl('/');
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    }
+    await this.auth.cerrarSesion();
+    this.cerrarMenuMovil();
+    await this.router.navigateByUrl('/');
   }
 }

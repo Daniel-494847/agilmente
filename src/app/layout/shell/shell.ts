@@ -1,11 +1,9 @@
 import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { onAuthStateChanged } from 'firebase/auth';
 
-import { auth } from '@core/firebase';
 import { UsuarioResumen } from '@core/models/usuario.model';
-import { UserRoleService } from '@core/auth/user-role.service';
+import { AuthService } from '@core/auth/auth.service';
 import { GameUiService } from '@core/services/game-ui.service';
 import { UserProgressService } from '@core/services/user-progress.service';
 import { Sidebar } from '@layout/sidebar/sidebar';
@@ -22,9 +20,9 @@ export class Shell {
   private readonly destroyRef = inject(DestroyRef);
   private readonly progress = inject(UserProgressService);
   private readonly gameUi = inject(GameUiService);
-  private readonly userRoleService = inject(UserRoleService);
+  private readonly auth = inject(AuthService);
 
-  protected readonly isAuthenticated = signal(false);
+  protected readonly isAuthenticated = this.auth.isAuthenticated;
   protected readonly jugando = this.gameUi.jugando;
 
   readonly usuario = signal<UsuarioResumen>({
@@ -37,7 +35,6 @@ export class Shell {
   });
 
   constructor(private readonly router: Router) {
-    // Cuando el progreso se actualiza (tras un juego), reflejar en topbar
     effect(() => {
       const p = this.progress.progreso();
       this.usuario.update((u) => ({
@@ -48,29 +45,21 @@ export class Shell {
       }));
     });
 
-    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
-      if (event instanceof NavigationEnd) {
-        this.isAuthenticated.set(!!auth.currentUser);
-      }
-    });
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      this.isAuthenticated.set(!!user);
-      if (user) {
+    effect(() => {
+      const u = this.auth.user();
+      const rol = this.auth.rol();
+      if (u) {
         const nombreGuardado =
-          localStorage.getItem('agilmente_user_name') ?? user.displayName ?? 'Usuario';
-        const rol = await this.userRoleService.obtenerRol(user);
+          localStorage.getItem('agilmente_user_name') ?? u.displayName ?? 'Usuario';
         this.usuario.set({
-          nombre: this.formatearNombre(nombreGuardado),
+          nombre: this.auth.formatearNombre(nombreGuardado),
           rol,
           puntos: this.progress.progreso().puntos,
           nivel: this.progress.progreso().nivel,
           tituloNivel: this.progress.progreso().tituloNivel,
-          avatarUrl: user.photoURL ?? ''
+          avatarUrl: u.photoURL ?? ''
         });
-        await this.progress.refrescar();
       } else {
-        this.progress.reset();
         this.usuario.set({
           nombre: 'Usuario',
           rol: 'estudiante',
@@ -82,18 +71,10 @@ export class Shell {
       }
     });
 
-    this.destroyRef.onDestroy(() => {
-      unsubscribeAuth();
+    this.router.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+      if (event instanceof NavigationEnd) {
+        // estado ya gestionado por AuthService; noop
+      }
     });
-  }
-
-  private formatearNombre(nombre: string): string {
-    return nombre
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1))
-      .join(' ');
   }
 }

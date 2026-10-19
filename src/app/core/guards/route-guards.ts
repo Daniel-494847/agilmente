@@ -1,36 +1,34 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { User, onAuthStateChanged } from 'firebase/auth';
 
-import { auth } from '@core/firebase';
-import { UserRoleService } from '@core/auth/user-role.service';
-
-const obtenerUsuarioActual = (): Promise<User | null> =>
-  new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe();
-      resolve(user);
-    });
-  });
+import { AuthService } from '@core/auth/auth.service';
 
 export const redirectIfAuthenticated: CanActivateFn = async () => {
   const router = inject(Router);
-  const user = await obtenerUsuarioActual();
-  return user ? router.createUrlTree(['/']) : true;
+  const auth = inject(AuthService);
+  await auth.ready;
+  return auth.isAuthenticated() ? router.createUrlTree(['/']) : true;
 };
 
 export const requireAdmin: CanActivateFn = async () => {
   const router = inject(Router);
-  const userRoleService = inject(UserRoleService);
-  const user = await obtenerUsuarioActual();
-  return user && (await userRoleService.esAdministrador(user))
-    ? true
-    : router.createUrlTree(['/']);
+  const auth = inject(AuthService);
+  await auth.ready;
+  return auth.esAdministrador() ? true : router.createUrlTree(['/']);
 };
 
 /** Exige sesión iniciada (para páginas que solo editan datos propios, como el perfil). */
 export const requireAuth: CanActivateFn = async () => {
   const router = inject(Router);
-  const user = await obtenerUsuarioActual();
-  return user ? true : router.createUrlTree(['/login']);
+  const auth = inject(AuthService);
+  await auth.ready;
+  return auth.isAuthenticated() ? true : router.createUrlTree(['/login']);
+};
+
+/** Exige rol docente o administrador (para el módulo de fichas imprimibles). */
+export const requireDocente: CanActivateFn = async () => {
+  const router = inject(Router);
+  const auth = inject(AuthService);
+  await auth.ready;
+  return auth.esDocente() ? true : router.createUrlTree(['/']);
 };

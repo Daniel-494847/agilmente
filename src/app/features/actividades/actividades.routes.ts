@@ -150,4 +150,13 @@ export const ACTIVIDADES_ROUTES: Routes = [
         (m) => m.CuadradosMagicos,
       ),
   },
+  // Relaciones y Analogías: plantilla de quiz; las preguntas salen del banco
+  // compartido (relaciones-analogias.data.ts).
+  {
+    path: "relaciones-analogias",
+    loadComponent: () =>
+      import("./juegos/relaciones-analogias/relaciones-analogias").then(
+        (m) => m.RelacionesAnalogias,
+      ),
+  },
 ];

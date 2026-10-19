@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FirebaseError } from 'firebase/app';
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
@@ -61,8 +62,8 @@ export class Login {
         nombreCompleto: localStorage.getItem('agilmente_user_name')
       });
       this.router.navigateByUrl('/');
-    } catch {
-      this.errorMessage.set('Credenciales incorrectas o error de conexión.');
+    } catch (error) {
+      this.errorMessage.set(this.mensajeError(error, 'sesion'));
     } finally {
       this.isSubmitting.set(false);
     }
@@ -85,8 +86,8 @@ export class Login {
       );
       localStorage.setItem('agilmente_user_name', nombreCompleto.trim());
       this.router.navigateByUrl('/');
-    } catch {
-      this.errorMessage.set('No se pudo completar el registro.');
+    } catch (error) {
+      this.errorMessage.set(this.mensajeError(error, 'registro'));
     } finally {
       this.isSubmitting.set(false);
     }
@@ -107,11 +108,54 @@ export class Login {
       );
       localStorage.setItem('agilmente_user_name', nombre);
       this.router.navigateByUrl('/');
-    } catch {
-      this.errorMessage.set('No se pudo iniciar con Google.');
+    } catch (error) {
+      this.errorMessage.set(this.mensajeError(error, 'google'));
     } finally {
       this.isSubmitting.set(false);
     }
+  }
+
+  /**
+   * Traduce el error de Firebase Auth a un mensaje claro. El caso más común en
+   * un sitio publicado (GitHub Pages, Netlify…) es `auth/unauthorized-domain`:
+   * Google solo responde si el dominio del sitio está en la lista
+   * Authentication → Settings → Authorized domains de la consola de Firebase.
+   */
+  private mensajeError(
+    error: unknown,
+    contexto: 'sesion' | 'registro' | 'google'
+  ): string {
+    const codigo = error instanceof FirebaseError ? error.code : '';
+
+    switch (codigo) {
+      case 'auth/unauthorized-domain':
+        return 'Este dominio no está autorizado en Firebase. Añádelo en Consola → Authentication → Settings → Authorized domains.';
+      case 'auth/popup-blocked':
+        return 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes e inténtalo otra vez.';
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request':
+        return 'Se canceló el inicio de sesión con Google.';
+      case 'auth/account-exists-with-different-credential':
+        return 'Ese correo ya está registrado con otro método de inicio de sesión.';
+      case 'auth/operation-not-allowed':
+        return 'El proveedor de Google no está habilitado en Firebase Authentication.';
+      case 'auth/too-many-requests':
+        return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
+      case 'auth/network-request-failed':
+        return 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Credenciales incorrectas o error de conexión.';
+    }
+
+    const porDefecto =
+      contexto === 'google'
+        ? 'No se pudo iniciar con Google.'
+        : contexto === 'registro'
+          ? 'No se pudo completar el registro.'
+          : 'Credenciales incorrectas o error de conexión.';
+    return codigo ? `${porDefecto} (${codigo})` : porDefecto;
   }
 
   private actualizarCampoNombre(): void {
