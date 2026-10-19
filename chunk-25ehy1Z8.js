@@ -1,1 +1,0 @@
-import"./chunk-bjc0i6Km.js";import"./chunk-DQGTWtPI.js";import"./chunk-CZhlXzhw.js";import"./chunk-V-cWFVUR.js";import{r as w}from"./main-6ZE6LCWW.js";var m=[{path:``,loadComponent:()=>import(`./chunk-B7e2ej3X.js`).then(o=>o.Avisos)},{path:`administrar`,loadComponent:()=>import(`./chunk-B9S3q7h6.js`).then(o=>o.AvisosAdmin),canActivate:[w]}];export{m as AVISOS_ROUTES};

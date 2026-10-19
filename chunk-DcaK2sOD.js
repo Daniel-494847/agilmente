@@ -1,1 +1,0 @@
-import"./chunk-bjc0i6Km.js";import"./chunk-DQGTWtPI.js";import"./chunk-CZhlXzhw.js";import"./chunk-V-cWFVUR.js";import{n as h}from"./main-6ZE6LCWW.js";import{t as a}from"./chunk-DXkmM7TN.js";var c=[{path:``,loadComponent:()=>import(`./chunk-dOAUPrdJ.js`).then(e=>e.Docente),canActivate:[h],data:a.docente}];export{c as DOCENTE_ROUTES};

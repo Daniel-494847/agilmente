@@ -1,1 +1,0 @@
-import"./chunk-bjc0i6Km.js";import"./chunk-DQGTWtPI.js";import"./chunk-CZhlXzhw.js";import"./chunk-V-cWFVUR.js";import{r as w}from"./main-6ZE6LCWW.js";var a=[{path:``,loadComponent:()=>import(`./chunk-DAnnlwQ-.js`).then(t=>t.Galeria)},{path:`administrar`,loadComponent:()=>import(`./chunk-SjLQ_pAa.js`).then(t=>t.GaleriaAdmin),canActivate:[w]}];export{a as GALERIA_ROUTES};
