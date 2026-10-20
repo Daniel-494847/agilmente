@@ -1,13 +1,18 @@
 // Relaciones y Analogías: banco de 75 ejercicios (25 por nivel) de razonamiento
 // LÓGICO-MATEMÁTICO con dibujos SVG. No hay analogías verbales: todos los pares
-// se relacionan con una regla matemática (suma, resta, multiplicación, división,
-// potencias, raíces o el número de lados de una figura). Cada respuesta y cada
-// explicación se CALCULAN a partir de los datos del ejercicio.
+// se relacionan con una regla matemática (suma, resta, multiplicación, división
+// o el número de lados de una figura). Cada respuesta y cada explicación se
+// CALCULAN a partir de los datos del ejercicio.
 //
-// El nivel Intermedio usa el formato clásico de la ficha de razonamiento: una
-// GRILLA de 3 filas × 3 columnas donde cada fila es una analogía  A ( B ) C  con
-// la MISMA operación. Dos filas van resueltas y en UNA de ellas hay que hallar el
-// número que debe ir en el paréntesis (el «?» resaltado)
+// Estructura de los niveles:
+//   Básico     → analogía de UNA fila  A : B ∴ C : ?  (números o figuras).
+//   Intermedio → GRILLA de 3 filas × 3 columnas donde cada fila es una analogía
+//                A ( B ) C  con la MISMA operación. Dos filas van resueltas y en
+//                UNA de ellas hay que hallar el número que debe ir en el
+//                paréntesis (el «?» resaltado).
+//   Avanzado   → MISMO formato de grilla que el Intermedio, pero con números más
+//                grandes (operandos y resultados de hasta tres cifras): es el
+//                Intermedio con mayor dificultad.
 //
 //        14 ( 28 ) 2        14 ( 28 ) 2        14 ( ?  ) 2
 //        15 ( 45 ) 3        15 ( ?  ) 3        15 ( 45 ) 3
@@ -215,25 +220,46 @@ const OPERACION: Record<Operacion, { calcular: (a: number, c: number) => number;
   division: { calcular: (a, c) => a / c, signo: "÷" },
 };
 
-// Rangos de los extremos por operación (propios del nivel Intermedio).
-const RANGOS: Record<Operacion, { a: [number, number]; c: [number, number] }> = {
+// Rangos de los extremos por operación. `cociente` (solo división) acota el
+// cociente exacto. Intermedio: números de una y dos cifras. Avanzado: los mismos
+// formatos con números mayores (hasta tres cifras), es decir, más difícil.
+interface RangoOperacion {
+  a: [number, number];
+  c: [number, number];
+  cociente?: [number, number];
+}
+
+const RANGOS_INTERMEDIO: Record<Operacion, RangoOperacion> = {
   multiplicacion: { a: [11, 24], c: [2, 5] },
   suma: { a: [12, 46], c: [11, 38] },
   resta: { a: [34, 78], c: [12, 27] },
-  division: { a: [9, 81], c: [3, 9] },
+  division: { a: [9, 81], c: [3, 9], cociente: [3, 9] },
+};
+
+// Avanzado = mismo formato que el Intermedio, con operandos y resultados más
+// grandes (productos, sumas y restas de hasta tres cifras y cocientes de dos).
+const RANGOS_AVANZADO: Record<Operacion, RangoOperacion> = {
+  multiplicacion: { a: [12, 29], c: [6, 13] },
+  suma: { a: [48, 97], c: [37, 88] },
+  resta: { a: [130, 240], c: [45, 89] },
+  division: { a: [132, 300], c: [5, 12], cociente: [11, 25] },
 };
 
 // Todos los pares (A, C) válidos de la operación: en la división solo los
-// repartos exactos con cociente de una cifra. Sirven para armar las tres filas
-// distintas de cada grilla sin sorteo ni reintentos.
-function paresDe(op: Operacion): [number, number][] {
-  const [amin, amax] = RANGOS[op].a;
-  const [cmin, cmax] = RANGOS[op].c;
+// repartos exactos cuyo cociente cae dentro del rango `cociente`. Sirven para
+// armar las tres filas distintas de cada grilla sin sorteo ni reintentos.
+function paresDe(op: Operacion, rangos: Record<Operacion, RangoOperacion>): [number, number][] {
+  const [amin, amax] = rangos[op].a;
+  const [cmin, cmax] = rangos[op].c;
+  const rangoCoc = rangos[op].cociente;
   const salida: [number, number][] = [];
   for (let a = amin; a <= amax; a++) {
     for (let c = cmin; c <= cmax; c++) {
       const b = OPERACION[op].calcular(a, c);
-      const exacto = op !== "division" || (Number.isInteger(a / c) && a / c >= 3 && a / c <= 9);
+      const cociente = a / c;
+      const exacto =
+        op !== "division" ||
+        (Number.isInteger(cociente) && (!rangoCoc || (cociente >= rangoCoc[0] && cociente <= rangoCoc[1])));
       if (Number.isInteger(b) && b > 0 && a !== c && exacto) salida.push([a, c]);
     }
   }
@@ -260,16 +286,18 @@ function opcionesFalsas(a: number, c: number, b: number, op: Operacion): number[
   return salida.slice(0, 3);
 }
 
-// Las 25 preguntas del nivel: cada una es una grilla 3 × 3 con tres analogías de
-// la misma operación, dos resueltas y la «x» en una de las filas (se alterna).
-// La respuesta (y su explicación) se CALCULAN de los dos extremos de esa fila.
-function preguntasParentesis(): Base[] {
+// Las 25 preguntas de un nivel de grilla: cada una es una grilla 3 × 3 con tres
+// analogías de la misma operación, dos resueltas y la «?» en una de las filas (se
+// alterna). La respuesta (y su explicación) se CALCULAN de los dos extremos de
+// esa fila. `rangos` fija la dificultad (Intermedio o Avanzado) y `semillaBase`
+// hace reproducibles las filas de cada grilla.
+function preguntasParentesis(rangos: Record<Operacion, RangoOperacion>, semillaBase: number): Base[] {
   const operaciones: Operacion[] = ["multiplicacion", "suma", "division", "resta"];
   const salida: Base[] = [];
   for (let i = 0; i < 25; i++) {
     const op = operaciones[i % operaciones.length];
-    const r = rng(7000 + i * 13);
-    const filas = mezclar(paresDe(op), r)
+    const r = rng(semillaBase + i * 13);
+    const filas = mezclar(paresDe(op, rangos), r)
       .slice(0, 3)
       .map(([a, c]) => ({ a, b: OPERACION[op].calcular(a, c), c }));
     const hueco = i % filas.length; // la fila que hay que descubrir
@@ -342,40 +370,11 @@ const BASICO = armar("basico", [
   analogia(T_FIG, fig(5), 5, fig(6), 6, [7, 4, 5], "A cada figura le corresponde su número de lados: el hexágono tiene 6 lados."),
 ]);
 
-const INTERMEDIO = armar("intermedio", preguntasParentesis());
+const INTERMEDIO = armar("intermedio", preguntasParentesis(RANGOS_INTERMEDIO, 7000));
 
-const AVANZADO = armar("avanzado", [
-  // ── Números con reglas compuestas ──
-  analogia(T_NUM, 3, 7, 6, 13, [12, 14, 18], "El segundo es el primero por 2 más 1: 3 × 2 + 1 = 7 y 6 × 2 + 1 = 13."),
-  analogia(T_NUM, 4, 17, 5, 26, [25, 20, 30], "El segundo es el primero por sí mismo más 1: 4 × 4 + 1 = 17 y 5 × 5 + 1 = 26."),
-  analogia(T_NUM, 2, 8, 5, 17, [15, 20, 12], "El segundo es el primero por 3 más 2: 2 × 3 + 2 = 8 y 5 × 3 + 2 = 17."),
-  analogia(T_NUM, 5, 24, 7, 48, [49, 42, 36], "El segundo es el primero por sí mismo menos 1: 5 × 5 − 1 = 24 y 7 × 7 − 1 = 48."),
-  analogia(T_NUM, 4, 11, 6, 17, [18, 12, 15], "El segundo es el primero por 3 menos 1: 4 × 3 − 1 = 11 y 6 × 3 − 1 = 17."),
-  analogia(T_NUM, 3, 12, 5, 30, [25, 20, 35], "El segundo es el primero por el siguiente: 3 × 4 = 12 y 5 × 6 = 30."),
-  analogia(T_NUM, 20, 80, 35, 65, [55, 75, 60], "El segundo es 100 menos el primero: 100 − 20 = 80 y 100 − 35 = 65."),
-  analogia(T_NUM, 10, 10, 20, 15, [12, 25, 18], "El segundo es la mitad del primero más 5: 10 ÷ 2 + 5 = 10 y 20 ÷ 2 + 5 = 15."),
-  analogia(T_NUM, 7, 11, 10, 17, [13, 20, 23], "El segundo es el primero por 2 menos 3: 7 × 2 − 3 = 11 y 10 × 2 − 3 = 17."),
-  analogia(T_NUM, 2, 4, 5, 25, [10, 20, 30], "El segundo es el primero multiplicado por sí mismo: 2 × 2 = 4 y 5 × 5 = 25."),
-  analogia(T_NUM, 3, 27, 2, 8, [6, 9, 16], "El segundo es el primero al cubo: 3 × 3 × 3 = 27 y 2 × 2 × 2 = 8."),
-  analogia(T_NUM, 9, 3, 25, 5, [4, 6, 12], "El segundo es la raíz cuadrada del primero: 3 × 3 = 9 y 5 × 5 = 25."),
-  analogia(T_NUM, 6, 21, 4, 15, [12, 18, 24], "El segundo es el primero por 3 más 3: 6 × 3 + 3 = 21 y 4 × 3 + 3 = 15."),
-  analogia(T_NUM, 8, 4, 18, 9, [6, 12, 36], "El segundo es la mitad del primero: 8 ÷ 2 = 4 y 18 ÷ 2 = 9."),
-  analogia(T_NUM, 5, 30, 3, 18, [12, 21, 24], "El segundo es el primero multiplicado por 6: 5 × 6 = 30 y 3 × 6 = 18."),
-  analogia(T_NUM, 1, 2, 9, 18, [10, 16, 20], "El segundo es el doble del primero: 1 × 2 = 2 y 9 × 2 = 18."),
-  analogia(T_NUM, 4, 13, 6, 19, [18, 21, 15], "El segundo es el primero por 3 más 1: 4 × 3 + 1 = 13 y 6 × 3 + 1 = 19."),
-  analogia(T_NUM, 7, 20, 5, 14, [15, 12, 16], "El segundo es el primero por 3 menos 1: 7 × 3 − 1 = 20 y 5 × 3 − 1 = 14."),
-
-  // ── Figuras: lados ──
-  analogia(T_FIG, fig(3), fig(6), fig(4), fig(7), [fig(6), fig(5), fig(8)], "Cada figura gana tres lados: triángulo (3) → hexágono (6) y cuadrado (4) → heptágono (7)."),
-  analogia(T_FIG, fig(6), fig(3), fig(7), fig(4), [fig(5), fig(6), fig(3)], "Cada figura pierde tres lados: hexágono (6) → triángulo (3) y heptágono (7) → cuadrado (4)."),
-  analogia(T_FIG, fig(6), fig(4), fig(8), fig(6), [fig(5), fig(7), fig(4)], "Cada figura pierde dos lados: hexágono (6) → cuadrado (4) y octágono (8) → hexágono (6)."),
-  analogia(T_FIG, fig(5), fig(7), fig(6), fig(8), [fig(7), fig(4), fig(5)], "Cada figura gana dos lados: pentágono (5) → heptágono (7) y hexágono (6) → octágono (8)."),
-
-  // ── Figuras y números (potencias y múltiplos de los lados) ──
-  analogia(T_FIG, fig(4), 16, fig(3), 9, [12, 6, 3], "El número es el cuadrado de los lados: el triángulo tiene 3 lados y 3 × 3 = 9."),
-  analogia(T_FIG, fig(3), 9, fig(5), 25, [20, 10, 15], "El número es el cuadrado de los lados: el pentágono tiene 5 lados y 5 × 5 = 25."),
-  analogia(T_FIG, fig(6), 18, fig(3), 9, [12, 6, 15], "El número es el triple de los lados: el triángulo tiene 3 lados y 3 × 3 = 9."),
-]);
+// Avanzado: la MISMA grilla de paréntesis que el Intermedio, pero con números
+// más grandes (RANGOS_AVANZADO). Solo cambia la dificultad, no el formato.
+const AVANZADO = armar("avanzado", preguntasParentesis(RANGOS_AVANZADO, 9000));
 
 export const EJERCICIOS: Record<Nivel, Ejercicio[]> = {
   basico: BASICO,

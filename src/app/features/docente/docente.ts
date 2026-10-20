@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ColorTema } from '@core/models/actividad.model';
 import { SvgSeguroPipe } from '@shared/pipes/svg-seguro.pipe';
@@ -81,7 +81,7 @@ const SALTO_PAGINA_WORD = `<span style='font-size:12.0pt;font-family:"Arial",san
  */
 @Component({
   selector: 'app-docente',
-  imports: [SvgSeguroPipe],
+  imports: [RouterLink, SvgSeguroPipe],
   templateUrl: './docente.html',
   styleUrl: './docente.css'
 })

@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 
-import { redirectIfAuthenticated } from './core/guards/route-guards';
+import {
+  redirectIfAuthenticated,
+  requireAuth,
+  requirePasswordChanged
+} from './core/guards/route-guards';
 
 /**
  * Rutas raíz.
@@ -15,8 +19,17 @@ export const routes: Routes = [
     canActivate: [redirectIfAuthenticated]
   },
   {
+    path: 'cambiar-password',
+    loadComponent: () =>
+      import('./features/auth/cambiar-password/cambiar-password').then(
+        (m) => m.CambiarPassword
+      ),
+    canActivate: [requireAuth]
+  },
+  {
     path: '',
     loadComponent: () => import('./layout/shell/shell').then((m) => m.Shell),
+    canActivate: [requirePasswordChanged],
     children: [
       {
         path: '',

@@ -1,0 +1,212 @@
+<section class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+      <div>
+        <h2 class="h5 fw-bold mb-1">
+          <i class="bi bi-file-earmark-excel me-2"></i>Importar estudiantes a {{ destinoTexto() }}
+        </h2>
+        <p class="text-secondary small mb-0">
+          Sube la lista del curso. Todos los estudiantes quedarán matriculados en
+          <strong>{{ destinoTexto() }}</strong>.
+        </p>
+      </div>
+      @if (archivoNombre() || resultados().length) {
+        <button type="button" class="btn btn-sm btn-outline-dark" (click)="reiniciar()" [disabled]="importando()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Importar otro archivo
+        </button>
+      }
+    </div>
+
+    <div class="alert alert-light border small mb-3">
+      <p class="mb-1">
+        <strong>Columnas:</strong> Nombre, Correo (opcional), Usuario (opcional) y
+        Contraseña (opcional). Si pones un correo, el acceso será ese correo; si no, se
+        genera un usuario interno.
+      </p>
+      <p class="mb-0">
+        <strong>No hace falta incluir Curso ni Paralelo:</strong> la lista completa se asigna a
+        {{ destinoTexto() }}. Si no pones correo ni contraseña, se generan automáticamente y
+        podrás descargarlos al terminar. La plantilla incluye filas de ejemplo: bórralas antes de
+        importar.
+      </p>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (mensaje()) {
+      <div class="alert alert-success" role="status">{{ mensaje() }}</div>
+    }
+
+    <div class="mb-3">
+      <label class="form-label fw-semibold" for="archivo-estudiantes">Archivo (.xlsx o .csv)</label>
+      <input
+        id="archivo-estudiantes"
+        type="file"
+        class="form-control"
+        accept=".xlsx,.csv"
+        (change)="onArchivo($event)"
+        [disabled]="leyendo() || importando()"
+      />
+      @if (archivoNombre()) {
+        <div class="form-text">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>{{ archivoNombre() }}
+        </div>
+      }
+      <button type="button" class="btn btn-sm btn-outline-dark mt-2" (click)="descargarPlantilla()">
+        <i class="bi bi-download me-1"></i>Descargar plantilla de ejemplo
+      </button>
+    </div>
+
+    @if (filas().length) {
+      <p class="small text-secondary mb-2">
+        {{ filas().length }} filas ·
+        <span class="text-success">{{ validas() }} listas para importar</span>
+        @if (invalidas()) {
+          · <span class="text-danger">{{ invalidas() }} con errores</span>
+        }
+      </p>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Fila</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Curso</th>
+              <th scope="col">Usuario</th>
+              <th scope="col">Contraseña</th>
+              <th scope="col">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of filas(); track fila.fila + '-' + fila.correoInterno) {
+              <tr [class.table-warning]="!fila.valida">
+                <td>{{ fila.fila }}</td>
+                <td>
+                  {{ fila.nombre || '—' }}
+                  <div class="small text-secondary">{{ fila.correoInterno || '—' }}</div>
+                </td>
+                <td>
+                  @if (fila.curso) {
+                    {{ fila.curso }}{{ fila.paralelo ? ' ' + fila.paralelo : '' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>{{ fila.usuario }}</td>
+                <td><code>{{ fila.password }}</code></td>
+                <td>
+                  @if (!fila.valida) {
+                    <span class="badge text-bg-danger">Revisar</span>
+                    <div class="small text-danger">{{ fila.error }}</div>
+                  } @else if (correosExistentes().has(fila.correoInterno.toLowerCase())) {
+                    <span class="badge text-bg-primary">Asignar a {{ destinoTexto() }}</span>
+                  } @else {
+                    <span class="badge text-bg-success">Crear cuenta</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <button
+          type="button"
+          class="btn btn-success"
+          (click)="importar()"
+          [disabled]="!validas() || importando()">
+          <i class="bi bi-person-plus me-1"></i>
+          Importar {{ validas() }} estudiantes
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-dark"
+          (click)="reiniciar()"
+          [disabled]="importando()">
+          Cancelar
+        </button>
+
+        @if (importando()) {
+          <div class="flex-grow-1" style="min-width: 12rem">
+            <div
+              class="progress"
+              role="progressbar"
+              aria-label="Progreso de la importación"
+              [attr.aria-valuenow]="progreso().hecho"
+              aria-valuemin="0"
+              [attr.aria-valuemax]="progreso().total">
+              <div
+                class="progress-bar"
+                [style.width.%]="progreso().total ? (progreso().hecho * 100) / progreso().total : 0">
+              </div>
+            </div>
+            <div class="small text-secondary mt-1">
+              {{ progreso().hecho }} de {{ progreso().total }}
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (resultados().length) {
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 mb-2">
+        <h3 class="h6 fw-bold mb-0">Resultados de la importación</h3>
+        <button type="button" class="btn btn-sm btn-outline-success" (click)="descargarCsv()">
+          <i class="bi bi-download me-1"></i>Descargar credenciales (CSV)
+        </button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Fila</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Curso</th>
+              <th scope="col">Usuario / correo</th>
+              <th scope="col">Contraseña</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (resultado of resultados(); track resultado.fila + '-' + resultado.correoInterno) {
+              <tr>
+                <td>{{ resultado.fila }}</td>
+                <td>{{ resultado.nombre }}</td>
+                <td>{{ resultado.cursoTexto }}</td>
+                <td>
+                  {{ resultado.usuario }}
+                  <div class="small text-secondary">{{ resultado.correoInterno }}</div>
+                </td>
+                <td>
+                  @if (resultado.estado === 'creado') {
+                    <code>{{ resultado.password }}</code>
+                  } @else {
+                    <span class="text-secondary">—</span>
+                  }
+                </td>
+                <td>
+                  <span [class]="'badge ' + claseEstado(resultado.estado)">
+                    {{ etiquetaEstado(resultado.estado) }}
+                  </span>
+                  @if (resultado.detalle) {
+                    <div class="small text-danger">{{ resultado.detalle }}</div>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="small text-secondary mt-2 mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Descarga las credenciales antes de cerrar esta página: las contraseñas no se pueden
+        volver a consultar.
+      </p>
+    }
+  </div>
+</section>

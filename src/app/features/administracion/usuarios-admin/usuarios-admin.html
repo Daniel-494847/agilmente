@@ -5,8 +5,10 @@
     </a>
     <h1 class="h3 fw-bold mt-2 mb-1">Gestión de usuarios</h1>
     <p class="text-secondary mb-0">
-      Revisa el avance de cada usuario (puntos, nivel, intentos y aciertos) y ajusta su rol.
-      Solo los administradores pueden ver esta página.
+      Consulta el puntaje de cada usuario y pulsa «Ver más» para ver su avance, su rol y su
+      curso. Entra a un curso para añadir o quitar a sus estudiantes y asignarle un docente.
+      El administrador es único: Daniel Llanos Pallares ({{ adminEmail }}); nadie más puede
+      tener ese rol.
     </p>
   </header>
 
@@ -25,7 +27,85 @@
   @if (cargando()) {
     <p class="text-secondary">Cargando usuarios…</p>
   } @else {
-    <section class="row row-cols-2 row-cols-lg-4 g-3 mb-4" aria-label="Resumen general">
+    <section class="mb-4" aria-labelledby="titulo-cursos">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <div>
+          <h2 id="titulo-cursos" class="h5 fw-bold mb-0">Cursos</h2>
+          <p class="text-secondary small mb-0">
+            Entra a un curso para ver a sus estudiantes, importar su lista y asignarle un docente.
+          </p>
+        </div>
+        @if (cursoSeleccionado()) {
+          <button type="button" class="btn btn-sm btn-outline-dark" (click)="verTodos()">
+            <i class="bi bi-people me-1"></i>Ver todos los usuarios
+          </button>
+        }
+      </div>
+
+      <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-2">
+        @for (grupo of gruposCurso(); track grupo.curso + '-' + grupo.paralelo) {
+          <div class="col">
+            <button
+              type="button"
+              class="btn w-100 h-100 text-start"
+              [class.btn-primary]="estaSeleccionado(grupo.curso, grupo.paralelo)"
+              [class.btn-outline-primary]="!estaSeleccionado(grupo.curso, grupo.paralelo)"
+              [attr.aria-pressed]="estaSeleccionado(grupo.curso, grupo.paralelo)"
+              (click)="seleccionarCurso(grupo.curso, grupo.paralelo)">
+              <span class="d-flex justify-content-between align-items-center gap-2">
+                <span>
+                  <span class="d-block fw-semibold">{{ grupo.etiqueta }} {{ grupo.paralelo }}</span>
+                  <span
+                    class="small"
+                    [class.text-white]="estaSeleccionado(grupo.curso, grupo.paralelo)"
+                    [class.text-secondary]="!estaSeleccionado(grupo.curso, grupo.paralelo)">
+                    Ver estudiantes
+                  </span>
+                </span>
+                <span
+                  class="badge rounded-pill"
+                  [class.text-bg-light]="!estaSeleccionado(grupo.curso, grupo.paralelo)"
+                  [class.text-bg-dark]="estaSeleccionado(grupo.curso, grupo.paralelo)">
+                  {{ grupo.total }}
+                </span>
+              </span>
+            </button>
+          </div>
+        }
+
+        @if (estudiantesSinCurso()) {
+          <div class="col">
+            <button
+              type="button"
+              class="btn w-100 h-100 text-start"
+              [class.btn-dark]="estaSeleccionadoSinCurso()"
+              [class.btn-outline-dark]="!estaSeleccionadoSinCurso()"
+              [attr.aria-pressed]="estaSeleccionadoSinCurso()"
+              (click)="seleccionarSinCurso()">
+              <span class="d-flex justify-content-between align-items-center gap-2">
+                <span>
+                  <span class="d-block fw-semibold">Sin curso</span>
+                  <span
+                    class="small"
+                    [class.text-white]="estaSeleccionadoSinCurso()"
+                    [class.text-secondary]="!estaSeleccionadoSinCurso()">
+                    Asignar curso
+                  </span>
+                </span>
+                <span
+                  class="badge rounded-pill"
+                  [class.text-bg-light]="!estaSeleccionadoSinCurso()"
+                  [class.text-bg-dark]="estaSeleccionadoSinCurso()">
+                  {{ estudiantesSinCurso() }}
+                </span>
+              </span>
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="row row-cols-2 row-cols-lg-4 g-3 mb-4" aria-label="Resumen de los usuarios visibles">
       <div class="col">
         <div class="card h-100 shadow-sm">
           <div class="card-body text-center py-3">
@@ -60,6 +140,236 @@
       </div>
     </section>
 
+    @if (esModuloCurso()) {
+      <section class="card shadow-sm mb-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+              <h2 class="h5 fw-bold mb-0">{{ tituloFiltro() }}</h2>
+              <p class="text-secondary small mb-0">
+                {{ totalCurso() }}
+                {{ totalCurso() === 1 ? 'estudiante matriculado' : 'estudiantes matriculados' }}
+              </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-success" (click)="alternarNuevo()">
+                <i class="bi bi-person-plus me-1"></i>Añadir estudiante
+              </button>
+              <button type="button" class="btn btn-outline-primary" (click)="alternarExistente()">
+                <i class="bi bi-person-check me-1"></i>Añadir existente
+              </button>
+              <button type="button" class="btn btn-outline-success" (click)="alternarImportador()">
+                <i class="bi bi-file-earmark-excel me-1"></i>
+                {{ mostrarImportador() ? 'Ocultar importación' : 'Importar lista' }}
+              </button>
+              <button type="button" class="btn btn-outline-dark" (click)="verTodos()">
+                <i class="bi bi-arrow-left me-1"></i>Salir del curso
+              </button>
+            </div>
+          </div>
+
+          @if (mostrarNuevo()) {
+            <form
+              class="row g-2 align-items-end mt-2"
+              (submit)="
+                crearEstudiante(nombreInput.value, correoInput.value, passwordInput.value);
+                $event.preventDefault()
+              ">
+              <div class="col-12 col-md-4">
+                <label class="form-label" for="nuevo-nombre">Nombre completo</label>
+                <input
+                  id="nuevo-nombre"
+                  #nombreInput
+                  class="form-control"
+                  autocomplete="off"
+                  required
+                />
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label" for="nuevo-correo">Correo (opcional)</label>
+                <input
+                  id="nuevo-correo"
+                  #correoInput
+                  type="email"
+                  class="form-control"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label" for="nuevo-password">Contraseña (opcional)</label>
+                <input
+                  id="nuevo-password"
+                  #passwordInput
+                  class="form-control"
+                  autocomplete="new-password"
+                />
+              </div>
+              <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-success" [disabled]="creando()">
+                  {{ creando() ? 'Creando…' : 'Crear' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-dark"
+                  (click)="cerrarNuevo()"
+                  [disabled]="creando()">
+                  Cancelar
+                </button>
+              </div>
+              <div class="col-12">
+                <p class="form-text mb-0">
+                  Se matricula en {{ tituloFiltro() }}. Si dejas el correo vacío, se genera un
+                  usuario interno. Si el nombre ya existe, escribe un correo distinto o usa
+                  «Añadir existente».
+                </p>
+              </div>
+            </form>
+          }
+
+          @if (errorFormulario()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ errorFormulario() }}</div>
+          }
+
+          @if (credenciales(); as c) {
+            <div class="alert alert-success mt-3 mb-0" role="status">
+              <p class="mb-1">
+                <strong>
+                  {{ c.estado === 'creado' ? 'Estudiante añadido' : 'Estudiante actualizado' }}:
+                </strong>
+                {{ c.nombre }} · {{ c.cursoTexto }}
+              </p>
+              <p class="mb-0">
+                Usuario: <code>{{ c.usuario }}</code>
+                @if (c.correoInterno !== c.usuario) {
+                  · Correo: <code>{{ c.correoInterno }}</code>
+                }
+                @if (c.estado === 'creado') {
+                  · Contraseña: <code>{{ c.password }}</code>
+                }
+              </p>
+            </div>
+          }
+
+          @if (mostrarExistente()) {
+            <div class="row g-2 align-items-end mt-2">
+              <div class="col-12 col-md-8">
+                <label class="form-label" for="existente">Estudiante</label>
+                <select id="existente" #existenteSel class="form-select">
+                  <option value="">Selecciona un estudiante…</option>
+                  @for (u of estudiantesDisponibles(); track u.uid) {
+                    <option [value]="u.uid">
+                      {{ u.nombreCompleto || u.email }} — {{ cursoTexto(u) }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4 d-flex gap-2">
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="!estudiantesDisponibles().length"
+                  (click)="agregarExistente(existenteSel.value)">
+                  Añadir al curso
+                </button>
+                <button type="button" class="btn btn-outline-dark" (click)="cerrarExistente()">
+                  Cancelar
+                </button>
+              </div>
+              @if (!estudiantesDisponibles().length) {
+                <div class="col-12">
+                  <p class="small text-secondary mb-0">
+                    No hay estudiantes fuera de este curso para añadir.
+                  </p>
+                </div>
+              }
+            </div>
+          }
+          @if (mostrarImportador()) {
+            @if (cursoActivo(); as activo) {
+              <div class="border-top mt-3 pt-3">
+                <app-importar-estudiantes
+                  [curso]="activo.curso"
+                  [paralelo]="activo.paralelo"
+                  (importados)="cargar(false)" />
+              </div>
+            }
+          }
+
+          <div class="border-top mt-3 pt-3">
+            <h3 class="h6 fw-bold mb-2">
+              <i class="bi bi-person-badge me-1"></i>Docente del curso
+            </h3>
+
+            @if (docentesDelCurso().length) {
+              <ul class="list-unstyled mb-2">
+                @for (d of docentesDelCurso(); track d.uid) {
+                  <li class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <span class="text-break">{{ d.nombreCompleto || d.email }}</span>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      (click)="quitarDocenteDelCurso(d)">
+                      <i class="bi bi-person-dash me-1"></i>Quitar
+                    </button>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="small text-secondary mb-2">Sin docente asignado.</p>
+            }
+
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-8">
+                <label class="form-label" for="docente-curso">Asignar docente</label>
+                <select id="docente-curso" #docenteSel class="form-select">
+                  <option value="">Selecciona un docente…</option>
+                  @for (d of docentesDisponibles(); track d.uid) {
+                    <option [value]="d.uid">
+                      {{ d.nombreCompleto || d.email }} — {{ cursoTexto(d) }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  [disabled]="!docentesDisponibles().length"
+                  (click)="asignarDocente(docenteSel.value)">
+                  <i class="bi bi-person-check me-1"></i>Asignar
+                </button>
+              </div>
+            </div>
+
+            @if (!docentesDisponibles().length) {
+              <p class="form-text mb-0">
+                @if (docentesDelCurso().length) {
+                  Todos los docentes disponibles ya están en este curso.
+                } @else {
+                  No hay docentes disponibles. Crea la cuenta con «Añadir estudiante» (o
+                  «Importar lista») y cambia su rol a «docente» en su detalle.
+                }
+              </p>
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (estaSeleccionadoSinCurso()) {
+      <div
+        class="alert alert-dark d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"
+        role="status">
+        <span>
+          <i class="bi bi-person-exclamation me-1"></i>
+          Estudiantes sin curso · {{ estudiantesSinCurso() }}
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-dark" (click)="verTodos()">
+          Ver todos
+        </button>
+      </div>
+    }
+
     <div class="mb-3">
       <label class="visually-hidden" for="buscar-usuario">Buscar usuario</label>
       <div class="input-group">
@@ -68,17 +378,16 @@
           id="buscar-usuario"
           type="search"
           class="form-control"
-          placeholder="Buscar por nombre o correo"
+          [placeholder]="cursoSeleccionado() ? 'Buscar en ' + tituloFiltro() : 'Buscar por nombre, correo o curso'"
           [value]="busqueda()"
           (input)="busqueda.set($any($event.target).value)"
         />
       </div>
     </div>
 
-    <div class="d-flex flex-column gap-3">
+    <div class="list-group shadow-sm">
       @for (u of filtrados(); track u.uid) {
-        <article class="card shadow-sm">
-          <div class="card-body">
+        <article class="list-group-item">
             <div class="d-flex flex-wrap align-items-center gap-3">
               <div class="d-flex align-items-center gap-3 me-auto">
                 @if (u.avatarUrl) {
@@ -95,117 +404,302 @@
                 <div class="text-break">
                   <h2 class="h6 fw-bold mb-0">{{ u.nombreCompleto || 'Sin nombre' }}</h2>
                   <span class="text-secondary small">{{ u.email || '—' }}</span>
+                  @if (u.curso) {
+                    <span class="badge text-bg-light border ms-2">{{ cursoTexto(u) }}</span>
+                  } @else if (u.rol === 'estudiante') {
+                    <span class="badge text-bg-warning ms-2">Sin curso</span>
+                  } @else if (u.rol === 'docente') {
+                    <span class="badge text-bg-secondary ms-2">Sin curso asignado</span>
+                  }
+                  @if (u.debeCambiarPassword) {
+                    <span class="badge text-bg-warning ms-2" title="El administrador restableció su contraseña">
+                      Debe cambiar contraseña
+                    </span>
+                  }
                 </div>
               </div>
 
-              <div class="d-flex align-items-center gap-2">
-                <span class="text-secondary small">Rol</span>
-                @if (u.uid === miUid()) {
-                  <span class="badge rounded-pill text-bg-secondary" title="No puedes cambiar tu propio rol">{{ u.rol }}</span>
-                } @else {
-                  <select
-                    class="form-select form-select-sm w-auto"
-                    [value]="u.rol"
-                    [attr.aria-label]="'Rol de ' + (u.nombreCompleto || u.email)"
-                    (change)="cambiarRol(u, $any($event.target).value)">
-                    @for (r of rolesOpciones; track r) {
-                      <option [value]="r">{{ r }}</option>
-                    }
-                  </select>
-                }
+              <div class="text-center">
+                <div class="text-secondary small">Puntaje</div>
+                <div class="fs-4 fw-bold text-primary lh-1">{{ u.stats.puntos }}</div>
               </div>
+
+              <button
+                type="button"
+                class="btn btn-outline-dark"
+                (click)="alternarDetalle(u.uid)"
+                [attr.aria-expanded]="estaAbierto(u.uid)">
+                <i
+                  class="bi me-1"
+                  [class.bi-chevron-down]="!estaAbierto(u.uid)"
+                  [class.bi-chevron-up]="estaAbierto(u.uid)"></i>
+                {{ estaAbierto(u.uid) ? 'Ver menos' : 'Ver más' }}
+              </button>
             </div>
-
-            <div class="row row-cols-2 row-cols-sm-3 row-cols-xl-5 g-2 g-sm-3 mt-1">
-              <div class="col">
-                <div class="border rounded-3 p-2 h-100 text-center">
-                  <div class="text-secondary small">Puntos</div>
-                  <div class="fs-4 fw-bold text-primary">{{ u.stats.puntos }}</div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="border rounded-3 p-2 h-100 text-center">
-                  <div class="text-secondary small">Nivel</div>
-                  <div class="fs-4 fw-bold">{{ u.stats.nivel }}</div>
-                  <div class="small text-secondary text-truncate" [title]="u.stats.tituloNivel">{{ u.stats.tituloNivel }}</div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="border rounded-3 p-2 h-100 text-center">
-                  <div class="text-secondary small">Intentos</div>
-                  <div class="fs-4 fw-bold">{{ u.stats.intentosFinalizados }}</div>
-                  <div class="small text-secondary">{{ u.stats.actividadesDistintas }} actividades</div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="border rounded-3 p-2 h-100 text-center">
-                  <div class="text-secondary small">Aciertos</div>
-                  <div class="fs-4 fw-bold text-success">{{ u.stats.porcentajeAcierto }}%</div>
-                  <div class="small text-secondary">{{ u.stats.respuestasCorrectas }} ✓ · {{ u.stats.respuestasIncorrectas }} ✗</div>
-                </div>
-              </div>
-              <div class="col">
-                <div class="border rounded-3 p-2 h-100 text-center">
-                  <div class="text-secondary small">Tiempo jugado</div>
-                  <div class="fs-5 fw-bold">{{ formatoTiempo(u.stats.tiempoTotalSegundos) }}</div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-dark mt-3"
-              (click)="alternarDetalle(u.uid)"
-              [attr.aria-expanded]="estaAbierto(u.uid)">
-              <i
-                class="bi me-1"
-                [class.bi-chevron-down]="!estaAbierto(u.uid)"
-                [class.bi-chevron-up]="estaAbierto(u.uid)"></i>
-              {{ estaAbierto(u.uid) ? 'Ocultar detalle' : 'Ver detalle por actividad' }}
-            </button>
 
             @if (estaAbierto(u.uid)) {
-              <div class="mt-3">
-                <p class="small text-secondary mb-2">
-                  <i class="bi bi-clock-history me-1"></i>
-                  Última actividad: {{ formatoFecha(u.stats.ultimaActividadEn) }}
-                  @if (u.stats.actividadMasReciente) {
-                    · {{ tituloDe(u.stats.actividadMasReciente) }}
-                  }
-                </p>
+              <hr class="my-3" />
 
-                @if (u.stats.porActividad.length) {
-                  <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                      <thead>
-                        <tr>
-                          <th scope="col">Actividad</th>
-                          <th scope="col" class="text-center">Intentos</th>
-                          <th scope="col" class="text-end">Puntos</th>
-                          <th scope="col" class="text-center">Aciertos</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (a of u.stats.porActividad; track a.actividadId) {
-                          <tr>
-                            <td>{{ tituloDe(a.actividadId) }}</td>
-                            <td class="text-center">{{ a.intentos }}</td>
-                            <td class="text-end fw-semibold">{{ a.puntos }}</td>
-                            <td class="text-center">{{ a.respuestasCorrectas }} ✓ · {{ a.respuestasIncorrectas }} ✗</td>
-                          </tr>
+              <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="text-secondary small">Rol</span>
+                  @if (u.uid === miUid()) {
+                    <span class="badge rounded-pill text-bg-secondary" title="No puedes cambiar tu propio rol">{{ u.rol }}</span>
+                  } @else if (esAdminEmail(u.email)) {
+                    <span class="badge rounded-pill text-bg-dark" title="El administrador es único">administrador</span>
+                  } @else {
+                    <select
+                      class="form-select form-select-sm w-auto"
+                      [value]="u.rol"
+                      [attr.aria-label]="'Rol de ' + (u.nombreCompleto || u.email)"
+                      (change)="cambiarRol(u, $any($event.target).value)">
+                      @for (r of rolesOpciones; track r) {
+                        <option [value]="r">{{ r }}</option>
+                      }
+                    </select>
+                  }
+                </div>
+
+                @if (u.rol === 'estudiante') {
+                  @if (esModuloCurso()) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      (click)="quitarDelCurso(u)">
+                      <i class="bi bi-person-dash me-1"></i>Quitar del curso
+                    </button>
+                  } @else {
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-secondary small">Curso</span>
+                      <select
+                        #cursoSel
+                        class="form-select form-select-sm w-auto"
+                        [value]="u.curso ?? ''"
+                        [attr.aria-label]="'Curso de ' + (u.nombreCompleto || u.email)">
+                        <option value="">—</option>
+                        @for (c of cursos; track c.valor) {
+                          <option [value]="c.valor">{{ c.etiqueta }}</option>
                         }
-                      </tbody>
-                    </table>
+                      </select>
+                      <select
+                        #paraleloSel
+                        class="form-select form-select-sm w-auto"
+                        [value]="u.paralelo ?? ''"
+                        [attr.aria-label]="'Paralelo de ' + (u.nombreCompleto || u.email)">
+                        <option value="">—</option>
+                        @for (p of paralelos; track p) {
+                          <option [value]="p">{{ p }}</option>
+                        }
+                      </select>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        (click)="guardarCurso(u, cursoSel.value, paraleloSel.value)">
+                        Guardar curso
+                      </button>
+                    </div>
+                  }
+                }
+
+                @if (u.rol === 'docente') {
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="text-secondary small">Curso asignado</span>
+                    <select
+                      #cursoDocenteSel
+                      class="form-select form-select-sm w-auto"
+                      [value]="u.curso ?? ''"
+                      [attr.aria-label]="'Curso asignado a ' + (u.nombreCompleto || u.email)">
+                      <option value="">—</option>
+                      @for (c of cursos; track c.valor) {
+                        <option [value]="c.valor">{{ c.etiqueta }}</option>
+                      }
+                    </select>
+                    <select
+                      #paraleloDocenteSel
+                      class="form-select form-select-sm w-auto"
+                      [value]="u.paralelo ?? ''"
+                      [attr.aria-label]="'Paralelo asignado a ' + (u.nombreCompleto || u.email)">
+                      <option value="">—</option>
+                      @for (p of paralelos; track p) {
+                        <option [value]="p">{{ p }}</option>
+                      }
+                    </select>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      (click)="guardarCurso(u, cursoDocenteSel.value, paraleloDocenteSel.value)">
+                      Guardar curso
+                    </button>
+                    @if (u.curso) {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        (click)="quitarDelCurso(u)">
+                        <i class="bi bi-person-dash me-1"></i>Quitar curso
+                      </button>
+                    }
                   </div>
-                } @else {
-                  <p class="text-secondary small mb-0">Aún no tiene intentos finalizados.</p>
                 }
               </div>
+
+              <div class="border-top mt-3 pt-3 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <h3 class="h6 fw-bold mb-0 me-auto">
+                    <i class="bi bi-shield-lock me-1"></i>Contraseña
+                  </h3>
+                  @if (u.uid !== miUid() && !esAdminEmail(u.email)) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-warning"
+                      [disabled]="reseteando() === u.uid"
+                      (click)="resetearPassword(u)">
+                      <i class="bi bi-key me-1"></i>
+                      {{
+                        reseteando() === u.uid
+                          ? 'Restableciendo...'
+                          : (esCorreoInterno(u.email)
+                              ? 'Generar contraseña temporal'
+                              : 'Enviar enlace de restablecimiento')
+                      }}
+                    </button>
+                  }
+                </div>
+
+                @if (u.debeCambiarPassword) {
+                  <p class="small text-warning-emphasis mt-2 mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Debe cambiar la contraseña la próxima vez que entre.
+                  </p>
+                }
+
+                @if (u.uid === miUid() || esAdminEmail(u.email)) {
+                  <p class="form-text mb-0">
+                    La contraseña del administrador se gestiona directamente en Firebase Authentication.
+                  </p>
+                } @else {
+                  @if (esCorreoInterno(u.email)) {
+                    <p class="form-text mb-0">
+                      Se genera una contraseña temporal que se muestra aquí mismo; no se envía ningún
+                      correo. El usuario deberá cambiarla al entrar (requiere las funciones de Firebase
+                      activas).
+                    </p>
+                  } @else {
+                    <p class="form-text mb-0">
+                      Se envía un enlace de un solo uso al correo del usuario. El usuario elegirá su
+                      nueva contraseña y la anterior dejará de servir.
+                    </p>
+                  }
+                }
+
+                @if (resetCredenciales(); as r) {
+                  @if (r.usuario.uid === u.uid) {
+                    @if (r.tipo === 'temporal') {
+                      <div class="alert alert-warning mt-3 mb-0" role="status">
+                        <p class="fw-semibold mb-1">Contraseña temporal (se muestra una sola vez)</p>
+                        <p class="mb-1">
+                          <code class="fs-6">{{ r.password }}</code>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-dark ms-2"
+                            (click)="copiarPassword(r.password || '')">
+                            <i class="bi bi-clipboard me-1"></i>Copiar
+                          </button>
+                        </p>
+                        <p class="small mb-0">
+                          Usuario: <code>{{ r.acceso }}</code>
+                          @if (r.acceso !== r.email) {
+                            · Correo: <code>{{ r.email }}</code>
+                          }
+                          · Al entrar, deberá cambiarla.
+                        </p>
+                      </div>
+                    } @else {
+                      <div class="alert alert-success mt-3 mb-0" role="status">
+                        <p class="fw-semibold mb-1">Enlace de restablecimiento enviado</p>
+                        <p class="small mb-0">
+                          Se envió un enlace de un solo uso a <code>{{ r.email }}</code>. El usuario
+                          elegirá su nueva contraseña.
+                        </p>
+                      </div>
+                    }
+                  }
+                }
+              </div>
+
+              <div class="row row-cols-2 row-cols-sm-4 g-2 g-sm-3">
+                <div class="col">
+                  <div class="border rounded-3 p-2 h-100 text-center">
+                    <div class="text-secondary small">Nivel</div>
+                    <div class="fs-4 fw-bold">{{ u.stats.nivel }}</div>
+                    <div class="small text-secondary text-truncate" [title]="u.stats.tituloNivel">{{ u.stats.tituloNivel }}</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="border rounded-3 p-2 h-100 text-center">
+                    <div class="text-secondary small">Intentos</div>
+                    <div class="fs-4 fw-bold">{{ u.stats.intentosFinalizados }}</div>
+                    <div class="small text-secondary">{{ u.stats.actividadesDistintas }} actividades</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="border rounded-3 p-2 h-100 text-center">
+                    <div class="text-secondary small">Aciertos</div>
+                    <div class="fs-4 fw-bold text-success">{{ u.stats.porcentajeAcierto }}%</div>
+                    <div class="small text-secondary">{{ u.stats.respuestasCorrectas }} ✓ · {{ u.stats.respuestasIncorrectas }} ✗</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="border rounded-3 p-2 h-100 text-center">
+                    <div class="text-secondary small">Tiempo jugado</div>
+                    <div class="fs-5 fw-bold">{{ formatoTiempo(u.stats.tiempoTotalSegundos) }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <p class="small text-secondary mt-3 mb-2">
+                <i class="bi bi-clock-history me-1"></i>
+                Última actividad: {{ formatoFecha(u.stats.ultimaActividadEn) }}
+                @if (u.stats.actividadMasReciente) {
+                  · {{ tituloDe(u.stats.actividadMasReciente) }}
+                }
+              </p>
+
+              @if (u.stats.porActividad.length) {
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th scope="col">Actividad</th>
+                        <th scope="col" class="text-center">Intentos</th>
+                        <th scope="col" class="text-end">Puntos</th>
+                        <th scope="col" class="text-center">Aciertos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (a of u.stats.porActividad; track a.actividadId) {
+                        <tr>
+                          <td>{{ tituloDe(a.actividadId) }}</td>
+                          <td class="text-center">{{ a.intentos }}</td>
+                          <td class="text-end fw-semibold">{{ a.puntos }}</td>
+                          <td class="text-center">{{ a.respuestasCorrectas }} ✓ · {{ a.respuestasIncorrectas }} ✗</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="text-secondary small mb-0">Aún no tiene intentos finalizados.</p>
+              }
             }
-          </div>
         </article>
       } @empty {
-        <p class="text-center text-secondary py-4">No hay usuarios que coincidan con la búsqueda.</p>
+        <p class="text-center text-secondary py-4">
+          @if (cursoSeleccionado()) {
+            No hay estudiantes que coincidan en {{ tituloFiltro() }}.
+          } @else {
+            No hay usuarios que coincidan con la búsqueda.
+          }
+        </p>
       }
     </div>
   }

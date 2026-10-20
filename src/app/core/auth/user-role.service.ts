@@ -3,7 +3,12 @@ import { User } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
-import { RolUsuario, UsuarioAdmin, normalizarRol } from '@core/models/usuario.model';
+import {
+  RolUsuario,
+  UsuarioAdmin,
+  normalizarRol,
+  usuarioAdminDesdeDoc
+} from '@core/models/usuario.model';
 import { UsuarioService } from '@core/services/usuario.service';
 
 @Injectable({ providedIn: 'root' })
@@ -31,20 +36,7 @@ export class UserRoleService {
   async listarUsuarios(): Promise<UsuarioAdmin[]> {
     const snapshot = await getDocs(collection(db, NOMBRES_COLECCION.usuarios));
     return snapshot.docs
-      .map((d) => {
-        const data = d.data();
-        const puntos = Math.max(0, Math.floor(Number(data['puntos']) || 0));
-        return {
-          uid: d.id,
-          nombreCompleto: String(data['nombreCompleto'] ?? ''),
-          email: String(data['email'] ?? ''),
-          rol: normalizarRol(data['rol']),
-          avatarUrl: String(data['avatarUrl'] ?? '') || undefined,
-          puntos,
-          nivel: Number(data['nivel']) || 1,
-          tituloNivel: String(data['tituloNivel'] ?? 'Explorador')
-        };
-      })
+      .map((d) => usuarioAdminDesdeDoc(d.id, d.data()))
       .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));
   }
 

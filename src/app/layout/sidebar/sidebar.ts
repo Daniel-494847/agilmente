@@ -16,6 +16,8 @@ interface ItemMenu {
   soloAdmin?: boolean;
   /** Si es true, solo la ven docentes y administradores. */
   soloDocente?: boolean;
+  /** Si es true, el ítem solo se marca activo en su ruta exacta (no en subrutas). */
+  exacto?: boolean;
 }
 
 @Component({
@@ -55,6 +57,14 @@ export class Sidebar {
       icono: 'bi-journal-text',
       tono: 'info',
       ruta: '/docente',
+      soloDocente: true,
+      exacto: true
+    },
+    {
+      etiqueta: 'Mi curso',
+      icono: 'bi-person-workspace',
+      tono: 'success',
+      ruta: '/docente/mi-curso',
       soloDocente: true
     },
     {
@@ -145,7 +155,9 @@ export class Sidebar {
   esActivo(item: ItemMenu): boolean {
     const rutaActual = this.rutaActual().split(/[?#]/, 1)[0];
     const rutas = [item.ruta, item.rutaAdmin].filter((r): r is string => !!r);
-    return rutas.some((ruta) => rutaActual === ruta || rutaActual.startsWith(`${ruta}/`));
+    return rutas.some(
+      (ruta) => rutaActual === ruta || (!item.exacto && rutaActual.startsWith(`${ruta}/`))
+    );
   }
 
   private esRutaJuego(url: string): boolean {

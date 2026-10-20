@@ -1,0 +1,22 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "rol", "order": "ASCENDING" },
+        { "fieldPath": "curso", "order": "ASCENDING" },
+        { "fieldPath": "paralelo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "intentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estudianteUid", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

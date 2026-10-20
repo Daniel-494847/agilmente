@@ -20,8 +20,8 @@
       }
       <div>
         <h2 class="h5 fw-bold mb-0">¡Hola, {{ usuario.nombre }}!
-          @if (usuario.rol === 'administrador') {
-            <span class="badge rounded-pill text-bg-danger ms-2">{{ usuario.rol }}</span>
+          @if (esAdministrador()) {
+            <span class="badge rounded-pill text-bg-danger ms-2">administrador</span>
           } @else if (usuario.rol === 'docente') {
             <span class="badge rounded-pill text-bg-info ms-2">{{ usuario.rol }}</span>
           }
@@ -34,7 +34,6 @@
   <div class="topbar-acciones d-flex align-items-center gap-2 flex-wrap">
     @if (esVisitante()) {
       <a routerLink="/login" class="btn btn-primary btn-sm">Iniciar sesión</a>
-      <a routerLink="/login" [queryParams]="{ registro: '1' }" class="btn btn-outline-primary btn-sm">Registrarse</a>
     }
 
     @if (esAdministrador()) {

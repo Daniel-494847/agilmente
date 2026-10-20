@@ -7,7 +7,21 @@ export const redirectIfAuthenticated: CanActivateFn = async () => {
   const router = inject(Router);
   const auth = inject(AuthService);
   await auth.ready;
-  return auth.isAuthenticated() ? router.createUrlTree(['/']) : true;
+  if (!auth.isAuthenticated()) {
+    return true;
+  }
+  return router.createUrlTree([auth.debeCambiarPassword() ? '/cambiar-password' : '/']);
+};
+
+/**
+ * Si el administrador restableció la contraseña, obliga a cambiarla antes de
+ * entrar al shell. Sin sesión no interviene: la app sigue siendo pública.
+ */
+export const requirePasswordChanged: CanActivateFn = async () => {
+  const router = inject(Router);
+  const auth = inject(AuthService);
+  await auth.ready;
+  return auth.debeCambiarPassword() ? router.createUrlTree(['/cambiar-password']) : true;
 };
 
 export const requireAdmin: CanActivateFn = async () => {

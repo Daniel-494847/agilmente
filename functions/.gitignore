@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.env
+# Clave privada de la cuenta de servicio (nunca se sube al repositorio).
+clave-servicio*.json
+*-service-account*.json

@@ -1,10 +1,16 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { doc, getDoc } from 'firebase/firestore';
 
 import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
 import { UserRoleService } from '@core/auth/user-role.service';
-import { RolUsuario } from '@core/models/usuario.model';
+import {
+  Paralelo,
+  RolUsuario,
+  nombreCurso,
+  normalizarCurso,
+  normalizarParalelo
+} from '@core/models/usuario.model';
 import { UserProgressService } from '@core/services/user-progress.service';
 
 interface EnlaceSeccion {
@@ -39,6 +45,9 @@ export class Perfil implements OnInit {
   readonly nombre = signal('');
   readonly email = signal('');
   readonly avatarUrl = signal('');
+  readonly curso = signal<number | undefined>(undefined);
+  readonly paralelo = signal<Paralelo | undefined>(undefined);
+  readonly cursoTexto = computed(() => nombreCurso(this.curso(), this.paralelo()));
   readonly rol = signal<RolUsuario>('estudiante');
   readonly puntos = signal(0);
   readonly nivel = signal(1);
@@ -69,6 +78,8 @@ export class Perfil implements OnInit {
       if (datos) {
         this.nombre.set(String(datos['nombreCompleto'] ?? user.displayName ?? 'Estudiante'));
         this.avatarUrl.set(String(datos['avatarUrl'] ?? user.photoURL ?? ''));
+        this.curso.set(normalizarCurso(datos['curso']));
+        this.paralelo.set(normalizarParalelo(datos['paralelo']));
       }
     } catch {
       // Sin documento de perfil: se usan los datos de la sesión.

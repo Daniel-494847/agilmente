@@ -1,16 +1,44 @@
 import { Injectable } from '@angular/core';
 import { User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteField,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where
+} from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import {
+  Paralelo,
   RolUsuario,
-  UsuarioDocumento,
+  UsuarioAdmin,
   UsuarioSinTiempo,
   calcularNivelYTitulo,
+  esEmailAdministrador,
+  normalizarCurso,
+  normalizarParalelo,
   normalizarRol,
+  usuarioAdminDesdeDoc,
   usuarioPorDefecto
 } from '@core/models/usuario.model';
+
+/** Perfil leído de Firestore. `null` significa que el documento no existe. */
+export interface PerfilUsuario {
+  nombreCompleto: string;
+  email: string;
+  rol: RolUsuario;
+  curso?: number;
+  paralelo?: Paralelo;
+  avatarUrl?: string;
+  /** `true` si debe cambiar la contraseña al entrar. */
+  debeCambiarPassword?: boolean;
+}
 
 /**
  * Único punto de escritura de la colección `usuarios`.
@@ -30,22 +58,38 @@ export class UsuarioService {
 
   /**
    * Crea el documento de un usuario autenticado (o repara el existente)
-   * y sella `ultimoIngreso`. Es el que llaman login/registro/Google.
+   * y sella `ultimoIngreso`. Lo usa el inicio de sesión y la importación que
+   * hace el administrador; no hay autorregistro público.
    */
   async crearOReparar(
     user: Pick<User, 'uid' | 'email'>,
-    datos: { nombreCompleto?: string | null; rol?: RolUsuario; avatarUrl?: string | null }
+    datos: {
+      nombreCompleto?: string | null;
+      rol?: RolUsuario;
+      avatarUrl?: string | null;
+      curso?: number;
+      paralelo?: Paralelo;
+    }
   ): Promise<void> {
     const actual = await this.leer(user.uid);
     const nombre =
       datos.nombreCompleto?.trim() || actual.nombreCompleto || user.email?.split('@')[0] || '';
+    // El correo del administrador se toma de Auth para reparar documentos antiguos
+    // con el correo mal escrito; el resto conserva el correo guardado.
+    const email = esEmailAdministrador(user.email)
+      ? (user.email ?? actual.email ?? '')
+      : (actual.email || user.email || '');
 
     const base = usuarioPorDefecto({
-      email: actual.email || user.email || '',
+      email,
       nombreCompleto: nombre,
-      rol: datos.rol ?? actual.rol,
+      // El correo del administrador siempre conserva el rol «administrador».
+      rol: esEmailAdministrador(email) ? 'administrador' : (datos.rol ?? actual.rol),
       puntos: actual.puntos,
-      avatarUrl: datos.avatarUrl ?? actual.avatarUrl
+      avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
+      curso: datos.curso ?? actual.curso,
+      paralelo: datos.paralelo ?? actual.paralelo,
+      debeCambiarPassword: actual.debeCambiarPassword
     });
 
     // En la creación se fija creadoEn; al reparar solo se conserva.
@@ -85,7 +129,9 @@ export class UsuarioService {
       nombreCompleto: datos.nombreCompleto,
       rol: actual.rol,
       puntos: actual.puntos,
-      avatarUrl: datos.avatarUrl ?? actual.avatarUrl
+      avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
+      curso: actual.curso,
+      paralelo: actual.paralelo
     });
     const cambios: Record<string, unknown> = { ...base, ...datos };
     if (!actual.email) cambios['ultimoIngreso'] = serverTimestamp();
@@ -95,14 +141,67 @@ export class UsuarioService {
   /** Cambia el rol. Rellena campos faltantes del usuario afectado. */
   async cambiarRol(uid: string, rol: RolUsuario): Promise<void> {
     const actual = await this.leer(uid);
+    // El administrador único conserva siempre su rol, aunque se llame al servicio.
+    const rolFinal = esEmailAdministrador(actual.email) ? 'administrador' : rol;
     const base = usuarioPorDefecto({
       email: actual.email,
       nombreCompleto: actual.nombreCompleto,
-      rol,
+      rol: rolFinal,
       puntos: actual.puntos,
-      avatarUrl: actual.avatarUrl
+      avatarUrl: actual.avatarUrl,
+      curso: actual.curso,
+      paralelo: actual.paralelo
     });
     await updateDoc(this.ref(uid), base);
+  }
+
+  /** Asigna (o corrige) el curso y el paralelo de un usuario. Solo lo usa el administrador. */
+  async asignarCurso(uid: string, curso: number, paralelo: Paralelo): Promise<void> {
+    const cursoValido = normalizarCurso(curso);
+    const paraleloValido = normalizarParalelo(paralelo);
+    if (!cursoValido || !paraleloValido) {
+      throw new Error('Curso o paralelo inválido');
+    }
+    await updateDoc(this.ref(uid), { curso: cursoValido, paralelo: paraleloValido });
+  }
+
+  /**
+   * Quita al usuario de su curso (lo deja «Sin curso») sin borrar su cuenta.
+   * Solo lo usa el administrador.
+   */
+  async quitarCurso(uid: string): Promise<void> {
+    await updateDoc(this.ref(uid), {
+      curso: deleteField(),
+      paralelo: deleteField()
+    });
+  }
+
+  /**
+   * Estudiantes matriculados en un curso. La consulta la permite la regla de
+   * Firestore únicamente al administrador y al docente asignado a ese curso.
+   */
+  async listarEstudiantesDeCurso(
+    curso: number,
+    paralelo: Paralelo
+  ): Promise<UsuarioAdmin[]> {
+    const cursoValido = normalizarCurso(curso);
+    const paraleloValido = normalizarParalelo(paralelo);
+    if (!cursoValido || !paraleloValido) {
+      return [];
+    }
+
+    const snapshot = await getDocs(
+      query(
+        collection(db, NOMBRES_COLECCION.usuarios),
+        where('rol', '==', 'estudiante'),
+        where('curso', '==', cursoValido),
+        where('paralelo', '==', paraleloValido)
+      )
+    );
+
+    return snapshot.docs
+      .map((d) => usuarioAdminDesdeDoc(d.id, d.data()))
+      .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto));
   }
 
   /** Garantiza el esquema completo de un documento ya existente (auto-reparación). */
@@ -113,7 +212,9 @@ export class UsuarioService {
       nombreCompleto: actual.nombreCompleto,
       rol: actual.rol,
       puntos: actual.puntos,
-      avatarUrl: actual.avatarUrl
+      avatarUrl: actual.avatarUrl,
+      curso: actual.curso,
+      paralelo: actual.paralelo
     });
     const cambios: Record<string, unknown> = { ...base };
     if (!actual.ultimoIngreso) cambios['ultimoIngreso'] = serverTimestamp();
@@ -121,7 +222,16 @@ export class UsuarioService {
   }
 
   /** Lee el documento y devuelve un esquema completo con valores por defecto. */
-  async leerCompleto(uid: string): Promise<Required<Pick<UsuarioDocumento, 'email' | 'nombreCompleto' | 'rol' | 'puntos' | 'nivel' | 'tituloNivel'>>> {
+  async leerCompleto(uid: string): Promise<{
+    email: string;
+    nombreCompleto: string;
+    rol: RolUsuario;
+    puntos: number;
+    nivel: number;
+    tituloNivel: string;
+    curso?: number;
+    paralelo?: Paralelo;
+  }> {
     const actual = await this.leer(uid);
     const { nivel, tituloNivel } = calcularNivelYTitulo(actual.puntos);
     return {
@@ -130,8 +240,33 @@ export class UsuarioService {
       rol: actual.rol,
       puntos: actual.puntos,
       nivel,
-      tituloNivel
+      tituloNivel,
+      curso: actual.curso,
+      paralelo: actual.paralelo
     };
+  }
+
+  /**
+   * Lee el perfil de un usuario y devuelve `null` si el documento no existe.
+   * Sirve para comprobar que la cuenta fue creada por el administrador.
+   */
+  async obtenerPerfil(uid: string): Promise<PerfilUsuario | null> {
+    try {
+      const snap = await getDoc(this.ref(uid));
+      if (!snap.exists()) return null;
+      const d = snap.data();
+      return {
+        nombreCompleto: String(d['nombreCompleto'] ?? ''),
+        email: String(d['email'] ?? ''),
+        rol: normalizarRol(d['rol']),
+        curso: normalizarCurso(d['curso']),
+        paralelo: normalizarParalelo(d['paralelo']),
+        avatarUrl: d['avatarUrl'] ? String(d['avatarUrl']) : undefined,
+        debeCambiarPassword: d['debeCambiarPassword'] === true
+      };
+    } catch {
+      return null;
+    }
   }
 
   /** Lee el documento y normaliza sus campos (no lanza si no existe). */
@@ -151,7 +286,12 @@ export class UsuarioService {
         nivel: Number(d['nivel']) || 1,
         tituloNivel: String(d['tituloNivel'] ?? 'Explorador')
       };
+      const curso = normalizarCurso(d['curso']);
+      const paralelo = normalizarParalelo(d['paralelo']);
+      if (curso !== undefined) base.curso = curso;
+      if (paralelo !== undefined) base.paralelo = paralelo;
       if (d['avatarUrl']) base.avatarUrl = String(d['avatarUrl']);
+      if (d['debeCambiarPassword'] === true) base.debeCambiarPassword = true;
       return { ...base, creadoEn: d['creadoEn'], ultimoIngreso: d['ultimoIngreso'] };
     } catch {
       return this.vacio();

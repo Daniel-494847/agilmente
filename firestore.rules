@@ -9,10 +9,49 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function esAdministrador() {
+    /**
+     * El administrador es único: solo la cuenta con este correo puede tener el
+     * rol «administrador». El correo se guarda en minúsculas en Firebase Auth.
+     */
+    function esEmailAdministrador() {
       return autenticado()
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() == 'pcdoctorbermejo@gmail.com';
+    }
+
+    /** `true` si el documento tiene el correo del administrador único. */
+    function esDocAdminEmail(data) {
+      return 'email' in data
+        && data.email is string
+        && data.email.lower() == 'pcdoctorbermejo@gmail.com';
+    }
+
+    function esAdministrador() {
+      return esEmailAdministrador()
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
+    }
+
+    function esDocente() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'docente';
+    }
+
+    /**
+     * Un docente solo puede leer los intentos de los estudiantes que están en
+     * el mismo curso y paralelo que él. El `get` del docente se cachea por
+     * consulta; por eso el panel del docente consulta los intentos estudiante
+     * por estudiante y no todos los del curso en una sola consulta.
+     */
+    function esDocenteDe(estudianteUid) {
+      return esDocente()
+        && exists(/databases/$(database)/documents/usuarios/$(estudianteUid))
+        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.rol == 'estudiante'
+        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.curso
+             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
+        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.paralelo
+             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo;
     }
 
     // ==================================================================
@@ -22,10 +61,25 @@ service cloud.firestore {
     //    UsuarioService los garantiza también al actualizar.
     // ==================================================================
     match /usuarios/{uid} {
-      allow read: if autenticado() && (request.auth.uid == uid || esAdministrador());
-      allow create: if autenticado()
-        && request.auth.uid == uid
-        && request.resource.data.rol in ['estudiante', 'docente']
+      allow read: if autenticado() && (
+        request.auth.uid == uid
+        || esAdministrador()
+        // El docente asignado a un curso puede leer los perfiles de sus estudiantes.
+        || (esDocente()
+            && resource.data.rol == 'estudiante'
+            && resource.data.curso
+                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
+            && resource.data.paralelo
+                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo)
+      );
+
+      // Solo el administrador crea cuentas (importación o «Añadir estudiante»).
+      // La única excepción es el administrador único, que puede crear su propio
+      // perfil si faltara. Un usuario recién autenticado no puede crearse uno.
+      allow create: if (
+          esAdministrador()
+          || (autenticado() && request.auth.uid == uid && esEmailAdministrador())
+        )
         && request.resource.data.keys().hasAll([
              'email', 'nombreCompleto', 'rol', 'puntos',
              'nivel', 'tituloNivel', 'ultimoIngreso'
@@ -35,8 +89,44 @@ service cloud.firestore {
         && request.resource.data.puntos is int
         && request.resource.data.nivel is int
         && request.resource.data.tituloNivel is string
-        && request.resource.data.ultimoIngreso is timestamp;
-      allow update: if esAdministrador()
+        && request.resource.data.ultimoIngreso is timestamp
+        // El correo del administrador siempre es «administrador»; cualquier otro
+        // correo solo puede ser «estudiante» o «docente».
+        && (
+          (esDocAdminEmail(request.resource.data)
+            && request.resource.data.rol == 'administrador')
+          || (!esDocAdminEmail(request.resource.data)
+            && request.resource.data.rol in ['estudiante', 'docente'])
+        )
+        // El curso y el paralelo son opcionales, pero si vienen deben ser válidos.
+        && (!('curso' in request.resource.data)
+            || (request.resource.data.curso is int
+                && request.resource.data.curso >= 1
+                && request.resource.data.curso <= 6))
+        && (!('paralelo' in request.resource.data)
+            || request.resource.data.paralelo in ['A', 'B']);
+
+      allow update: if (
+          esAdministrador()
+          // El administrador único no puede quitarse el rol a sí mismo.
+          && (request.auth.uid != uid || request.resource.data.rol == resource.data.rol)
+          // Solo el correo del administrador puede tener el rol «administrador».
+          && (request.resource.data.rol != 'administrador'
+              || esDocAdminEmail(request.resource.data))
+          // El correo del administrador siempre conserva el rol «administrador».
+          && (!esDocAdminEmail(request.resource.data)
+              || request.resource.data.rol == 'administrador')
+          // El correo del administrador no se puede asignar a otro documento.
+          && (!esDocAdminEmail(request.resource.data)
+              || esDocAdminEmail(resource.data))
+          // Curso y paralelo siguen siendo opcionales, pero válidos si existen.
+          && (!('curso' in request.resource.data)
+              || (request.resource.data.curso is int
+                  && request.resource.data.curso >= 1
+                  && request.resource.data.curso <= 6))
+          && (!('paralelo' in request.resource.data)
+              || request.resource.data.paralelo in ['A', 'B'])
+        )
         || (autenticado()
           && request.auth.uid == uid
           && request.resource.data.rol == resource.data.rol
@@ -45,8 +135,27 @@ service cloud.firestore {
           && request.resource.data.puntos >= resource.data.puntos
           && request.resource.data.puntos <= resource.data.puntos + 500
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['nombreCompleto', 'avatarUrl', 'ultimoIngreso', 'puntos', 'nivel', 'tituloNivel']));
-      allow delete: if esAdministrador();
+               .hasOnly(['nombreCompleto', 'avatarUrl', 'ultimoIngreso', 'puntos', 'nivel', 'tituloNivel']))
+        // El administrador único puede reparar y fijar su propio rol al iniciar sesión.
+        || (autenticado()
+          && request.auth.uid == uid
+          && esEmailAdministrador()
+          && esDocAdminEmail(request.resource.data)
+          && request.resource.data.rol == 'administrador'
+          && (!('curso' in request.resource.data)
+              || (request.resource.data.curso is int
+                  && request.resource.data.curso >= 1
+                  && request.resource.data.curso <= 6))
+          && (!('paralelo' in request.resource.data)
+              || request.resource.data.paralelo in ['A', 'B'])
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'email', 'nombreCompleto', 'rol', 'puntos', 'nivel', 'tituloNivel',
+                 'avatarUrl', 'ultimoIngreso', 'curso', 'paralelo', 'creadoEn'
+               ]));
+
+      // El administrador único no puede borrar su propio perfil.
+      allow delete: if esAdministrador() && !esDocAdminEmail(resource.data);
     }
 
     // ==================================================================
@@ -105,13 +214,17 @@ service cloud.firestore {
     // ==================================================================
     match /intentos/{id} {
       allow create: if autenticado()
+        // Solo las cuentas creadas por el administrador (con perfil) pueden jugar.
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
         && request.resource.data.estudianteUid == request.auth.uid
         && request.resource.data.estado == 'en_progreso'
         && !request.resource.data.keys().hasAny(['puntaje', 'nivel', 'horaFinalizacion'])
         && request.resource.data.actividadId is string;
 
       allow read: if esAdministrador()
-        || (autenticado() && resource.data.estudianteUid == request.auth.uid);
+        || (autenticado() && resource.data.estudianteUid == request.auth.uid)
+        // El docente asignado al curso puede leer el avance de sus estudiantes.
+        || esDocenteDe(resource.data.estudianteUid);
 
       allow update: if esAdministrador()
         || (autenticado()

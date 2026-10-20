@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
 import { collection, doc, getFirestore } from 'firebase/firestore';
 
 import { environment } from '../../environments/environment';
@@ -8,6 +9,7 @@ const app = initializeApp(environment.firebase);
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const functions = getFunctions(app);
 
 /** Nombres de colección tipados (una sola fuente de verdad). */
 export const NOMBRES_COLECCION = {
