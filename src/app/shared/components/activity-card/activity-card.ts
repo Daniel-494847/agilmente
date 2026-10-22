@@ -103,8 +103,10 @@ export class ActivityCard {
 
   /** URL absoluta de la actividad, apta para compartir. */
   urlCompartible(): string {
-    const base = `${window.location.origin}${window.location.pathname}`;
-    return new URL(this.actividad.ruta, base).toString();
+    const baseElement = document.querySelector<HTMLAnchorElement>('base');
+    const baseHref = baseElement?.getAttribute('href') ?? '/';
+    const base = baseHref.endsWith('/') ? baseHref.slice(0, -1) : baseHref;
+    return `${window.location.origin}${base}${this.actividad.ruta}`;
   }
 
   textoCompartir(): string {
