@@ -1,7 +1,4 @@
 import { Component } from "@angular/core";
-import { Router } from "@angular/router";
-import { AttemptsService } from "@core/services/attempts.service";
-import { GameUiService } from "@core/services/game-ui.service";
 import { QuizEngine } from '@core/services/quiz-engine.service';
 import { JuegoQuizBase } from '@core/services/juego-quiz-base';
 import { Quiz } from "@shared/components/quiz/quiz";
@@ -462,8 +459,6 @@ export class SucesionesPatrones extends JuegoQuizBase {
   };
   protected readonly slug = 'sucesiones-patrones';
 
-
-
 // Convierte los 75 ejercicios (25 por nivel) al formato PreguntaQuiz
   protected generar(): PreguntaQuiz[] {
     const niveles: Nivel[] = ["basico", "intermedio", "avanzado"];
@@ -485,16 +480,5 @@ export class SucesionesPatrones extends JuegoQuizBase {
     });
     return out;
   }
-
-  private mezclar<T>(a: T[]): T[] {
-    const c = [...a];
-    for (let i = c.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [c[i], c[j]] = [c[j], c[i]];
-    }
-    return c;
-  }
-
-
 
 }

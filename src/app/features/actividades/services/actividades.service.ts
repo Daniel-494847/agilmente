@@ -1,9 +1,9 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import { ActividadResumen } from '@core/models/actividad.model';
-import { ACTIVIDADES_INICIALES, compararActividades } from '@features/actividades/data/actividades.data';
+import { ACTIVIDADES_INICIALES, compararActividades, fusionarActividades } from '@features/actividades/data/actividades.data';
 
 /** Actividad con el slug con el que guarda sus intentos (lo que llega en `intentos.actividadId`). */
 export interface ActividadJugable extends ActividadResumen {
@@ -18,23 +18,21 @@ export class ActividadesService {
   private readonly TTL_MS = 5 * 60 * 1000;
   private cache: { data: ActividadResumen[]; ts: number } | null = null;
 
+  /**
+   * Catálogo de actividades: el catálogo del código (`ACTIVIDADES_INICIALES`)
+   * personalizado con lo que hay guardado en Firestore.
+   *
+   * La fusión la hace `fusionarActividades`, que usa la **ruta** como clave
+   * (y no el número), de modo que una ficha de Firestore no puede tapar a
+   * otra actividad por llevar un id repetido.
+   */
   async listar(): Promise<ActividadResumen[]> {
     if (this.cache && Date.now() - this.cache.ts < this.TTL_MS) {
       return this.cache.data;
     }
     try {
       const snapshot = await getDocs(collection(db, this.collectionName));
-      const porId = new Map(ACTIVIDADES_INICIALES.map((a) => [a.id, a]));
-      const guardadas = snapshot.docs
-        .map((item) => {
-          const data = item.data() as ActividadResumen;
-          const inicial = porId.get(data.id);
-          return { ...inicial, ...data, imagen: inicial?.imagen ?? data.imagen };
-        })
-        .sort(compararActividades);
-      const ids = new Set(guardadas.map((a) => a.id));
-      const faltantes = ACTIVIDADES_INICIALES.filter((a) => !ids.has(a.id));
-      const resultado = [...guardadas, ...faltantes].sort(compararActividades);
+      const resultado = fusionarActividades(snapshot.docs.map((item) => item.data() as ActividadResumen));
       this.cache = { data: resultado, ts: Date.now() };
       return resultado;
     } catch (error) {
@@ -122,7 +120,25 @@ export class ActividadesService {
 
   async guardar(actividad: ActividadResumen): Promise<void> {
     await setDoc(doc(db, this.collectionName, String(actividad.id)), actividad);
+    await this.limpiarDuplicados(actividad.ruta, String(actividad.id));
     this.cache = null;
+  }
+
+  /**
+   * Borra las fichas que apuntan a la misma ruta con otro id. Así una ficha
+   * vieja (p. ej. `actividades/5` guardada como «Operadores Matemáticos»)
+   * deja de aparecer duplicada cuando se guarda la actividad correcta.
+   */
+  private async limpiarDuplicados(ruta: string, conservarId: string): Promise<void> {
+    if (!ruta) return;
+    const snapshot = await getDocs(collection(db, this.collectionName));
+    for (const item of snapshot.docs) {
+      if (item.id === conservarId) continue;
+      const data = item.data() as ActividadResumen;
+      if ((data.ruta ?? '').trim() === ruta) {
+        await deleteDoc(item.ref);
+      }
+    }
   }
 
   async eliminar(id: number): Promise<void> {
@@ -130,8 +146,10 @@ export class ActividadesService {
     this.cache = null;
   }
 
+  /** Vuelca el catálogo del código en Firestore (resuelve los ids descolocados). */
   async guardarIniciales(): Promise<void> {
-    await Promise.all(ACTIVIDADES_INICIALES.map((a) => this.guardar(a)));
+    await Promise.all(ACTIVIDADES_INICIALES.map((a) => setDoc(doc(db, this.collectionName, String(a.id)), a)));
+    this.cache = null;
   }
 
   async inicializarSiVacia(): Promise<void> {

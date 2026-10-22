@@ -207,6 +207,16 @@ service cloud.firestore {
       allow create, update, delete: if esAdministrador();
     }
 
+    // Asignaciones de actividades que el docente hace a su curso asignado.
+    match /asignaciones/{id} {
+      allow read: if autenticado()
+        && (esAdministrador() || request.resource.data.docenteUid == request.auth.uid);
+      allow create: if autenticado()
+        && (esAdministrador()
+            || (esDocente() && request.resource.data.docenteUid == request.auth.uid));
+      allow update, delete: if esAdministrador();
+    }
+
     // ==================================================================
     // 3. PARTIDAS  (intentos de juego)
     //    El estudiante crea su intento, lo finaliza con su propio

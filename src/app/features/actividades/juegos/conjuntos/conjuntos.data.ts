@@ -1,14 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from "@angular/core";
-import { Router } from "@angular/router";
-import { AttemptsService } from "@core/services/attempts.service";
-import { GameUiService } from "@core/services/game-ui.service";
-import { Quiz } from "@shared/components/quiz/quiz";
-import {
-  ConfiguracionQuiz,
-  PreguntaQuiz,
-  QuizViewModel,
-  TipoPregunta,
-} from "@shared/components/quiz/quiz.model";
+import { PreguntaQuiz, TipoPregunta } from "@shared/components/quiz/quiz.model";
 
 export const EJERCICIOS_POR_NIVEL = 25;
 export const PUNTOS_POR_NIVEL = [10, 15, 20];

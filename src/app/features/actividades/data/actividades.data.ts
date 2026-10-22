@@ -164,3 +164,55 @@ export function compararActividades(a: ActividadResumen, b: ActividadResumen): n
   return posicionDestacada(a) - posicionDestacada(b) || a.id - b.id;
 }
 
+/**
+ * Funde el catálogo del código (`ACTIVIDADES_INICIALES`) con las fichas que
+ * el administrador guarda en Firestore.
+ *
+ * La identidad de una actividad es su **ruta** (de ahí sale el slug con el que
+ * se registran los intentos), no su número. Por eso:
+ *  - una ficha con la ruta de una actividad del catálogo la **personaliza**;
+ *  - una ficha con una ruta nueva es una **actividad añadida**;
+ *  - y una ficha con un id repetido ya no puede «tapar» a otra actividad
+ *    (pasó con `actividades/5`, guardada como «Operadores Matemáticos», que
+ *    dejaba fuera de la lista a «Actividades Mentales»).
+ */
+export function fusionarActividades(fichas: ActividadResumen[]): ActividadResumen[] {
+  const porRuta = new Map<string, ActividadResumen>();
+
+  for (const ficha of fichas) {
+    const ruta = (ficha.ruta ?? '').trim();
+    if (!ruta || porRuta.has(ruta)) continue;
+    const inicial = ACTIVIDADES_INICIALES.find((a) => a.ruta === ruta);
+    porRuta.set(ruta, {
+      ...inicial,
+      ...ficha,
+      id: inicial?.id ?? ficha.id,
+      imagen: inicial?.imagen ?? ficha.imagen
+    });
+  }
+
+  // Las actividades del catálogo que nadie ha personalizado.
+  for (const inicial of ACTIVIDADES_INICIALES) {
+    if (!porRuta.has(inicial.ruta)) {
+      porRuta.set(inicial.ruta, inicial);
+    }
+  }
+
+  return sinIdsRepetidos([...porRuta.values()].sort(compararActividades));
+}
+
+/** Asigna un id libre a las actividades que repiten id (no debería pasar). */
+function sinIdsRepetidos(actividades: ActividadResumen[]): ActividadResumen[] {
+  const usados = new Set<number>();
+  let siguiente = ACTIVIDADES_INICIALES.reduce((max, a) => Math.max(max, a.id), 0) + 1;
+  return actividades.map((a) => {
+    if (!usados.has(a.id)) {
+      usados.add(a.id);
+      return a;
+    }
+    while (usados.has(siguiente)) siguiente++;
+    usados.add(siguiente);
+    return { ...a, id: siguiente++ };
+  });
+}
+

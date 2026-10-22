@@ -1,7 +1,4 @@
 import { Component } from "@angular/core";
-import { Router } from "@angular/router";
-import { AttemptsService } from "@core/services/attempts.service";
-import { GameUiService } from "@core/services/game-ui.service";
 import { QuizEngine } from '@core/services/quiz-engine.service';
 import { JuegoQuizBase } from '@core/services/juego-quiz-base';
 import { Quiz } from "@shared/components/quiz/quiz";
@@ -625,8 +622,6 @@ export class Conjuntos extends JuegoQuizBase {
   };
   protected readonly slug = 'conjuntos';
 
-
-
 /** Construye los 75 ejercicios (25 por nivel) con su diagrama. */
   protected generar(): PreguntaQuiz[] {
     const out: PreguntaQuiz[] = [];
@@ -639,15 +634,5 @@ export class Conjuntos extends JuegoQuizBase {
   }
 
   /** Baraja el orden de una lista (Fisher-Yates) con el azar de la partida. */
-  private mezclar<T>(a: T[]): T[] {
-    const c = [...a];
-    for (let i = c.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [c[i], c[j]] = [c[j], c[i]];
-    }
-    return c;
-  }
-
-
 
 }

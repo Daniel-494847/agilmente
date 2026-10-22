@@ -21,7 +21,8 @@ export const NOMBRES_COLECCION = {
   contenidoSecciones: 'contenidoSecciones',
   intentos: 'intentos',
   unidadEducativa: 'unidad-educativa',
-  contactos: 'contactos'
+  contactos: 'contactos',
+  asignaciones: 'asignaciones'
 } as const;
 
 export type NombreColeccion = (typeof NOMBRES_COLECCION)[keyof typeof NOMBRES_COLECCION];

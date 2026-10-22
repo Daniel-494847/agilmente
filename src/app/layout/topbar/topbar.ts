@@ -1,4 +1,4 @@
-import { Component, DestroyRef, Input, inject, computed } from '@angular/core';
+import { Component, Input, inject, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
@@ -12,7 +12,6 @@ import { UsuarioResumen } from '@core/models/usuario.model';
   styleUrl: './topbar.css'
 })
 export class Topbar {
-  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
 
   /** Puntos, nivel y título vienen del progreso real del usuario. */

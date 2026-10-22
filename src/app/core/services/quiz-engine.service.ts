@@ -2,10 +2,8 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AttemptsService } from './attempts.service';
-import { GameUiService } from './game-ui.service';
 import {
   ConfiguracionQuiz,
-  PreguntaQuiz,
   QuizViewModel
 } from '@shared/components/quiz/quiz.model';
 
@@ -46,7 +44,6 @@ const VISTA_INICIAL: QuizViewModel = {
  */
 @Injectable()
 export class QuizEngine {
-  private readonly gameUi = inject(GameUiService);
   private readonly attempts = inject(AttemptsService);
   private readonly router = inject(Router);
 

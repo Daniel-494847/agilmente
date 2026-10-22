@@ -1,9 +1,8 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { doc, getDoc, increment, updateDoc } from 'firebase/firestore';
 
 import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
 import { calcularNivelYTitulo } from '@core/models/usuario.model';
-import { UsuarioService } from './usuario.service';
 
 export interface ProgresoUsuario {
   puntos: number;
@@ -13,8 +12,6 @@ export interface ProgresoUsuario {
 
 @Injectable({ providedIn: 'root' })
 export class UserProgressService {
-  private readonly usuarios = inject(UsuarioService);
-
   /** Estado reactivo para la topbar y otras vistas. */
   readonly progreso = signal<ProgresoUsuario>({
     puntos: 0,

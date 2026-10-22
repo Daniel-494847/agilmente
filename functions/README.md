@@ -28,19 +28,29 @@ Firebase exige el plan **Blaze** para desplegar Cloud Functions. El proyecto
 Mientras no se active Blaze, el botón «Generar contraseña temporal» muestra un
 error explicando que las funciones no están desplegadas.
 
-## Restablecer sin plan Blaze (desde tu PC)
+## Restablecer sin plan Blaze y sin correo (desde tu PC)
 
 El requisito de Blaze aplica **solo** a desplegar Cloud Functions. El Admin SDK
-funciona en el plan gratis si se ejecuta localmente, así que puedes
-restablecer contraseñas al instante sin pagar nada con el script incluido:
+funciona en el plan gratis si se ejecuta localmente, así que puedes generar y
+restablecer contraseñas al instante, sin enviar ningún correo y sin pagar nada.
+
+**Configuración (una sola vez):**
+
+1. Firebase → Configuración del proyecto → Cuentas de servicio →
+   **Generar nueva clave privada** (gratis).
+2. Guarda el archivo `.json` dentro de `functions/scripts/` con el nombre
+   **`clave-servicio.json`** (ya está en `.gitignore`; no lo subas al repo).
+
+**Uso diario — doble clic:** ejecuta `functions\scripts\restablecer.cmd`,
+escribe el usuario del estudiante y listo: se imprime la contraseña temporal
+que le entregas en persona o por WhatsApp. Al entrar, la app obliga a
+cambiarla.
+
+**Uso desde terminal (opcional):**
 
 ```powershell
-# 1. Una sola vez: Firebase → Configuración del proyecto → Cuentas de servicio
-#    → «Generar nueva clave privada» (gratis). Guarda el .json en un lugar seguro.
-
 cd functions
-chcp 65001 > $null   # opcional: muestra bien los acentos en la consola
-$env:GOOGLE_APPLICATION_CREDENTIALS="C:\ruta\clave-servicio-agilmente.json"
+chcp 65001 > $null
 
 # Genera una contraseña temporal y la imprime:
 node scripts\restablecer-password.js ana.torres
@@ -54,7 +64,7 @@ El script hace exactamente lo mismo que la función: cambia la contraseña, marc
 abiertas. El usuario recibe la temporal y debe cambiarla en `/cambiar-password`.
 
 **Cuidado:** quien tenga el archivo `.json` tiene control total del proyecto.
-No lo compartas ni lo subas al repositorio (ya está en `.gitignore`).
+No lo compartas ni lo subas al repositorio.
 
 ## Crear la cuenta del administrador (desde tu PC)
 
