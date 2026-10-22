@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "postbuild": "copy dist\\agilmente\\index.html dist\\agilmente\\404.html",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
