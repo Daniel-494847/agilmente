@@ -1,1 +1,0 @@
-import{A as Is,Ht as ge}from"./chunk-D3V4GL4Y.js";var t=class o{jugando=Is(!1);setJugando(a){this.jugando.set(a)}static ɵfac=function(r){return new(r||o)};static ɵprov=ge({token:o,factory:o.ɵfac,providedIn:`root`})};export{t};

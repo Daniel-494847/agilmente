@@ -1,0 +1,1 @@
+import{ct as Ss,yn as me}from"./chunk-CksX3hgH.js";var t=class o{jugando=Ss(!1);setJugando(a){this.jugando.set(a)}static ɵfac=function(r){return new(r||o)};static ɵprov=me({token:o,factory:o.ɵfac,providedIn:`root`})};export{t};
