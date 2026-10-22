@@ -17,7 +17,13 @@ export type Paralelo = 'A' | 'B';
 export const PARALELOS: readonly Paralelo[] = ['A', 'B'];
 
 /** Dominio de los correos internos de las cuentas creadas por el administrador. */
-export const DOMINIO_ESTUDIANTES = 'estudiantes.agilmente.app';
+export const DOMINIO_ESTUDIANTES = 'agilmente.com';
+
+/**
+ * Dominio anterior de los correos internos. Se conserva para que las cuentas
+ * creadas antes del cambio sigan pudiendo entrar escribiendo solo su usuario.
+ */
+export const DOMINIO_ESTUDIANTES_LEGADO = 'estudiantes.agilmente.app';
 
 /** Devuelve un curso válido (1–6) o `undefined`. */
 export function normalizarCurso(valor: unknown): number | undefined {
@@ -35,6 +41,81 @@ export function normalizarParalelo(valor: unknown): Paralelo | undefined {
 export function nombreCurso(curso?: number, paralelo?: Paralelo): string {
   const encontrado = CURSOS.find((c) => c.valor === curso);
   return encontrado && paralelo ? `${encontrado.etiqueta} ${paralelo}` : '';
+}
+
+/** Un curso con su paralelo (lo que se asigna a un docente). */
+export interface CursoAsignado {
+  curso: number;
+  paralelo: Paralelo;
+}
+
+/** Clave estable de un curso, por ejemplo «1-A». */
+export function claveCurso(curso?: number, paralelo?: Paralelo): string {
+  return curso !== undefined && paralelo ? `${curso}-${paralelo}` : '';
+}
+
+/** Nombre corto y numeral de un curso, por ejemplo «5 A». */
+export function codigoCurso(curso?: number, paralelo?: Paralelo): string {
+  return curso !== undefined && paralelo ? `${curso} ${paralelo}` : '';
+}
+
+/**
+ * Devuelve la lista de cursos con uno agregado o quitado. Se usa para
+ * asignar y desasignar a un docente sin tocar sus demás cursos.
+ */
+export function conCursoAsignado(
+  cursos: CursoAsignado[],
+  curso: number,
+  paralelo: Paralelo,
+  asignar: boolean
+): CursoAsignado[] {
+  const clave = claveCurso(curso, paralelo);
+  const resto = cursos.filter((c) => claveCurso(c.curso, c.paralelo) !== clave);
+  return asignar ? [...resto, { curso, paralelo }] : resto;
+}
+
+/** Normaliza una lista de cursos: quita inválidos y duplicados. */
+export function normalizarCursos(valor: unknown): CursoAsignado[] {
+  if (!Array.isArray(valor)) {
+    return [];
+  }
+  const vistos = new Set<string>();
+  const cursos: CursoAsignado[] = [];
+  for (const item of valor) {
+    const registro = (item ?? {}) as Record<string, unknown>;
+    const curso = normalizarCurso(registro['curso']);
+    const paralelo = normalizarParalelo(registro['paralelo']);
+    if (curso === undefined || paralelo === undefined) {
+      continue;
+    }
+    const clave = claveCurso(curso, paralelo);
+    if (vistos.has(clave)) {
+      continue;
+    }
+    vistos.add(clave);
+    cursos.push({ curso, paralelo });
+  }
+  return cursos;
+}
+
+/**
+ * Cursos de un usuario. Los docentes pueden tener varios; si el documento
+ * solo tiene `curso`/`paralelo` (formato anterior) se devuelve ese único curso.
+ */
+export function cursosDe(usuario: {
+  curso?: number;
+  paralelo?: Paralelo;
+  cursos?: CursoAsignado[];
+}): CursoAsignado[] {
+  const lista = normalizarCursos(usuario.cursos);
+  if (lista.length) {
+    return lista;
+  }
+  const curso = normalizarCurso(usuario.curso);
+  const paralelo = normalizarParalelo(usuario.paralelo);
+  return curso !== undefined && paralelo !== undefined
+    ? [{ curso, paralelo }]
+    : [];
 }
 
 /** Puntos necesarios por nivel (nivel N requiere (N-1)*PUNTOS_POR_NIVEL puntos). */
@@ -79,6 +160,10 @@ export interface UsuarioDocumento {
   curso?: number;
   /** Paralelo del curso: A o B. */
   paralelo?: Paralelo;
+  /** Cursos asignados (varios para un docente). */
+  cursos?: CursoAsignado[];
+  /** Claves de `cursos` (p. ej. «1-A»), para las reglas de Firestore. */
+  cursosClaves?: string[];
   rol: RolUsuario;
   puntos: number;
   nivel: number;
@@ -106,6 +191,7 @@ export function usuarioPorDefecto(base: {
   puntos?: number;
   curso?: number;
   paralelo?: Paralelo;
+  cursos?: CursoAsignado[];
   debeCambiarPassword?: boolean;
 }): UsuarioSinTiempo {
   const puntos = Math.max(0, Math.floor(Number(base.puntos) || 0));
@@ -118,10 +204,20 @@ export function usuarioPorDefecto(base: {
     nivel,
     tituloNivel
   };
-  const curso = normalizarCurso(base.curso);
-  const paralelo = normalizarParalelo(base.paralelo);
+  // Los cursos múltiples (docentes) mandan sobre el curso único.
+  const cursos = normalizarCursos(base.cursos);
+  const primero = cursos[0] ?? {
+    curso: normalizarCurso(base.curso),
+    paralelo: normalizarParalelo(base.paralelo)
+  };
+  const curso = primero.curso;
+  const paralelo = primero.paralelo;
   if (curso !== undefined) doc.curso = curso;
   if (paralelo !== undefined) doc.paralelo = paralelo;
+  if (cursos.length) {
+    doc.cursos = cursos;
+    doc.cursosClaves = cursos.map((c) => claveCurso(c.curso, c.paralelo));
+  }
   if (base.avatarUrl) doc.avatarUrl = base.avatarUrl;
   if (base.debeCambiarPassword === true) doc.debeCambiarPassword = true;
   return doc;
@@ -143,6 +239,8 @@ export interface UsuarioAdmin {
   email: string;
   curso?: number;
   paralelo?: Paralelo;
+  /** Cursos asignados (un docente puede tener varios). */
+  cursos: CursoAsignado[];
   rol: RolUsuario;
   avatarUrl?: string;
   puntos?: number;
@@ -160,12 +258,19 @@ export function usuarioAdminDesdeDoc(
   uid: string,
   data: Record<string, unknown>
 ): UsuarioAdmin {
+  const curso = normalizarCurso(data['curso']);
+  const paralelo = normalizarParalelo(data['paralelo']);
   return {
     uid,
     nombreCompleto: String(data['nombreCompleto'] ?? ''),
     email: String(data['email'] ?? ''),
-    curso: normalizarCurso(data['curso']),
-    paralelo: normalizarParalelo(data['paralelo']),
+    curso,
+    paralelo,
+    cursos: cursosDe({
+      curso,
+      paralelo,
+      cursos: normalizarCursos(data['cursos'])
+    }),
     rol: normalizarRol(data['rol']),
     avatarUrl: String(data['avatarUrl'] ?? '') || undefined,
     puntos: Math.max(0, Math.floor(Number(data['puntos']) || 0)),

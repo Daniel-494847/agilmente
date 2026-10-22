@@ -14,7 +14,7 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
 import { ActividadResumen } from '@core/models/actividad.model';
-import { nombreCurso } from '@core/models/usuario.model';
+import { CursoAsignado, codigoCurso } from '@core/models/usuario.model';
 import { AsignacionesService } from '@core/services/asignaciones.service';
 import { PerfilUsuario, UsuarioService } from '@core/services/usuario.service';
 
@@ -61,6 +61,9 @@ export class ActivityCard {
   /** Perfil del docente (curso y paralelo asignados por el administrador). */
   readonly perfilDocente = signal<PerfilUsuario | null>(null);
 
+  /** Expuesto a la plantilla para el menú de asignación. */
+  readonly codigoCurso = codigoCurso;
+
   /** Menú de compartir abierto (se gestiona aquí porque Bootstrap JS no se carga). */
   readonly menuAbierto = signal(false);
   readonly asignando = signal(false);
@@ -70,22 +73,28 @@ export class ActivityCard {
   readonly puedeCompartirNativo =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
-  /** Grado asignado al docente, p. ej. «Primero A». Vacío si no tiene grado. */
-  readonly gradoAsignado = computed(() => {
-    const p = this.perfilDocente();
-    if (!p || p.curso === undefined) return '';
-    return nombreCurso(p.curso, p.paralelo);
-  });
+  /** Cursos del docente (puede tener varios). */
+  readonly cursosDocente = computed(() => this.perfilDocente()?.cursos ?? []);
 
-  /** Puede asignar cuando es docente y tiene un grado asignado. */
-  readonly puedeAsignar = computed(() => this.esDocente() && this.gradoAsignado() !== '');
+  /** Puede asignar cuando es docente y tiene al menos un curso asignado. */
+  readonly puedeAsignar = computed(
+    () => this.esDocente() && this.cursosDocente().length > 0
+  );
 
-  /** `true` si esta actividad ya fue asignada al curso del docente. */
+  /** `true` si la actividad está asignada a TODOS los cursos del docente. */
   readonly asignada = computed(() => {
-    const p = this.perfilDocente();
-    if (!p?.curso || !p.paralelo) return false;
-    return this.asignaciones.estaAsignada(this.actividad.ruta, p.curso, p.paralelo);
+    const cursos = this.cursosDocente();
+    return cursos.length > 0 && cursos.every((c) => this.asignadaEn(c));
   });
+
+  /** `true` si la actividad está asignada a ese curso. */
+  asignadaEn(curso: CursoAsignado): boolean {
+    return this.asignaciones.estaAsignada(
+      this.actividad.ruta,
+      curso.curso,
+      curso.paralelo
+    );
+  }
 
   constructor() {
     // Carga el perfil del docente cuando hay sesión y el rol es docente/administrador.
@@ -103,7 +112,7 @@ export class ActivityCard {
     try {
       const perfil = await this.usuarios.obtenerPerfil(uid);
       this.perfilDocente.set(perfil ?? null);
-      if (perfil?.curso && perfil.paralelo) {
+      if (perfil?.cursos?.length) {
         await this.asignaciones.cargarDelDocente(uid);
       }
     } catch {
@@ -124,15 +133,12 @@ export class ActivityCard {
     return this.esDocente() ? 'Asignar' : 'Compartir';
   }
 
-  /** Texto del botón de asignación, con el estado actual. */
+  /** Texto del botón de asignación: solo «Asignada» o «Asignar». */
   textoAsignar(): string {
     if (this.asignando()) {
-      return 'Asignando…';
+      return 'Guardando…';
     }
-    if (this.asignada()) {
-      return `Asignada a ${this.gradoAsignado()}`;
-    }
-    return this.puedeAsignar() ? `Asignar a ${this.gradoAsignado()}` : 'Asignar';
+    return this.asignada() ? 'Asignada' : 'Asignar';
   }
 
   /** Etiqueta de accesibilidad del botón principal. */
@@ -214,8 +220,11 @@ export class ActivityCard {
     );
   }
 
-  /** Asigna la actividad al grado del docente (curso + paralelo). */
-  async asignar(evento: Event): Promise<void> {
+  /**
+   * Asigna o quita la actividad en un curso del docente. Con varios cursos,
+   * cada uno se marca por separado; volver a pulsar el mismo curso la quita.
+   */
+  async alternarAsignacion(evento: Event, curso: CursoAsignado): Promise<void> {
     evento.preventDefault();
     evento.stopPropagation();
 
@@ -227,37 +236,30 @@ export class ActivityCard {
       return;
     }
 
-    let perfil = this.perfilDocente();
-    if (!perfil) {
-      try {
-        perfil = await this.usuarios.obtenerPerfil(uid);
-        this.perfilDocente.set(perfil ?? null);
-      } catch {
-        this.errorAsignacion.set('No se pudo leer tu perfil. Inténtalo de nuevo.');
-        return;
-      }
-    }
-
-    // El docente debe tener un curso y paralelo asignados para poder asignar.
-    if (!perfil?.curso || !perfil.paralelo) {
-      return;
-    }
-
     this.asignando.set(true);
     this.errorAsignacion.set('');
     try {
-      await this.asignaciones.asignar(
-        {
-          actividadId: this.actividad.id,
-          ruta: this.actividad.ruta,
-          titulo: this.actividad.titulo,
-          curso: perfil.curso,
-          paralelo: perfil.paralelo
-        },
-        uid
+      if (this.asignadaEn(curso)) {
+        await this.asignaciones.quitar(
+          this.asignaciones.idDe(this.actividad.ruta, curso.curso, curso.paralelo)
+        );
+      } else {
+        await this.asignaciones.asignar(
+          {
+            actividadId: this.actividad.id,
+            ruta: this.actividad.ruta,
+            titulo: this.actividad.titulo,
+            curso: curso.curso,
+            paralelo: curso.paralelo
+          },
+          uid
+        );
+      }
+    } catch (error) {
+      console.error('No se pudo actualizar la asignación', error);
+      this.errorAsignacion.set(
+        'No se pudo actualizar la asignación. Inténtalo de nuevo.'
       );
-    } catch {
-      this.errorAsignacion.set('No se pudo asignar la actividad. Inténtalo de nuevo.');
     } finally {
       this.asignando.set(false);
     }

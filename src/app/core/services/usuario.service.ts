@@ -15,13 +15,17 @@ import {
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import {
+  CursoAsignado,
   Paralelo,
   RolUsuario,
   UsuarioAdmin,
   UsuarioSinTiempo,
   calcularNivelYTitulo,
+  claveCurso,
+  cursosDe,
   esEmailAdministrador,
   normalizarCurso,
+  normalizarCursos,
   normalizarParalelo,
   normalizarRol,
   usuarioAdminDesdeDoc,
@@ -35,6 +39,8 @@ export interface PerfilUsuario {
   rol: RolUsuario;
   curso?: number;
   paralelo?: Paralelo;
+  /** Cursos asignados (varios para un docente). */
+  cursos: CursoAsignado[];
   avatarUrl?: string;
   /** `true` si debe cambiar la contraseña al entrar. */
   debeCambiarPassword?: boolean;
@@ -69,6 +75,7 @@ export class UsuarioService {
       avatarUrl?: string | null;
       curso?: number;
       paralelo?: Paralelo;
+      cursos?: CursoAsignado[];
     }
   ): Promise<void> {
     const actual = await this.leer(user.uid);
@@ -89,6 +96,7 @@ export class UsuarioService {
       avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
       curso: datos.curso ?? actual.curso,
       paralelo: datos.paralelo ?? actual.paralelo,
+      cursos: datos.cursos ?? actual.cursos,
       debeCambiarPassword: actual.debeCambiarPassword
     });
 
@@ -131,7 +139,8 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     const cambios: Record<string, unknown> = { ...base, ...datos };
     if (!actual.email) cambios['ultimoIngreso'] = serverTimestamp();
@@ -150,9 +159,41 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     await updateDoc(this.ref(uid), base);
+  }
+
+  /**
+   * Asigna los cursos del usuario. Es la vía del administrador para los
+   * docentes con varios cursos: `cursos` es la lista completa (asignar y
+   * desasignar se hace enviando la lista que queda). Con la lista vacía se
+   * quita el curso.
+   */
+  async asignarCursos(uid: string, cursos: CursoAsignado[]): Promise<void> {
+    const validos = normalizarCursos(cursos);
+    if (!validos.length) {
+      await this.quitarCurso(uid);
+      return;
+    }
+    const [principal] = validos;
+    if (validos.length === 1) {
+      // Un solo curso: se guarda en `curso`/`paralelo` (formato de siempre).
+      await updateDoc(this.ref(uid), {
+        curso: principal.curso,
+        paralelo: principal.paralelo,
+        cursos: deleteField(),
+        cursosClaves: deleteField()
+      });
+      return;
+    }
+    await updateDoc(this.ref(uid), {
+      curso: principal.curso,
+      paralelo: principal.paralelo,
+      cursos: validos,
+      cursosClaves: validos.map((c) => claveCurso(c.curso, c.paralelo))
+    });
   }
 
   /** Asigna (o corrige) el curso y el paralelo de un usuario. Solo lo usa el administrador. */
@@ -172,7 +213,9 @@ export class UsuarioService {
   async quitarCurso(uid: string): Promise<void> {
     await updateDoc(this.ref(uid), {
       curso: deleteField(),
-      paralelo: deleteField()
+      paralelo: deleteField(),
+      cursos: deleteField(),
+      cursosClaves: deleteField()
     });
   }
 
@@ -214,7 +257,8 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     const cambios: Record<string, unknown> = { ...base };
     if (!actual.ultimoIngreso) cambios['ultimoIngreso'] = serverTimestamp();
@@ -261,6 +305,11 @@ export class UsuarioService {
         rol: normalizarRol(d['rol']),
         curso: normalizarCurso(d['curso']),
         paralelo: normalizarParalelo(d['paralelo']),
+        cursos: cursosDe({
+          curso: normalizarCurso(d['curso']),
+          paralelo: normalizarParalelo(d['paralelo']),
+          cursos: normalizarCursos(d['cursos'])
+        }),
         avatarUrl: d['avatarUrl'] ? String(d['avatarUrl']) : undefined,
         debeCambiarPassword: d['debeCambiarPassword'] === true
       };
@@ -288,8 +337,13 @@ export class UsuarioService {
       };
       const curso = normalizarCurso(d['curso']);
       const paralelo = normalizarParalelo(d['paralelo']);
+      const cursos = normalizarCursos(d['cursos']);
       if (curso !== undefined) base.curso = curso;
       if (paralelo !== undefined) base.paralelo = paralelo;
+      if (cursos.length) {
+        base.cursos = cursos;
+        base.cursosClaves = cursos.map((c) => claveCurso(c.curso, c.paralelo));
+      }
       if (d['avatarUrl']) base.avatarUrl = String(d['avatarUrl']);
       if (d['debeCambiarPassword'] === true) base.debeCambiarPassword = true;
       return { ...base, creadoEn: d['creadoEn'], ultimoIngreso: d['ultimoIngreso'] };

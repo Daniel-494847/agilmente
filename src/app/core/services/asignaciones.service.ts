@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import {
   Timestamp,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   query,
@@ -88,6 +89,12 @@ export class AsignacionesService {
 
     this.delDocente.update((lista) => [asignacion, ...lista.filter((a) => a.id !== id)]);
     return asignacion;
+  }
+
+  /** Quita una asignación (el docente solo puede quitar las suyas). */
+  async quitar(id: string): Promise<void> {
+    await deleteDoc(doc(db, NOMBRES_COLECCION.asignaciones, id));
+    this.delDocente.update((lista) => lista.filter((a) => a.id !== id));
   }
 
   /** Carga las asignaciones del docente una sola vez por sesión. */

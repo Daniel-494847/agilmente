@@ -3,8 +3,12 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
 import {
+  CursoAsignado,
   Paralelo,
   UsuarioAdmin,
+  claveCurso,
+  codigoCurso,
+  cursosDe,
   nombreCurso
 } from '@core/models/usuario.model';
 import {
@@ -42,6 +46,10 @@ export class MiCursoDocente implements OnInit {
 
   readonly cargando = signal(true);
   readonly error = signal('');
+  /** Cursos que el administrador asignó a este docente. */
+  readonly cursos = signal<CursoAsignado[]>([]);
+  /** Curso que se está viendo (si el docente tiene varios). */
+  readonly cursoActivo = signal<CursoAsignado | null>(null);
   readonly curso = signal<number | undefined>(undefined);
   readonly paralelo = signal<Paralelo | undefined>(undefined);
   readonly estudiantes = signal<EstudianteConEstadisticas[]>([]);
@@ -52,6 +60,9 @@ export class MiCursoDocente implements OnInit {
   readonly busqueda = signal('');
 
   readonly cursoTexto = computed(() => nombreCurso(this.curso(), this.paralelo()));
+  /** Expuesto a la plantilla para el selector de cursos. */
+  readonly nombreCurso = nombreCurso;
+  readonly codigoCurso = codigoCurso;
 
   readonly filtrados = computed<EstudianteConEstadisticas[]>(() => {
     const texto = this.busqueda().trim().toLowerCase();
@@ -98,19 +109,31 @@ export class MiCursoDocente implements OnInit {
         return;
       }
 
-      this.curso.set(perfil.curso);
-      this.paralelo.set(perfil.paralelo);
+      const disponibles = cursosDe(perfil);
+      this.cursos.set(disponibles);
+      const actual = this.cursoActivo();
+      const activo =
+        disponibles.find(
+          (c) =>
+            actual !== null &&
+            claveCurso(c.curso, c.paralelo) === claveCurso(actual.curso, actual.paralelo)
+        ) ??
+        disponibles[0] ??
+        null;
+      this.cursoActivo.set(activo);
+      this.curso.set(activo?.curso);
+      this.paralelo.set(activo?.paralelo);
 
-      if (!perfil.curso || !perfil.paralelo) {
+      if (!activo) {
         this.estudiantes.set([]);
         this.asignadas.set([]);
         return;
       }
 
       const [lista, asignadas] = await Promise.all([
-        this.usuariosService.listarEstudiantesDeCurso(perfil.curso, perfil.paralelo),
+        this.usuariosService.listarEstudiantesDeCurso(activo.curso, activo.paralelo),
         this.asignaciones
-          .listarDeCurso(perfil.curso, perfil.paralelo)
+          .listarDeCurso(activo.curso, activo.paralelo)
           .catch(() => [] as AsignacionActividad[])
       ]);
       this.asignadas.set(asignadas);
@@ -148,6 +171,21 @@ export class MiCursoDocente implements OnInit {
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  /** Cambia el curso que se está viendo (cuando el docente tiene varios). */
+  async seleccionarCurso(curso: CursoAsignado): Promise<void> {
+    this.cursoActivo.set(curso);
+    await this.cargar();
+  }
+
+  /** `true` si ese curso es el que se está viendo. */
+  estaActivo(curso: CursoAsignado): boolean {
+    const activo = this.cursoActivo();
+    return (
+      activo !== null &&
+      claveCurso(activo.curso, activo.paralelo) === claveCurso(curso.curso, curso.paralelo)
+    );
   }
 
   alternarDetalle(uid: string): void {

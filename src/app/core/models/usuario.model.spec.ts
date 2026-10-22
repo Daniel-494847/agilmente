@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calcularNivelYTitulo,
+  claveCurso,
+  codigoCurso,
+  conCursoAsignado,
+  cursosDe,
   esEmailAdministrador,
   nombreCurso,
   normalizarCurso,
+  normalizarCursos,
   normalizarParalelo,
   normalizarRol,
   PUNTOS_POR_NIVEL,
@@ -67,6 +72,26 @@ describe('curso y paralelo', () => {
     expect(nombreCurso(undefined, 'A')).toBe('');
   });
 
+  it('codigoCurso devuelve el curso numeral, por ejemplo «5 A»', () => {
+    expect(codigoCurso(5, 'A')).toBe('5 A');
+    expect(codigoCurso(6, 'B')).toBe('6 B');
+    expect(codigoCurso(undefined, 'A')).toBe('');
+  });
+
+  it('conCursoAsignado agrega y quita un curso sin tocar los demás', () => {
+    const base = [
+      { curso: 1, paralelo: 'A' as const },
+      { curso: 3, paralelo: 'B' as const }
+    ];
+    expect(conCursoAsignado(base, 5, 'A', true)).toEqual([
+      ...base,
+      { curso: 5, paralelo: 'A' }
+    ]);
+    expect(conCursoAsignado(base, 1, 'A', false)).toEqual([{ curso: 3, paralelo: 'B' }]);
+    expect(conCursoAsignado(base, 3, 'B', false)).toEqual([{ curso: 1, paralelo: 'A' }]);
+    expect(conCursoAsignado([{ curso: 1, paralelo: 'A' }], 1, 'A', false)).toEqual([]);
+  });
+
   it('usuarioPorDefecto guarda curso y paralelo válidos', () => {
     const usuario = usuarioPorDefecto({
       email: 'a@b.com',
@@ -94,6 +119,68 @@ describe('curso y paralelo', () => {
       debeCambiarPassword: true
     });
     expect(usuario.debeCambiarPassword).toBe(true);
+  });
+});
+
+describe('cursos múltiples (docentes)', () => {
+  it('claveCurso arma la clave «curso-paralelo»', () => {
+    expect(claveCurso(1, 'A')).toBe('1-A');
+    expect(claveCurso(6, 'B')).toBe('6-B');
+    expect(claveCurso(undefined, 'A')).toBe('');
+  });
+
+  it('normalizarCursos quita inválidos y duplicados', () => {
+    expect(
+      normalizarCursos([
+        { curso: 1, paralelo: 'A' },
+        { curso: 1, paralelo: 'A' },
+        { curso: 9, paralelo: 'A' },
+        { curso: 2, paralelo: 'C' }
+      ])
+    ).toEqual([{ curso: 1, paralelo: 'A' }]);
+  });
+
+  it('cursosDe usa la lista y, si no existe, el curso único', () => {
+    expect(cursosDe({ cursos: [{ curso: 2, paralelo: 'B' }] })).toEqual([
+      { curso: 2, paralelo: 'B' }
+    ]);
+    expect(cursosDe({ curso: 4, paralelo: 'A' })).toEqual([{ curso: 4, paralelo: 'A' }]);
+    expect(cursosDe({})).toEqual([]);
+  });
+
+  it('usuarioPorDefecto guarda los cursos y sus claves', () => {
+    const usuario = usuarioPorDefecto({
+      email: 'docente@agilmente.com',
+      nombreCompleto: 'Docente',
+      rol: 'docente',
+      cursos: [
+        { curso: 2, paralelo: 'A' },
+        { curso: 5, paralelo: 'B' }
+      ]
+    });
+    expect(usuario.curso).toBe(2);
+    expect(usuario.paralelo).toBe('A');
+    expect(usuario.cursosClaves).toEqual(['2-A', '5-B']);
+  });
+
+  it('usuarioAdminDesdeDoc lee varios cursos y mantiene el principal', () => {
+    const usuario = usuarioAdminDesdeDoc('uid-docente', {
+      nombreCompleto: 'Docente',
+      email: 'docente@agilmente.com',
+      rol: 'docente',
+      curso: 1,
+      paralelo: 'A',
+      cursos: [
+        { curso: 1, paralelo: 'A' },
+        { curso: 3, paralelo: 'B' }
+      ]
+    });
+    expect(usuario.curso).toBe(1);
+    expect(usuario.paralelo).toBe('A');
+    expect(usuario.cursos).toEqual([
+      { curso: 1, paralelo: 'A' },
+      { curso: 3, paralelo: 'B' }
+    ]);
   });
 });
 

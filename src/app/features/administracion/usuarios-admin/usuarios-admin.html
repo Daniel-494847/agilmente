@@ -6,9 +6,9 @@
     <h1 class="h3 fw-bold mt-2 mb-1">Gestión de usuarios</h1>
     <p class="text-secondary mb-0">
       Consulta el puntaje de cada usuario y pulsa «Ver más» para ver su avance, su rol y su
-      curso. Entra a un curso para añadir o quitar a sus estudiantes y asignarle un docente.
-      El administrador es único: Daniel Llanos Pallares ({{ adminEmail }}); nadie más puede
-      tener ese rol.
+      curso. Entra a un curso para añadir estudiantes (o docentes), quitar estudiantes y
+      asignarle un docente. El administrador es único: Daniel Llanos Pallares
+      ({{ adminEmail }}); nadie más puede tener ese rol.
     </p>
   </header>
 
@@ -152,8 +152,11 @@
               </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-              <button type="button" class="btn btn-success" (click)="alternarNuevo()">
+              <button type="button" class="btn btn-success" (click)="abrirNuevo('estudiante')">
                 <i class="bi bi-person-plus me-1"></i>Añadir estudiante
+              </button>
+              <button type="button" class="btn btn-outline-success" (click)="abrirNuevo('docente')">
+                <i class="bi bi-person-badge me-1"></i>Añadir docente
               </button>
               <button type="button" class="btn btn-outline-primary" (click)="alternarExistente()">
                 <i class="bi bi-person-check me-1"></i>Añadir existente
@@ -169,10 +172,14 @@
           </div>
 
           @if (mostrarNuevo()) {
+            <h3 class="h6 fw-bold mt-3 mb-0">
+              {{ rolNuevo() === 'docente' ? 'Nuevo docente' : 'Nuevo estudiante' }}
+              <span class="badge text-bg-light border ms-1">{{ tituloFiltro() }}</span>
+            </h3>
             <form
               class="row g-2 align-items-end mt-2"
               (submit)="
-                crearEstudiante(nombreInput.value, correoInput.value, passwordInput.value);
+                crearUsuario(nombreInput.value, correoInput.value, passwordInput.value);
                 $event.preventDefault()
               ">
               <div class="col-12 col-md-4">
@@ -206,7 +213,7 @@
               </div>
               <div class="col-12 col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-success" [disabled]="creando()">
-                  {{ creando() ? 'Creando…' : 'Crear' }}
+                  {{ creando() ? 'Creando…' : (rolNuevo() === 'docente' ? 'Crear docente' : 'Crear estudiante') }}
                 </button>
                 <button
                   type="button"
@@ -218,9 +225,15 @@
               </div>
               <div class="col-12">
                 <p class="form-text mb-0">
-                  Se matricula en {{ tituloFiltro() }}. Si dejas el correo vacío, se genera un
-                  usuario interno. Si el nombre ya existe, escribe un correo distinto o usa
-                  «Añadir existente».
+                  @if (rolNuevo() === 'docente') {
+                    Queda asignado como docente de {{ tituloFiltro() }} (verá su curso en
+                    «Mi curso» y podrá asignar actividades). Si dejas el correo vacío, se genera un
+                    usuario interno.
+                  } @else {
+                    Se matricula en {{ tituloFiltro() }}. Si dejas el correo vacío, se genera un
+                    usuario interno. Si el nombre ya existe, escribe un correo distinto o usa
+                    «Añadir existente».
+                  }
                 </p>
               </div>
             </form>
@@ -234,7 +247,8 @@
             <div class="alert alert-success mt-3 mb-0" role="status">
               <p class="mb-1">
                 <strong>
-                  {{ c.estado === 'creado' ? 'Estudiante añadido' : 'Estudiante actualizado' }}:
+                  {{ rolNuevo() === 'docente' ? 'Docente' : 'Estudiante' }}
+                  {{ c.estado === 'creado' ? 'añadido' : 'actualizado' }}:
                 </strong>
                 {{ c.nombre }} · {{ c.cursoTexto }}
               </p>
@@ -297,58 +311,45 @@
 
           <div class="border-top mt-3 pt-3">
             <h3 class="h6 fw-bold mb-2">
-              <i class="bi bi-person-badge me-1"></i>Docente del curso
+              <i class="bi bi-person-badge me-1"></i>Docentes del curso
             </h3>
 
-            @if (docentesDelCurso().length) {
+            @if (todosDocentes().length) {
               <ul class="list-unstyled mb-2">
-                @for (d of docentesDelCurso(); track d.uid) {
-                  <li class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                    <span class="text-break">{{ d.nombreCompleto || d.email }}</span>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-danger"
-                      (click)="quitarDocenteDelCurso(d)">
-                      <i class="bi bi-person-dash me-1"></i>Quitar
-                    </button>
+                @for (d of todosDocentes(); track d.uid) {
+                  <li class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div class="me-auto text-break">
+                      {{ d.nombreCompleto || d.email }}
+                      <span class="badge text-bg-light border ms-1">
+                        {{ cursosTexto(d) || 'Sin cursos' }}
+                      </span>
+                    </div>
+                    @if (estaEnCursoAbierto(d)) {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        [disabled]="guardandoCursos() === d.uid"
+                        (click)="alternarDocenteEnCurso(d, false)">
+                        <i class="bi bi-person-dash me-1"></i>Quitar del curso
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                        [disabled]="guardandoCursos() === d.uid"
+                        (click)="alternarDocenteEnCurso(d, true)">
+                        <i class="bi bi-person-plus me-1"></i>Asignar al curso
+                      </button>
+                    }
                   </li>
                 }
               </ul>
-            } @else {
-              <p class="small text-secondary mb-2">Sin docente asignado.</p>
-            }
-
-            <div class="row g-2 align-items-end">
-              <div class="col-12 col-md-8">
-                <label class="form-label" for="docente-curso">Asignar docente</label>
-                <select id="docente-curso" #docenteSel class="form-select">
-                  <option value="">Selecciona un docente…</option>
-                  @for (d of docentesDisponibles(); track d.uid) {
-                    <option [value]="d.uid">
-                      {{ d.nombreCompleto || d.email }} — {{ cursoTexto(d) }}
-                    </option>
-                  }
-                </select>
-              </div>
-              <div class="col-12 col-md-4">
-                <button
-                  type="button"
-                  class="btn btn-primary"
-                  [disabled]="!docentesDisponibles().length"
-                  (click)="asignarDocente(docenteSel.value)">
-                  <i class="bi bi-person-check me-1"></i>Asignar
-                </button>
-              </div>
-            </div>
-
-            @if (!docentesDisponibles().length) {
               <p class="form-text mb-0">
-                @if (docentesDelCurso().length) {
-                  Todos los docentes disponibles ya están en este curso.
-                } @else {
-                  No hay docentes disponibles. Crea la cuenta con «Añadir estudiante» (o
-                  «Importar lista») y cambia su rol a «docente» en su detalle.
-                }
+                «Quitar del curso» solo lo desasigna de este curso; sus demás cursos se conservan.
+              </p>
+            } @else {
+              <p class="form-text mb-0">
+                No hay docentes disponibles. Créalos con «Añadir docente» en este curso.
               </p>
             }
           </div>
@@ -404,7 +405,7 @@
                 <div class="text-break">
                   <h2 class="h6 fw-bold mb-0">{{ u.nombreCompleto || 'Sin nombre' }}</h2>
                   <span class="text-secondary small">{{ u.email || '—' }}</span>
-                  @if (u.curso) {
+                  @if (u.cursos.length) {
                     <span class="badge text-bg-light border ms-2">{{ cursoTexto(u) }}</span>
                   } @else if (u.rol === 'estudiante') {
                     <span class="badge text-bg-warning ms-2">Sin curso</span>
@@ -502,42 +503,55 @@
                 }
 
                 @if (u.rol === 'docente') {
-                  <div class="d-flex flex-wrap align-items-center gap-2">
-                    <span class="text-secondary small">Curso asignado</span>
-                    <select
-                      #cursoDocenteSel
-                      class="form-select form-select-sm w-auto"
-                      [value]="u.curso ?? ''"
-                      [attr.aria-label]="'Curso asignado a ' + (u.nombreCompleto || u.email)">
-                      <option value="">—</option>
+                  <div class="border-top mt-3 pt-3 mb-2">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                      <span class="fw-semibold small">Cursos asignados</span>
+                      <span class="badge text-bg-light border">
+                        {{ cursosTexto(u) || 'Sin cursos' }}
+                      </span>
+                    </div>
+                    <div class="row row-cols-2 row-cols-md-4 g-2">
                       @for (c of cursos; track c.valor) {
-                        <option [value]="c.valor">{{ c.etiqueta }}</option>
+                        @for (p of paralelos; track p) {
+                          <div class="col">
+                            <div class="form-check mb-0">
+                              <input
+                                class="form-check-input"
+                                type="checkbox"
+                                [id]="'curso-' + u.uid + '-' + c.valor + p"
+                                [checked]="cursoMarcado(u, c.valor, p)"
+                                (change)="alternarCurso(u, c.valor, p)" />
+                              <label
+                                class="form-check-label"
+                                [for]="'curso-' + u.uid + '-' + c.valor + p">
+                                {{ c.valor }} {{ p }}
+                              </label>
+                            </div>
+                          </div>
+                        }
                       }
-                    </select>
-                    <select
-                      #paraleloDocenteSel
-                      class="form-select form-select-sm w-auto"
-                      [value]="u.paralelo ?? ''"
-                      [attr.aria-label]="'Paralelo asignado a ' + (u.nombreCompleto || u.email)">
-                      <option value="">—</option>
-                      @for (p of paralelos; track p) {
-                        <option [value]="p">{{ p }}</option>
-                      }
-                    </select>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-primary"
-                      (click)="guardarCurso(u, cursoDocenteSel.value, paraleloDocenteSel.value)">
-                      Guardar curso
-                    </button>
-                    @if (u.curso) {
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                        [disabled]="guardandoCursos() === u.uid"
+                        (click)="guardarCursosDocente(u)">
+                        <i class="bi bi-check2-circle me-1"></i>
+                        {{ guardandoCursos() === u.uid ? 'Guardando…' : 'Guardar cursos' }}
+                      </button>
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-danger"
+                        [disabled]="guardandoCursos() === u.uid || !u.cursos.length"
                         (click)="quitarDelCurso(u)">
-                        <i class="bi bi-person-dash me-1"></i>Quitar curso
+                        <i class="bi bi-person-dash me-1"></i>Quitar todos
                       </button>
-                    }
+                    </div>
+                    <p class="form-text mb-0">
+                      Marca o desmarca los cursos y pulsa «Guardar cursos». Un docente puede tener
+                      varios.
+                    </p>
                   </div>
                 }
               </div>

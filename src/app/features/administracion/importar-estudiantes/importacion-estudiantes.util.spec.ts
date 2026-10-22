@@ -27,7 +27,7 @@ describe('lectura de la lista de estudiantes', () => {
   it('genera un usuario válido a partir del nombre', () => {
     expect(slugUsuario('Juan Pérez')).toBe('juan.perez');
     expect(slugUsuario('  ')).toBe('estudiante');
-    expect(correoDeUsuario('Ana Gómez')).toBe('ana.gomez@estudiantes.agilmente.app');
+    expect(correoDeUsuario('Ana Gómez')).toBe('ana.gomez@agilmente.com');
   });
 
   it('genera contraseñas temporales con el formato esperado', () => {
@@ -56,7 +56,7 @@ describe('lectura de la lista de estudiantes', () => {
       nombre: 'Luis Pérez',
       curso: 2,
       paralelo: 'B',
-      correoInterno: 'luis.perez@estudiantes.agilmente.app',
+      correoInterno: 'luis.perez@agilmente.com',
       valida: true
     });
     expect(filas[2].valida).toBe(false);
@@ -102,7 +102,7 @@ describe('lectura de la lista de estudiantes', () => {
       curso: 1,
       paralelo: 'A',
       usuario: 'ana.torres',
-      correoInterno: 'ana.torres@estudiantes.agilmente.app',
+      correoInterno: 'ana.torres@agilmente.com',
       valida: true
     });
     expect(filas[0].password).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
@@ -148,7 +148,7 @@ describe('lectura de la lista de estudiantes', () => {
       curso: 3,
       paralelo: 'B',
       usuario: 'luis.perez',
-      correoInterno: 'luis.perez@estudiantes.agilmente.app',
+      correoInterno: 'luis.perez@agilmente.com',
       valida: true
     });
   });

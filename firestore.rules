@@ -40,18 +40,25 @@ service cloud.firestore {
 
     /**
      * Un docente solo puede leer los intentos de los estudiantes que están en
-     * el mismo curso y paralelo que él. El `get` del docente se cachea por
-     * consulta; por eso el panel del docente consulta los intentos estudiante
-     * por estudiante y no todos los del curso en una sola consulta.
+     * alguno de sus cursos. Los docentes con varios cursos guardan la lista en
+     * `cursosClaves` («1-A», «2-B»…); los de un solo curso usan
+     * `curso`/`paralelo`. Se aceptan ambos formatos.
      */
+    function tieneCurso(docenteData, curso, paralelo) {
+      return ('cursosClaves' in docenteData
+              && (string(curso) + '-' + paralelo) in docenteData.cursosClaves)
+        || (docenteData.curso == curso && docenteData.paralelo == paralelo);
+    }
+
     function esDocenteDe(estudianteUid) {
       return esDocente()
         && exists(/databases/$(database)/documents/usuarios/$(estudianteUid))
         && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.rol == 'estudiante'
-        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.curso
-             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
-        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.paralelo
-             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo;
+        && tieneCurso(
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+             get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.curso,
+             get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.paralelo
+           );
     }
 
     /**
@@ -82,10 +89,11 @@ service cloud.firestore {
         // El docente asignado a un curso puede leer los perfiles de sus estudiantes.
         || (esDocente()
             && resource.data.rol == 'estudiante'
-            && resource.data.curso
-                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
-            && resource.data.paralelo
-                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo)
+            && tieneCurso(
+                 get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                 resource.data.curso,
+                 resource.data.paralelo
+               ))
       );
 
       // Solo el administrador crea cuentas (importación o «Añadir estudiante»).
@@ -119,7 +127,12 @@ service cloud.firestore {
                 && request.resource.data.curso >= 1
                 && request.resource.data.curso <= 6))
         && (!('paralelo' in request.resource.data)
-            || request.resource.data.paralelo in ['A', 'B']);
+            || request.resource.data.paralelo in ['A', 'B'])
+        // Cursos múltiples de un docente (lista de {curso, paralelo}).
+        && (!('cursos' in request.resource.data)
+            || request.resource.data.cursos is list)
+        && (!('cursosClaves' in request.resource.data)
+            || request.resource.data.cursosClaves is list);
 
       allow update: if (
           esAdministrador()
@@ -141,6 +154,10 @@ service cloud.firestore {
                   && request.resource.data.curso <= 6))
           && (!('paralelo' in request.resource.data)
               || request.resource.data.paralelo in ['A', 'B'])
+          && (!('cursos' in request.resource.data)
+              || request.resource.data.cursos is list)
+          && (!('cursosClaves' in request.resource.data)
+              || request.resource.data.cursosClaves is list)
         )
         || (autenticado()
           && request.auth.uid == uid
@@ -233,7 +250,13 @@ service cloud.firestore {
 
       allow create: if autenticado()
         && (esAdministrador()
-            || (esDocente() && request.resource.data.docenteUid == request.auth.uid))
+            || (esDocente()
+                && request.resource.data.docenteUid == request.auth.uid
+                && tieneCurso(
+                     get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                     request.resource.data.curso,
+                     request.resource.data.paralelo
+                   )))
         && request.resource.data.keys().hasAll([
              'actividadId', 'ruta', 'titulo', 'docenteUid', 'curso', 'paralelo', 'creadoEn'
            ])
@@ -246,9 +269,15 @@ service cloud.firestore {
       allow update: if esAdministrador()
         || (esDocente()
             && resource.data.docenteUid == request.auth.uid
-            && request.resource.data.docenteUid == request.auth.uid);
+            && request.resource.data.docenteUid == request.auth.uid
+            && tieneCurso(
+                 get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                 request.resource.data.curso,
+                 request.resource.data.paralelo
+               ));
 
-      allow delete: if esAdministrador();
+      allow delete: if esAdministrador()
+        || (esDocente() && resource.data.docenteUid == request.auth.uid);
     }
 
     // ==================================================================

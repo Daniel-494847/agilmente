@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { readSheet } from 'read-excel-file/browser';
 
-import { UsuarioAdmin, nombreCurso } from '@core/models/usuario.model';
+import { UsuarioAdmin, nombreCurso, RolUsuario, cursosDe } from '@core/models/usuario.model';
 import { UsuarioService } from '@core/services/usuario.service';
 import { environment } from '../../../../environments/environment';
 
@@ -54,12 +54,16 @@ export class ImportacionEstudiantesService {
 
   /**
    * Importa las filas válidas. Si el correo ya pertenece a un usuario de
-   * Firestore, solo actualiza su curso y paralelo; si no, crea la cuenta.
+   * Firestore, solo actualiza su curso, paralelo y rol; si no, crea la cuenta.
+   *
+   * `rol` permite usar el mismo flujo para «Añadir docente»; por defecto crea
+   * estudiantes.
    */
   async importar(
     filas: FilaImportacion[],
     existentes: UsuarioAdmin[],
-    onProgreso?: (hecho: number, total: number) => void
+    onProgreso?: (hecho: number, total: number) => void,
+    rol: RolUsuario = 'estudiante'
   ): Promise<ResultadoImportacion[]> {
     const validas = filas.filter((fila) => fila.valida);
     const resultados: ResultadoImportacion[] = [];
@@ -85,7 +89,20 @@ export class ImportacionEstudiantesService {
           const existente = porCorreo.get(fila.correoInterno.toLowerCase());
 
           if (existente) {
-            await this.usuarios.asignarCurso(existente.uid, fila.curso!, fila.paralelo!);
+            // A un docente se le suma el curso; un estudiante conserva uno solo.
+            const cursos =
+              rol === 'docente'
+                ? [
+                    ...cursosDe(existente).filter(
+                      (c) => c.curso !== fila.curso || c.paralelo !== fila.paralelo
+                    ),
+                    { curso: fila.curso!, paralelo: fila.paralelo! }
+                  ]
+                : [{ curso: fila.curso!, paralelo: fila.paralelo! }];
+            await this.usuarios.asignarCursos(existente.uid, cursos);
+            if (existente.rol !== rol) {
+              await this.usuarios.cambiarRol(existente.uid, rol);
+            }
             resultados.push(this.resultado(fila, 'actualizado'));
           } else {
             const credencial = await createUserWithEmailAndPassword(
@@ -96,7 +113,7 @@ export class ImportacionEstudiantesService {
             try {
               await this.usuarios.crearOReparar(credencial.user, {
                 nombreCompleto: fila.nombre,
-                rol: 'estudiante',
+                rol,
                 curso: fila.curso,
                 paralelo: fila.paralelo
               });

@@ -7,12 +7,17 @@ import { UserRoleService } from '@core/auth/user-role.service';
 import {
   ADMIN_EMAIL,
   CURSOS,
+  CursoAsignado,
   DOMINIO_ESTUDIANTES,
+  DOMINIO_ESTUDIANTES_LEGADO,
   PARALELOS,
   Paralelo,
   RolUsuario,
   UsuarioAdmin,
-  nombreCurso
+  claveCurso,
+  codigoCurso,
+  conCursoAsignado,
+  cursosDe
 } from '@core/models/usuario.model';
 import { UsuarioService } from '@core/services/usuario.service';
 import {
@@ -82,9 +87,18 @@ export class UsuariosAdmin implements OnInit {
   readonly avisoEstadisticas = signal('');
   readonly busqueda = signal('');
   readonly abiertos = signal<ReadonlySet<string>>(new Set<string>());
+  /**
+   * Selección de cursos por usuario en el detalle (claves «1-A»). Si un
+   * usuario no está en el mapa, se usan sus cursos guardados.
+   */
+  readonly cursosSeleccionados = signal<Record<string, string[]>>({});
+  /** UID del usuario cuyos cursos se están guardando. */
+  readonly guardandoCursos = signal<string | null>(null);
   readonly mostrarImportador = signal(false);
   /** Formulario para crear un estudiante dentro del curso abierto. */
   readonly mostrarNuevo = signal(false);
+  /** Rol que se creará con el formulario abierto (estudiante o docente). */
+  readonly rolNuevo = signal<RolUsuario>('estudiante');
   /** Selector para mover un estudiante existente al curso abierto. */
   readonly mostrarExistente = signal(false);
   readonly creando = signal(false);
@@ -161,7 +175,7 @@ export class UsuariosAdmin implements OnInit {
     }
     return seleccion.tipo === 'sin-curso'
       ? 'Estudiantes sin curso'
-      : nombreCurso(seleccion.curso, seleccion.paralelo);
+      : codigoCurso(seleccion.curso, seleccion.paralelo);
   });
 
   /** `true` cuando se entró a un curso concreto (no a «Sin curso»). */
@@ -206,13 +220,20 @@ export class UsuariosAdmin implements OnInit {
     if (!curso) {
       return [];
     }
+    const clave = claveCurso(curso.curso, curso.paralelo);
     return this.usuarios().filter(
       (u) =>
         u.rol === 'docente' &&
-        u.curso === curso.curso &&
-        u.paralelo === curso.paralelo
+        cursosDe(u).some((c) => claveCurso(c.curso, c.paralelo) === clave)
     );
   });
+
+  /** Todos los docentes (para asignar o desasignar el curso abierto). */
+  readonly todosDocentes = computed<UsuarioConEstadisticas[]>(() =>
+    this.usuarios()
+      .filter((u) => u.rol === 'docente')
+      .sort((a, b) => (a.nombreCompleto || a.email).localeCompare(b.nombreCompleto || b.email))
+  );
 
   /** Docentes que aún no están asignados al curso abierto (pueden estar en otro). */
   readonly docentesDisponibles = computed<UsuarioConEstadisticas[]>(() => {
@@ -220,10 +241,9 @@ export class UsuariosAdmin implements OnInit {
     if (!curso) {
       return [];
     }
-    return this.usuarios().filter(
-      (u) =>
-        u.rol === 'docente' &&
-        !(u.curso === curso.curso && u.paralelo === curso.paralelo)
+    const clave = claveCurso(curso.curso, curso.paralelo);
+    return this.todosDocentes().filter(
+      (u) => !cursosDe(u).some((c) => claveCurso(c.curso, c.paralelo) === clave)
     );
   });
 
@@ -340,11 +360,16 @@ export class UsuariosAdmin implements OnInit {
       this.usuarios.update((lista) =>
         lista.map((u) =>
           u.uid === usuario.uid
-            ? { ...u, curso: cursoValido, paralelo: paraleloValido as Paralelo }
+            ? {
+                ...u,
+                curso: cursoValido,
+                paralelo: paraleloValido as Paralelo,
+                cursos: [{ curso: cursoValido, paralelo: paraleloValido as Paralelo }]
+              }
             : u
         )
       );
-      const cursoTexto = nombreCurso(cursoValido, paraleloValido as Paralelo);
+      const cursoTexto = codigoCurso(cursoValido, paraleloValido as Paralelo);
       this.mensaje.set(
         `Curso de ${usuario.nombreCompleto || usuario.email} actualizado a «${cursoTexto}».`
       );
@@ -374,8 +399,15 @@ export class UsuariosAdmin implements OnInit {
     this.credenciales.set(null);
   }
 
-  alternarNuevo(): void {
-    this.mostrarNuevo.update((visible) => !visible);
+  /** Abre el formulario de alta con el rol indicado (estudiante o docente). */
+  abrirNuevo(rol: RolUsuario = 'estudiante'): void {
+    // Si ya estaba abierto con el mismo rol, se cierra.
+    if (this.mostrarNuevo() && this.rolNuevo() === rol) {
+      this.mostrarNuevo.set(false);
+    } else {
+      this.rolNuevo.set(rol);
+      this.mostrarNuevo.set(true);
+    }
     this.mostrarExistente.set(false);
     this.mostrarImportador.set(false);
     this.errorFormulario.set('');
@@ -399,9 +431,11 @@ export class UsuariosAdmin implements OnInit {
     this.mostrarExistente.set(false);
   }
 
-  /** Crea un estudiante nuevo y lo matricula en el curso abierto. */
-  async crearEstudiante(nombre: string, correo: string, password: string): Promise<void> {
+  /** Crea un estudiante o docente nuevo y lo asigna al curso abierto. */
+  async crearUsuario(nombre: string, correo: string, password: string): Promise<void> {
     const seleccion = this.cursoSeleccionado();
+    const rol = this.rolNuevo();
+    const etiqueta = rol === 'docente' ? 'docente' : 'estudiante';
     if (seleccion?.tipo !== 'curso' || this.creando()) {
       return;
     }
@@ -411,7 +445,7 @@ export class UsuariosAdmin implements OnInit {
     const passwordLimpio = password.trim();
 
     if (!nombreLimpio) {
-      this.errorFormulario.set('Escribe el nombre del estudiante.');
+      this.errorFormulario.set(`Escribe el nombre del ${etiqueta}.`);
       return;
     }
     if (passwordLimpio && passwordLimpio.length < 6) {
@@ -441,7 +475,7 @@ export class UsuariosAdmin implements OnInit {
       const fila = filas[0];
 
       if (!fila || !fila.valida) {
-        this.errorFormulario.set(fila?.error ?? 'Revisa los datos del estudiante.');
+        this.errorFormulario.set(fila?.error ?? `Revisa los datos del ${etiqueta}.`);
         return;
       }
 
@@ -451,14 +485,14 @@ export class UsuariosAdmin implements OnInit {
       );
       if (yaExiste) {
         this.errorFormulario.set(
-          'Ya existe un estudiante con ese correo o nombre. Usa «Añadir existente» o escribe un correo distinto.'
+          `Ya existe un usuario con ese correo o nombre. Usa «Añadir existente» o escribe un correo distinto.`
         );
         return;
       }
 
-      const [resultado] = await this.importacion.importar([fila], existentes);
+      const [resultado] = await this.importacion.importar([fila], existentes, undefined, rol);
       if (!resultado || resultado.estado === 'error') {
-        this.errorFormulario.set(resultado?.detalle ?? 'No se pudo añadir al estudiante.');
+        this.errorFormulario.set(resultado?.detalle ?? `No se pudo añadir al ${etiqueta}.`);
         return;
       }
 
@@ -466,13 +500,13 @@ export class UsuariosAdmin implements OnInit {
       this.mostrarNuevo.set(false);
       this.mensaje.set(
         resultado.estado === 'creado'
-          ? `${resultado.nombre} añadido a ${this.tituloFiltro()}.`
-          : `${resultado.nombre} ya existía; se actualizó su curso a ${this.tituloFiltro()}.`
+          ? `${resultado.nombre} añadido como ${etiqueta} en ${this.tituloFiltro()}.`
+          : `${resultado.nombre} ya existía; se actualizó a ${etiqueta} en ${this.tituloFiltro()}.`
       );
       this.error.set('');
       await this.cargar(false);
     } catch {
-      this.errorFormulario.set('No se pudo añadir al estudiante. Inténtalo de nuevo.');
+      this.errorFormulario.set(`No se pudo añadir al ${etiqueta}. Inténtalo de nuevo.`);
     } finally {
       this.creando.set(false);
     }
@@ -490,7 +524,7 @@ export class UsuariosAdmin implements OnInit {
       return;
     }
 
-    const destino = nombreCurso(seleccion.curso, seleccion.paralelo);
+    const destino = codigoCurso(seleccion.curso, seleccion.paralelo);
     if (usuario.curso && usuario.paralelo) {
       const origen = this.cursoTexto(usuario);
       if (
@@ -535,7 +569,7 @@ export class UsuariosAdmin implements OnInit {
       await this.usuariosService.quitarCurso(usuario.uid);
       this.usuarios.update((lista) =>
         lista.map((u) =>
-          u.uid === usuario.uid ? { ...u, curso: undefined, paralelo: undefined } : u
+          u.uid === usuario.uid ? { ...u, curso: undefined, paralelo: undefined, cursos: [] } : u
         )
       );
       this.mensaje.set(`${nombre} quedó fuera de «${curso}».`);
@@ -619,72 +653,178 @@ export class UsuariosAdmin implements OnInit {
     }
   }
 
-  /** Asigna un docente al curso abierto (lo mueve si ya tenía otro curso). */
-  async asignarDocente(uid: string): Promise<void> {
+  /** Cursos legibles de un usuario, p. ej. «Primero A, Tercero B». */
+  cursosTexto(
+    usuario: Pick<UsuarioAdmin, 'curso' | 'paralelo'> & { cursos?: CursoAsignado[] }
+  ): string {
+    return cursosDe(usuario)
+      .map((c) => codigoCurso(c.curso, c.paralelo))
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  /** `true` si el docente tiene asignado el curso abierto. */
+  estaEnCursoAbierto(usuario: UsuarioAdmin): boolean {
     const curso = this.cursoActivo();
-    if (!curso || !uid) {
+    if (!curso) {
+      return false;
+    }
+    const clave = claveCurso(curso.curso, curso.paralelo);
+    return cursosDe(usuario).some((c) => claveCurso(c.curso, c.paralelo) === clave);
+  }
+
+  /** Claves de curso seleccionadas en el detalle (por defecto, las guardadas). */
+  seleccionDe(usuario: UsuarioAdmin): string[] {
+    return (
+      this.cursosSeleccionados()[usuario.uid] ??
+      cursosDe(usuario).map((c) => claveCurso(c.curso, c.paralelo))
+    );
+  }
+
+  /** `true` si la casilla de ese curso está marcada en el detalle. */
+  cursoMarcado(usuario: UsuarioAdmin, curso: number, paralelo: Paralelo): boolean {
+    return this.seleccionDe(usuario).includes(claveCurso(curso, paralelo));
+  }
+
+  /** Marca o desmarca un curso en el detalle (se guarda con «Guardar cursos»). */
+  alternarCurso(usuario: UsuarioAdmin, curso: number, paralelo: Paralelo): void {
+    const clave = claveCurso(curso, paralelo);
+    const actuales = this.seleccionDe(usuario);
+    const nuevas = actuales.includes(clave)
+      ? actuales.filter((c) => c !== clave)
+      : [...actuales, clave];
+    this.cursosSeleccionados.update((mapa) => ({ ...mapa, [usuario.uid]: nuevas }));
+  }
+
+  /** Convierte claves «1-A» en cursos válidos. */
+  private cursosDesdeClaves(claves: string[]): CursoAsignado[] {
+    const cursos: CursoAsignado[] = [];
+    for (const clave of claves) {
+      const [curso, paralelo] = clave.split('-');
+      const valor = Number(curso);
+      if (Number.isInteger(valor) && valor >= 1 && valor <= 6 && (paralelo === 'A' || paralelo === 'B')) {
+        cursos.push({ curso: valor, paralelo });
+      }
+    }
+    return cursos;
+  }
+
+  /** Guarda los cursos marcados para un docente (asigna y desasigna a la vez). */
+  async guardarCursosDocente(usuario: UsuarioAdmin): Promise<void> {
+    if (this.guardandoCursos()) {
       return;
     }
+    const nombre = usuario.nombreCompleto || usuario.email;
+    const cursos = this.cursosDesdeClaves(this.seleccionDe(usuario));
 
+    this.guardandoCursos.set(usuario.uid);
+    try {
+      await this.usuariosService.asignarCursos(usuario.uid, cursos);
+      this.usuarios.update((lista) =>
+        lista.map((u) =>
+          u.uid === usuario.uid
+            ? { ...u, cursos, curso: cursos[0]?.curso, paralelo: cursos[0]?.paralelo }
+            : u
+        )
+      );
+      this.cursosSeleccionados.update((mapa) => {
+        const copia = { ...mapa };
+        delete copia[usuario.uid];
+        return copia;
+      });
+      this.mensaje.set(
+        cursos.length
+          ? `Cursos de ${nombre}: ${cursos
+              .map((c) => codigoCurso(c.curso, c.paralelo))
+              .join(', ')}.`
+          : `${nombre} quedó sin cursos asignados.`
+      );
+      this.error.set('');
+    } catch (error) {
+      console.error('No se pudieron guardar los cursos', error);
+      const codigo = (error as { code?: string } | null)?.code;
+      this.error.set(
+        `No se pudieron guardar los cursos${codigo ? ` (${codigo})` : ''}.`
+      );
+    } finally {
+      this.guardandoCursos.set(null);
+    }
+  }
+
+  /**
+   * Asigna o desasigna un docente del curso abierto sin tocar sus demás
+   * cursos. Es el botón «Asignar»/«Quitar» de la lista de docentes.
+   */
+  async alternarDocenteEnCurso(
+    docente: UsuarioConEstadisticas,
+    asignar: boolean
+  ): Promise<void> {
+    const curso = this.cursoActivo();
+    if (!curso || this.guardandoCursos()) {
+      return;
+    }
+    const nombre = docente.nombreCompleto || docente.email;
+    const cursos = conCursoAsignado(
+      cursosDe(docente),
+      curso.curso,
+      curso.paralelo,
+      asignar
+    );
+
+    this.guardandoCursos.set(docente.uid);
+    try {
+      await this.usuariosService.asignarCursos(docente.uid, cursos);
+      this.usuarios.update((lista) =>
+        lista.map((u) =>
+          u.uid === docente.uid
+            ? { ...u, cursos, curso: cursos[0]?.curso, paralelo: cursos[0]?.paralelo }
+            : u
+        )
+      );
+      this.cursosSeleccionados.update((mapa) => {
+        const copia = { ...mapa };
+        delete copia[docente.uid];
+        return copia;
+      });
+      this.mensaje.set(
+        asignar
+          ? `${nombre} asignado como docente de «${codigoCurso(curso.curso, curso.paralelo)}».`
+          : `${nombre} ya no es docente de «${codigoCurso(curso.curso, curso.paralelo)}».`
+      );
+      this.error.set('');
+    } catch (error) {
+      console.error('No se pudieron actualizar los cursos del docente', error);
+      const codigo = (error as { code?: string } | null)?.code;
+      this.error.set(
+        asignar
+          ? `No se pudo asignar al docente${codigo ? ` (${codigo})` : ''}.`
+          : `No se pudo desasignar al docente${codigo ? ` (${codigo})` : ''}.`
+      );
+    } finally {
+      this.guardandoCursos.set(null);
+    }
+  }
+
+  /** Asigna un docente al curso abierto conservando sus otros cursos. */
+  async asignarDocente(uid: string): Promise<void> {
     const docente = this.usuarios().find((u) => u.uid === uid && u.rol === 'docente');
     if (!docente) {
       return;
     }
-
-    const destino = nombreCurso(curso.curso, curso.paralelo);
-    if (docente.curso && docente.paralelo) {
-      if (
-        !window.confirm(
-          `¿Mover a ${docente.nombreCompleto || docente.email} de «${this.cursoTexto(
-            docente
-          )}» a «${destino}»?`
-        )
-      ) {
-        return;
-      }
-    }
-
-    try {
-      await this.usuariosService.asignarCurso(uid, curso.curso, curso.paralelo);
-      this.usuarios.update((lista) =>
-        lista.map((u) =>
-          u.uid === uid ? { ...u, curso: curso.curso, paralelo: curso.paralelo } : u
-        )
-      );
-      this.mensaje.set(
-        `${docente.nombreCompleto || docente.email} asignado como docente de «${destino}».`
-      );
-      this.error.set('');
-    } catch {
-      this.error.set('No se pudo asignar al docente (¿eres administrador?).');
-    }
+    await this.alternarDocenteEnCurso(docente, true);
   }
 
-  /** Quita al docente del curso abierto sin borrar su cuenta. */
+  /** Quita al docente del curso abierto sin borrar su cuenta ni sus otros cursos. */
   async quitarDocenteDelCurso(docente: UsuarioConEstadisticas): Promise<void> {
     const nombre = docente.nombreCompleto || docente.email;
-    const curso = this.tituloFiltro();
-
     if (
       !window.confirm(
-        `¿Quitar a ${nombre} como docente de «${curso}»? Su cuenta no se elimina.`
+        `¿Quitar a ${nombre} como docente de «${this.tituloFiltro()}»? Sus otros cursos y su cuenta se conservan.`
       )
     ) {
       return;
     }
-
-    try {
-      await this.usuariosService.quitarCurso(docente.uid);
-      this.usuarios.update((lista) =>
-        lista.map((u) =>
-          u.uid === docente.uid ? { ...u, curso: undefined, paralelo: undefined } : u
-        )
-      );
-      this.mensaje.set(`${nombre} quedó sin curso asignado.`);
-      this.error.set('');
-    } catch {
-      this.error.set('No se pudo quitar al docente (¿eres administrador?).');
-    }
+    await this.alternarDocenteEnCurso(docente, false);
   }
 
   /** Entra al curso indicado; si ya estaba abierto, lo cierra. */
@@ -741,9 +881,9 @@ export class UsuariosAdmin implements OnInit {
     return this.abiertos().has(uid);
   }
 
-  /** Curso y paralelo legibles («Primero A») o «Sin curso». */
-  cursoTexto(usuario: Pick<UsuarioAdmin, 'curso' | 'paralelo'>): string {
-    return nombreCurso(usuario.curso, usuario.paralelo) || 'Sin curso';
+  /** Cursos legibles del usuario («Primero A, Tercero B») o «Sin curso». */
+  cursoTexto(usuario: Pick<UsuarioAdmin, 'curso' | 'paralelo'> & { cursos?: CursoAsignado[] }): string {
+    return this.cursosTexto(usuario) || 'Sin curso';
   }
 
   /** `true` si el correo es el del administrador único. */
@@ -754,8 +894,13 @@ export class UsuariosAdmin implements OnInit {
   /** Nombre de acceso: usuario interno sin dominio, o correo real. */
   usuarioTexto(email: string): string {
     const correo = email.trim().toLowerCase();
-    const sufijo = `@${DOMINIO_ESTUDIANTES}`;
-    return correo.endsWith(sufijo) ? correo.slice(0, -sufijo.length) : correo;
+    for (const dominio of [DOMINIO_ESTUDIANTES, DOMINIO_ESTUDIANTES_LEGADO]) {
+      const sufijo = `@${dominio}`;
+      if (correo.endsWith(sufijo)) {
+        return correo.slice(0, -sufijo.length);
+      }
+    }
+    return correo;
   }
 
   /** Título legible de la actividad a partir del slug guardado en el intento. */

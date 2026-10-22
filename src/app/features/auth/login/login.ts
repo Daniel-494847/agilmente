@@ -2,11 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { FirebaseError } from 'firebase/app';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { UserCredential, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 import { AuthService } from '@core/auth/auth.service';
 import { auth } from '@core/firebase';
-import { esEmailAdministrador } from '@core/models/usuario.model';
+import {
+  DOMINIO_ESTUDIANTES_LEGADO,
+  esEmailAdministrador
+} from '@core/models/usuario.model';
 import { UsuarioService } from '@core/services/usuario.service';
 import { correoDeUsuario } from '@features/administracion/importar-estudiantes/importacion-estudiantes.util';
 
@@ -46,13 +49,13 @@ export class Login {
 
     const { usuario, password } = this.form.getRawValue();
     const texto = usuario.trim();
-    // Sin «@» se asume el usuario interno: ana.torres → ana.torres@estudiantes.agilmente.app
+    // Sin «@» se asume el usuario interno: ana.torres → ana.torres@agilmente.com
     const email = texto.includes('@') ? texto : correoDeUsuario(texto);
 
     this.isSubmitting.set(true);
     this.errorMessage.set('');
     try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const credential = await this.autenticar(texto, email, password);
       const user = credential.user;
       const perfil = await this.usuarios.obtenerPerfil(user.uid);
 
@@ -78,6 +81,39 @@ export class Login {
       this.errorMessage.set(this.mensajeError(error));
     } finally {
       this.isSubmitting.set(false);
+    }
+  }
+
+  /**
+   * Inicia sesión con el correo interno actual. Si el usuario corto no
+   * existe, reintenta con el dominio anterior: las cuentas creadas antes del
+   * cambio de dominio siguen entrando con su mismo usuario.
+   */
+  private async autenticar(
+    texto: string,
+    email: string,
+    password: string
+  ): Promise<UserCredential> {
+    try {
+      return await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      const codigo = error instanceof FirebaseError ? error.code : '';
+      const sinCuenta =
+        codigo === 'auth/user-not-found' ||
+        codigo === 'auth/invalid-credential' ||
+        codigo === 'auth/invalid-login-credentials' ||
+        codigo === 'auth/wrong-password';
+
+      if (texto.includes('@') || !sinCuenta) {
+        throw error;
+      }
+
+      const local = email.slice(0, email.lastIndexOf('@'));
+      return signInWithEmailAndPassword(
+        auth,
+        `${local}@${DOMINIO_ESTUDIANTES_LEGADO}`,
+        password
+      );
     }
   }
 

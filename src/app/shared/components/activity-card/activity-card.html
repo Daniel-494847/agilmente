@@ -37,19 +37,48 @@
     </a>
 
     @if (esDocente()) {
-      <button
-        type="button"
-        class="btn btn-sm rounded-pill px-3 fw-bold"
-        [class]="claseBoton()"
-        (click)="asignar($event)"
-        [attr.aria-label]="ariaBoton()"
-        [disabled]="!puedeAsignar() || asignando()"
-      >
-        @if (asignada() && !asignando()) {
-          <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
-        }
-        {{ textoAsignar() }}
-      </button>
+      <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
+        <button
+          type="button"
+          class="btn btn-sm rounded-pill px-3 fw-bold dropdown-toggle"
+          [class]="claseBoton()"
+          [attr.aria-expanded]="menuAbierto()"
+          [attr.aria-controls]="'asignar-' + actividad.id"
+          (click)="alternarMenu($event)"
+          [attr.aria-label]="ariaBoton()"
+          [disabled]="!puedeAsignar() || asignando()">
+          @if (asignada() && !asignando()) {
+            <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
+          }
+          {{ textoAsignar() }}
+        </button>
+        <ul
+          #menu
+          class="dropdown-menu dropdown-menu-end"
+          data-bs-popper="static"
+          [class.show]="menuAbierto()"
+          [id]="'asignar-' + actividad.id">
+          <li><span class="dropdown-header">Asignar a tus cursos</span></li>
+          @for (c of cursosDocente(); track c.curso + '-' + c.paralelo) {
+            <li>
+              <button
+                type="button"
+                class="dropdown-item d-flex align-items-center gap-2"
+                (click)="alternarAsignacion($event, c)">
+                <i
+                  class="bi"
+                  [class.bi-check-square-fill]="asignadaEn(c)"
+                  [class.bi-square]="!asignadaEn(c)"
+                  aria-hidden="true"></i>
+                <span>{{ codigoCurso(c.curso, c.paralelo) }}</span>
+                <span class="ms-auto small text-secondary">
+                  {{ asignadaEn(c) ? 'Quitar' : 'Asignar' }}
+                </span>
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
     } @else {
       <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
         <button
