@@ -5,7 +5,8 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { AuthService } from '@core/auth/auth.service';
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import { ActividadResumen } from '@core/models/actividad.model';
-import { PerfilUsuario, nombreCurso } from '@core/models/usuario.model';
+import { nombreCurso } from '@core/models/usuario.model';
+import { PerfilUsuario } from '@core/services/usuario.service';
 import { UsuarioService } from '@core/services/usuario.service';
 
 /** Mapa colorTema → clases Bootstrap */
