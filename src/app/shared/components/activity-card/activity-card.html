@@ -1,8 +1,6 @@
-<a
+<div
   class="card h-100 text-decoration-none border-2 rounded-4 p-3 position-relative d-flex flex-column"
   [class]="clasesTema()"
-  [routerLink]="actividad.ruta"
-  [attr.aria-label]="'Comenzar actividad ' + actividad.titulo"
 >
   <span class="badge rounded-circle position-absolute top-0 start-0 translate-middle-y ms-3 bg-primary text-white d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; font-size: 13px">
     {{ numero }}
@@ -22,44 +20,64 @@
     <i class="bi {{ actividad.icono }} display-5 mb-2" aria-hidden="true"></i>
   }
 
-  <h3 class="fs-6 fw-bold mb-1">{{ actividad.titulo }}</h3>
+  <h3 class="fs-6 fw-bold mb-1">
+    <a
+      class="stretched-link text-reset text-decoration-none"
+      [routerLink]="actividad.ruta"
+      [attr.aria-label]="'Comenzar actividad ' + actividad.titulo"
+    >
+      {{ actividad.titulo }}
+    </a>
+  </h3>
   <p class="text-secondary small mb-3" style="min-height: 34px">{{ actividad.descripcion }}</p>
 
-  <div class="d-flex gap-2 mt-auto">
-    <span class="btn btn-sm rounded-pill align-self-start px-3 fw-bold text-white" [class]="claseBoton()">
+  <div class="d-flex gap-2 mt-auto position-relative z-3">
+    <a class="btn btn-sm rounded-pill align-self-start px-3 fw-bold" [class]="claseBoton()" [routerLink]="actividad.ruta">
       Jugar
-    </span>
+    </a>
 
     @if (esDocente()) {
       <button
         type="button"
-        class="btn btn-sm rounded-pill px-3 fw-bold text-white"
+        class="btn btn-sm rounded-pill px-3 fw-bold"
         [class]="claseBoton()"
         (click)="asignar($event)"
         [attr.aria-label]="ariaBoton()"
-        [disabled]="!puedeAsignar()"
+        [disabled]="!puedeAsignar() || asignando()"
       >
-        @if (puedeAsignar()) {
-          Asignar a {{ gradoAsignado() }}
-        } @else {
-          Asignar
+        @if (asignada() && !asignando()) {
+          <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
         }
+        {{ textoAsignar() }}
       </button>
     } @else {
       <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
         <button
-          class="btn btn-sm rounded-pill px-3 fw-bold text-white dropdown-toggle"
+          class="btn btn-sm rounded-pill px-3 fw-bold dropdown-toggle"
           [class]="claseBoton()"
           type="button"
-          data-bs-toggle="dropdown"
-          data-bs-display="static"
-          aria-expanded="false"
-          (click)="compartir($event)"
+          [attr.aria-expanded]="menuAbierto()"
+          [attr.aria-controls]="'compartir-' + actividad.id"
+          (click)="alternarMenu($event)"
           [attr.aria-label]="ariaBoton()"
         >
           {{ textoBoton() }}
         </button>
-        <ul class="dropdown-menu dropdown-menu-end">
+        <ul
+          #menu
+          class="dropdown-menu dropdown-menu-end"
+          data-bs-popper="static"
+          [class.show]="menuAbierto()"
+          [id]="'compartir-' + actividad.id"
+        >
+          @if (puedeCompartirNativo) {
+            <li>
+              <button type="button" class="dropdown-item" (click)="compartir($event)">
+                <i class="bi bi-share me-2" aria-hidden="true"></i>Compartir
+              </button>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+          }
           <li>
             <a class="dropdown-item" [href]="enlaceWhatsapp()" target="_blank" rel="noopener">
               <i class="bi bi-whatsapp me-2" aria-hidden="true"></i>WhatsApp
@@ -77,16 +95,16 @@
           </li>
           <li><hr class="dropdown-divider" /></li>
           <li>
-            <a
-              class="dropdown-item"
-              [href]="enlaceWhatsapp()"
-              (click)="copiar($event)"
-            >
+            <button type="button" class="dropdown-item" (click)="copiar($event)">
               <i class="bi bi-copy me-2" aria-hidden="true"></i>Copiar enlace
-            </a>
+            </button>
           </li>
         </ul>
       </div>
     }
   </div>
-</a>
+
+  @if (errorAsignacion()) {
+    <p class="text-danger small mt-2 mb-0" role="alert">{{ errorAsignacion() }}</p>
+  }
+</div>

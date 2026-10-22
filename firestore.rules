@@ -54,6 +54,21 @@ service cloud.firestore {
              == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo;
     }
 
+    /**
+     * `true` si quien llama es un estudiante matriculado en ese curso y paralelo.
+     * Se usa para que el estudiante reciba las actividades que su docente le asignó.
+     */
+    function esEstudianteDe(curso, paralelo) {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol
+             == 'estudiante'
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
+             == curso
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo
+             == paralelo;
+    }
+
     // ==================================================================
     // 1. PERFILES  (usuarios)
     //    Todo documento DEBE tener: email, nombreCompleto, rol, puntos,
@@ -208,13 +223,32 @@ service cloud.firestore {
     }
 
     // Asignaciones de actividades que el docente hace a su curso asignado.
+    // El estudiante lee las de su propio curso (así recibe la notificación);
+    // el docente lee las suyas. La lectura usaba `request.resource.data`, que
+    // no existe en las lecturas y dejaba la consulta siempre denegada.
     match /asignaciones/{id} {
-      allow read: if autenticado()
-        && (esAdministrador() || request.resource.data.docenteUid == request.auth.uid);
+      allow read: if esAdministrador()
+        || (esDocente() && resource.data.docenteUid == request.auth.uid)
+        || esEstudianteDe(resource.data.curso, resource.data.paralelo);
+
       allow create: if autenticado()
         && (esAdministrador()
-            || (esDocente() && request.resource.data.docenteUid == request.auth.uid));
-      allow update, delete: if esAdministrador();
+            || (esDocente() && request.resource.data.docenteUid == request.auth.uid))
+        && request.resource.data.keys().hasAll([
+             'actividadId', 'ruta', 'titulo', 'docenteUid', 'curso', 'paralelo', 'creadoEn'
+           ])
+        && request.resource.data.curso is int
+        && request.resource.data.curso >= 1
+        && request.resource.data.curso <= 6
+        && request.resource.data.paralelo in ['A', 'B'];
+
+      // Volver a asignar la misma actividad actualiza el documento.
+      allow update: if esAdministrador()
+        || (esDocente()
+            && resource.data.docenteUid == request.auth.uid
+            && request.resource.data.docenteUid == request.auth.uid);
+
+      allow delete: if esAdministrador();
     }
 
     // ==================================================================

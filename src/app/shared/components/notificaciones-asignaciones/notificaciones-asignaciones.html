@@ -1,0 +1,65 @@
+@if (visible()) {
+  <div class="dropdown">
+    <button
+      type="button"
+      class="btn btn-light border position-relative"
+      [attr.aria-expanded]="abierto()"
+      aria-haspopup="true"
+      aria-label="Notificaciones de actividades asignadas"
+      (click)="alternar()"
+    >
+      <i class="bi bi-bell-fill" aria-hidden="true"></i>
+      @if (noLeidas() > 0) {
+        <span
+          class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger"
+        >
+          {{ noLeidas() }}
+          <span class="visually-hidden">actividades nuevas</span>
+        </span>
+      }
+    </button>
+
+    <ul
+      class="dropdown-menu dropdown-menu-end shadow"
+      data-bs-popper="static"
+      [class.show]="abierto()"
+    >
+      <li class="px-3 py-2 border-bottom">
+        <span class="d-block fw-bold small">Actividades asignadas</span>
+        <span class="d-block text-secondary small">{{ etiqueta() }}</span>
+      </li>
+
+      @if (cargando()) {
+        <li class="px-3 py-3 text-secondary small" role="status">
+          <span class="spinner-border spinner-border-sm me-2"></span>Cargando…
+        </li>
+      } @else if (error()) {
+        <li class="px-3 py-3 text-danger small">{{ error() }}</li>
+      } @else if (asignadas().length === 0) {
+        <li class="px-3 py-3 text-secondary small">
+          Tu docente todavía no te ha asignado actividades.
+        </li>
+      } @else {
+        @for (asignacion of asignadas(); track asignacion.id) {
+          <li>
+            <a
+              class="dropdown-item d-flex align-items-start gap-2 py-2"
+              [routerLink]="asignacion.ruta"
+              (click)="abierto.set(false)"
+            >
+              <i class="bi bi-controller text-primary mt-1" aria-hidden="true"></i>
+              <span>
+                <span class="d-block fw-semibold">{{ asignacion.titulo }}</span>
+                @if (asignacion.creadoEn) {
+                  <span class="d-block text-secondary small">
+                    Asignada el {{ formatoFecha(asignacion.creadoEn) }}
+                  </span>
+                }
+              </span>
+            </a>
+          </li>
+        }
+      }
+    </ul>
+  </div>
+}

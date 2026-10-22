@@ -3,11 +3,12 @@ import { RouterLink } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
 import { UsuarioResumen } from '@core/models/usuario.model';
+import { NotificacionesAsignaciones } from '@shared/components/notificaciones-asignaciones/notificaciones-asignaciones';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, NotificacionesAsignaciones],
   templateUrl: './topbar.html',
   styleUrl: './topbar.css'
 })

@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { AuthService } from '@core/auth/auth.service';
 import {
@@ -12,6 +13,7 @@ import {
   crearEstadisticasVacias
 } from '@core/services/estadisticas.service';
 import { UsuarioService } from '@core/services/usuario.service';
+import { AsignacionActividad, AsignacionesService } from '@core/services/asignaciones.service';
 import { ActividadesService } from '@features/actividades/services/actividades.service';
 
 interface EstudianteConEstadisticas extends UsuarioAdmin {
@@ -28,6 +30,7 @@ interface EstudianteConEstadisticas extends UsuarioAdmin {
 @Component({
   selector: 'app-mi-curso',
   standalone: true,
+  imports: [RouterLink],
   templateUrl: './mi-curso.html'
 })
 export class MiCursoDocente implements OnInit {
@@ -35,12 +38,15 @@ export class MiCursoDocente implements OnInit {
   private readonly usuariosService = inject(UsuarioService);
   private readonly estadisticas = inject(EstadisticasService);
   private readonly actividades = inject(ActividadesService);
+  private readonly asignaciones = inject(AsignacionesService);
 
   readonly cargando = signal(true);
   readonly error = signal('');
   readonly curso = signal<number | undefined>(undefined);
   readonly paralelo = signal<Paralelo | undefined>(undefined);
   readonly estudiantes = signal<EstudianteConEstadisticas[]>([]);
+  /** Actividades que este docente asignó al curso. */
+  readonly asignadas = signal<AsignacionActividad[]>([]);
   readonly titulos = signal<Map<string, string>>(new Map());
   readonly abiertos = signal<ReadonlySet<string>>(new Set<string>());
   readonly busqueda = signal('');
@@ -97,13 +103,17 @@ export class MiCursoDocente implements OnInit {
 
       if (!perfil.curso || !perfil.paralelo) {
         this.estudiantes.set([]);
+        this.asignadas.set([]);
         return;
       }
 
-      const lista = await this.usuariosService.listarEstudiantesDeCurso(
-        perfil.curso,
-        perfil.paralelo
-      );
+      const [lista, asignadas] = await Promise.all([
+        this.usuariosService.listarEstudiantesDeCurso(perfil.curso, perfil.paralelo),
+        this.asignaciones
+          .listarDeCurso(perfil.curso, perfil.paralelo)
+          .catch(() => [] as AsignacionActividad[])
+      ]);
+      this.asignadas.set(asignadas);
 
       // Los títulos de las actividades son accesorios: si fallan, se usa el slug.
       const titulos = await this.actividades

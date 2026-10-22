@@ -32,6 +32,10 @@
   }
 
   <div class="topbar-acciones d-flex align-items-center gap-2 flex-wrap">
+    @if (!esVisitante()) {
+      <app-notificaciones-asignaciones />
+    }
+
     @if (esVisitante()) {
       <a routerLink="/login" class="btn btn-primary btn-sm">Iniciar sesión</a>
     }
