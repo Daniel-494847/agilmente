@@ -1,14 +1,16 @@
 ﻿import { Component, HostListener, OnDestroy, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { AttemptsService } from '@core/services/attempts.service';
 import { FullscreenService } from '@core/services/fullscreen.service';
 import { GameUiService } from '@core/services/game-ui.service';
+import { Quiz } from '@shared/components/quiz/quiz';
+import { QuizViewModel } from '@shared/components/quiz/quiz.model';
 
 type Modo = 'suma' | 'resta' | 'multiplicacion' | 'combinadas';
 
 /** Fases de la ronda: ajustes -> mostrando ejercicios -> respuestas -> resultado. */
-type Fase = 'intro' | 'reproduciendo' | 'respondiendo' | 'resultado';
+type Fase = 'intro' | 'config' | 'reproduciendo' | 'respondiendo' | 'resultado';
 
 interface Paso {
   op: string;
@@ -35,7 +37,7 @@ interface ModoInfo {
 @Component({
   selector: 'app-juegos-mentales',
   standalone: true,
-  imports: [RouterLink],
+  imports: [Quiz],
   templateUrl: './juegos-mentales.html',
   styleUrl: './juegos-mentales.css'
 })
@@ -87,13 +89,13 @@ export class JuegosMentales implements OnDestroy {
   /* ---- Ajustes de la ronda ---- */
   readonly fase = signal<Fase>('intro');
   readonly modo = signal<Modo>('suma');
-  readonly cantidad = signal(5);
-  readonly cifras = signal(2);
+  readonly cantidad = signal(3);
+  readonly cifras = signal(1);
   readonly tiempo = signal(1.2);
   /** Cuántos ejercicios se muestran antes de pedir los resultados. */
-  readonly ejercicios = signal(5);
+  readonly ejercicios = signal(3);
   /** Texto del campo de cantidad: refleja lo escrito para no pisar al teclear. */
-  readonly ejerciciosTexto = signal('5');
+  readonly ejerciciosTexto = signal('3');
 
   /* ---- Mostrando los ejercicios ---- */
   readonly serie = signal<Paso[][]>([]);
@@ -122,6 +124,41 @@ export class JuegosMentales implements OnDestroy {
   readonly modoActual = computed(
     () => this.modos.find((m) => m.id === this.modo()) ?? this.modos[0]
   );
+
+  protected readonly vistaMenu = computed<QuizViewModel>(() => ({
+    estado: 'intro',
+    config: {
+      titulo: 'Juegos Mentales',
+      descripcion: 'Memoriza los ejercicios y escribe sus resultados',
+      colorTema: 'pink',
+      niveles: 1,
+      preguntas: [],
+      escalaEnunciado: 1.1
+    },
+    colorTema: 'pink',
+    preguntaActual: null,
+    indice: 0,
+    total: this.totalEjercicios(),
+    nivelSeleccionado: 1,
+    etiquetasNiveles: ['Único'],
+    seleccionada: null,
+    esCorrecta: null,
+    segundosRestantes: 0,
+    sonidosActivos: this.sonidoActivo(),
+    resultado: {
+      correctas: this.aciertosSesion(),
+      incorrectas: Math.max(0, this.ejerciciosSesion() - this.aciertosSesion()),
+      total: this.ejerciciosSesion(),
+      puntaje: this.puntosSesion(),
+      porcentaje: this.ejerciciosSesion() ? Math.round((this.aciertosSesion() / this.ejerciciosSesion()) * 100) : 0,
+      respuestas: []
+    },
+    mostrarConfeti: false,
+    estrellas: 0
+  }));
+
+  private readonly puntosSesion = computed(() => this.aciertosSesion() * 15);
+
   /** Cantidad ya recortada al rango válido (2-20): es la que se juega. */
   readonly totalEjercicios = computed(() => {
     const valor = Math.round(this.ejercicios());
@@ -259,6 +296,14 @@ export class JuegosMentales implements OnDestroy {
     void this.fullscreen.salir();
     this.limpiarRonda();
     void this.cerrarIntento();
+  }
+
+  mostrarConfig(): void {
+    this.fase.set('config');
+  }
+
+  volverAIntro(): void {
+    this.fase.set('intro');
   }
 
   volver(): void {
