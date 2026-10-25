@@ -44,7 +44,8 @@ export class AttemptsService {
       duracionSegundos: Math.max(0, Math.floor((Date.now() - inicio) / 1000))
     });
 
-    // Actualiza puntos y nivel visibles en la topbar
-    await this.progress.registrarPuntosDelIntento(resultado.puntaje);
+    // Los puntos del perfil los suma el trigger `procesarIntentoFinalizado`.
+    // La topbar se sincroniza cuando el servidor termina de escribirlos.
+    this.progress.refrescarTrasIntento();
   }
 }

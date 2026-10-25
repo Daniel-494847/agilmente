@@ -1,8 +1,18 @@
 import { Injectable, signal } from '@angular/core';
-import { doc, getDoc, increment, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getAggregateFromServer,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  sum,
+  where
+} from 'firebase/firestore';
 
 import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
-import { calcularNivelYTitulo } from '@core/models/usuario.model';
+import { calcularNivelYTitulo, resumenDesdeDoc } from '@core/models/usuario.model';
 
 export interface ProgresoUsuario {
   puntos: number;
@@ -19,13 +29,30 @@ export class UserProgressService {
     tituloNivel: 'Explorador'
   });
 
-  /** Carga puntos/nivel directo del documento del usuario (1 sola lectura en Firestore). */
+  /** `onSnapshot` activo sobre el documento del usuario. */
+  private detenerSuscripcion: (() => void) | null = null;
+
+  /**
+   * Carga los puntos sumando los intentos finalizados del usuario. Así el
+   * progreso depende de las partidas guardadas y no de un campo que el
+   * estudiante pudiera editar. Si la suma no está disponible (por ejemplo,
+   * una regla o un índice), se usa `puntos` del documento como respaldo.
+   */
   async refrescar(): Promise<ProgresoUsuario> {
     const user = auth.currentUser;
     if (!user) {
       const vacio: ProgresoUsuario = { puntos: 0, nivel: 1, tituloNivel: 'Explorador' };
       this.progreso.set(vacio);
       return vacio;
+    }
+
+    try {
+      const puntos = await this.puntosDeIntentos(user.uid);
+      const calculado = this.calcularDesdePuntos(puntos);
+      this.progreso.set(calculado);
+      return calculado;
+    } catch (error) {
+      console.error('No se pudo sumar el progreso de los intentos:', error);
     }
 
     try {
@@ -47,34 +74,82 @@ export class UserProgressService {
     }
   }
 
-  /** Tras finalizar un quiz: incrementa puntos atómicamente y actualiza signal + doc. */
-  async registrarPuntosDelIntento(puntajeObtenido: number): Promise<ProgresoUsuario> {
+  /**
+   * Escucha el documento del usuario: cuando el trigger termina de sumar los
+   * puntos de una partida, el cambio llega solo (sin reconsultar el historial).
+   */
+  seguir(): void {
     const user = auth.currentUser;
-    const puntosGanados = Math.max(0, Math.floor(Number(puntajeObtenido) || 0));
-    if (!user || puntosGanados <= 0) {
-      return this.progreso();
+    if (!user) {
+      return;
     }
+    this.detener();
+    this.detenerSuscripcion = onSnapshot(
+      doc(db, NOMBRES_COLECCION.usuarios, user.uid),
+      (snap) => {
+        if (!snap.exists()) {
+          return;
+        }
+        const datos = snap.data();
+        const resumen = resumenDesdeDoc(datos['resumen']);
+        // El desglose manda para que el total coincida con las tarjetas; si el
+        // resumen aún no tiene actividades, se usa el acumulado del perfil.
+        const puntos = resumen?.porActividad.length
+          ? resumen.porActividad.reduce((suma, actividad) => suma + actividad.puntos, 0)
+          : Math.max(0, Math.floor(Number(datos['puntos']) || 0));
+        this.progreso.set(this.calcularDesdePuntos(puntos));
+      },
+      (error) => console.error('No se pudo seguir el progreso del usuario:', error)
+    );
+  }
+
+  /** Cancela la escucha del perfil (al cerrar sesión o cambiar de usuario). */
+  detener(): void {
+    this.detenerSuscripcion?.();
+    this.detenerSuscripcion = null;
+  }
+
+  /** Fija el progreso con los puntos que ya vienen en el perfil (sin lecturas). */
+  establecerDesdePuntos(puntos: number): void {
+    this.progreso.set(this.calcularDesdePuntos(puntos));
+  }
+
+  /**
+   * Tras finalizar un intento se recalcula el progreso desde los intentos.
+   * El listener del perfil ya recibe el cambio del trigger; este único
+   * reintento cubre el caso de que el trigger tarde o no esté desplegado.
+   */
+  refrescarTrasIntento(): void {
+    setTimeout(() => void this.refrescar(), 2500);
+  }
+
+  /**
+   * Suma `puntaje` de los intentos finalizados. Primero con una agregación
+   * (barata); si el índice no está disponible, lee los documentos.
+   */
+  private async puntosDeIntentos(uid: string): Promise<number> {
+    const intentos = query(
+      collection(db, NOMBRES_COLECCION.intentos),
+      where('estudianteUid', '==', uid),
+      where('estado', '==', 'finalizado')
+    );
 
     try {
-      const userRef = doc(db, NOMBRES_COLECCION.usuarios, user.uid);
-      await updateDoc(userRef, {
-        puntos: increment(puntosGanados),
-        nivel: this.calcularDesdePuntos(this.progreso().puntos + puntosGanados).nivel,
-        tituloNivel: this.calcularDesdePuntos(this.progreso().puntos + puntosGanados).tituloNivel
-      });
-
-      // Releer el documento para sincronizar el signal con el estado real de Firestore.
-      const snap = await getDoc(userRef);
-      const puntos = snap.exists()
-        ? Math.max(0, Math.floor(Number(snap.data()['puntos']) || 0))
-        : this.progreso().puntos + puntosGanados;
-      const nuevoProgreso = this.calcularDesdePuntos(puntos);
-      this.progreso.set(nuevoProgreso);
-      return nuevoProgreso;
+      const total = await getAggregateFromServer(intentos, { puntos: sum('puntaje') });
+      return Math.max(0, Math.floor(Number(total.data()['puntos']) || 0));
     } catch (error) {
-      console.error('No se pudo actualizar progreso atómicamente:', error);
-      return this.refrescar();
+      console.error('No se pudo agregar el progreso; se leen los intentos:', error);
     }
+
+    const snapshot = await getDocs(intentos);
+    let puntos = 0;
+    snapshot.forEach((intento) => {
+      const valor = Number(intento.data()['puntaje'] ?? 0);
+      if (Number.isFinite(valor) && valor > 0) {
+        puntos += Math.floor(valor);
+      }
+    });
+    return puntos;
   }
 
   calcularDesdePuntos(puntos: number): ProgresoUsuario {
@@ -84,6 +159,7 @@ export class UserProgressService {
   }
 
   reset(): void {
+    this.detener();
     this.progreso.set({ puntos: 0, nivel: 1, tituloNivel: 'Explorador' });
   }
 }

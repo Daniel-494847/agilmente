@@ -1,7 +1,7 @@
 # Funciones de Ágilmente
 
 Dos funciones invocables para el restablecimiento de contraseñas de cuentas con
-**correo interno** (`@estudiantes.agilmente.app`):
+**correo interno** (`@agilmente.com`):
 
 | Función | Quién la usa | Qué hace |
 |---|---|---|

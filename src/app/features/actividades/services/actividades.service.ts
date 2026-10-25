@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import { ActividadResumen } from '@core/models/actividad.model';
@@ -17,6 +17,8 @@ export class ActividadesService {
   /** Caché en memoria con TTL para evitar lecturas repetidas a Firestore. */
   private readonly TTL_MS = 5 * 60 * 1000;
   private cache: { data: ActividadResumen[]; ts: number } | null = null;
+  /** Lectura en curso: dos pantallas no disparan dos consultas. */
+  private enVuelo: Promise<ActividadResumen[]> | null = null;
 
   /**
    * Catálogo de actividades: el catálogo del código (`ACTIVIDADES_INICIALES`)
@@ -30,6 +32,17 @@ export class ActividadesService {
     if (this.cache && Date.now() - this.cache.ts < this.TTL_MS) {
       return this.cache.data;
     }
+    if (this.enVuelo) {
+      return this.enVuelo;
+    }
+
+    this.enVuelo = this.cargarCatalogo().finally(() => {
+      this.enVuelo = null;
+    });
+    return this.enVuelo;
+  }
+
+  private async cargarCatalogo(): Promise<ActividadResumen[]> {
     try {
       const snapshot = await getDocs(collection(db, this.collectionName));
       const resultado = fusionarActividades(snapshot.docs.map((item) => item.data() as ActividadResumen));
@@ -131,7 +144,9 @@ export class ActividadesService {
    */
   private async limpiarDuplicados(ruta: string, conservarId: string): Promise<void> {
     if (!ruta) return;
-    const snapshot = await getDocs(collection(db, this.collectionName));
+    const snapshot = await getDocs(
+      query(collection(db, this.collectionName), where('ruta', '==', ruta))
+    );
     for (const item of snapshot.docs) {
       if (item.id === conservarId) continue;
       const data = item.data() as ActividadResumen;
@@ -153,7 +168,7 @@ export class ActividadesService {
   }
 
   async inicializarSiVacia(): Promise<void> {
-    const snapshot = await getDocs(collection(db, this.collectionName));
+    const snapshot = await getDocs(query(collection(db, this.collectionName), limit(1)));
     if (snapshot.empty) {
       await this.guardarIniciales();
     }

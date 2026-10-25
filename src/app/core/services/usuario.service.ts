@@ -15,15 +15,21 @@ import {
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
 import {
+  CursoAsignado,
   Paralelo,
+  ResumenProgreso,
   RolUsuario,
   UsuarioAdmin,
   UsuarioSinTiempo,
   calcularNivelYTitulo,
+  claveCurso,
+  cursosDe,
   esEmailAdministrador,
   normalizarCurso,
+  normalizarCursos,
   normalizarParalelo,
   normalizarRol,
+  resumenDesdeDoc,
   usuarioAdminDesdeDoc,
   usuarioPorDefecto
 } from '@core/models/usuario.model';
@@ -35,9 +41,17 @@ export interface PerfilUsuario {
   rol: RolUsuario;
   curso?: number;
   paralelo?: Paralelo;
+  /** Cursos asignados (varios para un docente). */
+  cursos: CursoAsignado[];
   avatarUrl?: string;
   /** `true` si debe cambiar la contraseña al entrar. */
   debeCambiarPassword?: boolean;
+  /** Progreso del perfil (lo mantiene el trigger de intentos). */
+  puntos: number;
+  nivel: number;
+  tituloNivel: string;
+  /** Resumen agregado de intentos; `null` si aún no se ha calculado. */
+  resumen: ResumenProgreso | null;
 }
 
 /**
@@ -69,6 +83,7 @@ export class UsuarioService {
       avatarUrl?: string | null;
       curso?: number;
       paralelo?: Paralelo;
+      cursos?: CursoAsignado[];
     }
   ): Promise<void> {
     const actual = await this.leer(user.uid);
@@ -89,15 +104,22 @@ export class UsuarioService {
       avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
       curso: datos.curso ?? actual.curso,
       paralelo: datos.paralelo ?? actual.paralelo,
+      cursos: datos.cursos ?? actual.cursos,
       debeCambiarPassword: actual.debeCambiarPassword
     });
 
     // En la creación se fija creadoEn; al reparar solo se conserva.
-    await setDoc(this.ref(user.uid), {
-      ...base,
-      creadoEn: actual.creadoEn ?? serverTimestamp(),
-      ultimoIngreso: serverTimestamp()
-    });
+    // `merge` protege los campos que mantiene el servidor (p. ej. `resumen`),
+    // que no vienen en `base`.
+    await setDoc(
+      this.ref(user.uid),
+      {
+        ...base,
+        creadoEn: actual.creadoEn ?? serverTimestamp(),
+        ultimoIngreso: serverTimestamp()
+      },
+      { merge: true }
+    );
   }
 
   /** Actualiza `ultimoIngreso` (y el email, si cambió en Auth) al iniciar sesión. */
@@ -108,14 +130,6 @@ export class UsuarioService {
       if (!actual.email) cambios['email'] = user.email;
     }
     await setDoc(this.ref(user.uid), cambios, { merge: true });
-  }
-
-  /** Actualiza puntos/nivel/título del propio usuario. Crea el doc si no existe. */
-  async guardarProgreso(
-    uid: string,
-    progreso: { puntos: number; nivel: number; tituloNivel: string }
-  ): Promise<void> {
-    await setDoc(this.ref(uid), progreso, { merge: true });
   }
 
   /** Guarda nombre y avatar del propio usuario (rellena campos faltantes). */
@@ -131,7 +145,8 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: datos.avatarUrl ?? actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     const cambios: Record<string, unknown> = { ...base, ...datos };
     if (!actual.email) cambios['ultimoIngreso'] = serverTimestamp();
@@ -150,9 +165,41 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     await updateDoc(this.ref(uid), base);
+  }
+
+  /**
+   * Asigna los cursos del usuario. Es la vía del administrador para los
+   * docentes con varios cursos: `cursos` es la lista completa (asignar y
+   * desasignar se hace enviando la lista que queda). Con la lista vacía se
+   * quita el curso.
+   */
+  async asignarCursos(uid: string, cursos: CursoAsignado[]): Promise<void> {
+    const validos = normalizarCursos(cursos);
+    if (!validos.length) {
+      await this.quitarCurso(uid);
+      return;
+    }
+    const [principal] = validos;
+    if (validos.length === 1) {
+      // Un solo curso: se guarda en `curso`/`paralelo` (formato de siempre).
+      await updateDoc(this.ref(uid), {
+        curso: principal.curso,
+        paralelo: principal.paralelo,
+        cursos: deleteField(),
+        cursosClaves: deleteField()
+      });
+      return;
+    }
+    await updateDoc(this.ref(uid), {
+      curso: principal.curso,
+      paralelo: principal.paralelo,
+      cursos: validos,
+      cursosClaves: validos.map((c) => claveCurso(c.curso, c.paralelo))
+    });
   }
 
   /** Asigna (o corrige) el curso y el paralelo de un usuario. Solo lo usa el administrador. */
@@ -172,7 +219,9 @@ export class UsuarioService {
   async quitarCurso(uid: string): Promise<void> {
     await updateDoc(this.ref(uid), {
       curso: deleteField(),
-      paralelo: deleteField()
+      paralelo: deleteField(),
+      cursos: deleteField(),
+      cursosClaves: deleteField()
     });
   }
 
@@ -214,7 +263,8 @@ export class UsuarioService {
       puntos: actual.puntos,
       avatarUrl: actual.avatarUrl,
       curso: actual.curso,
-      paralelo: actual.paralelo
+      paralelo: actual.paralelo,
+      cursos: actual.cursos
     });
     const cambios: Record<string, unknown> = { ...base };
     if (!actual.ultimoIngreso) cambios['ultimoIngreso'] = serverTimestamp();
@@ -255,14 +305,24 @@ export class UsuarioService {
       const snap = await getDoc(this.ref(uid));
       if (!snap.exists()) return null;
       const d = snap.data();
+      const puntos = Math.max(0, Math.floor(Number(d['puntos']) || 0));
       return {
         nombreCompleto: String(d['nombreCompleto'] ?? ''),
         email: String(d['email'] ?? ''),
         rol: normalizarRol(d['rol']),
         curso: normalizarCurso(d['curso']),
         paralelo: normalizarParalelo(d['paralelo']),
+        cursos: cursosDe({
+          curso: normalizarCurso(d['curso']),
+          paralelo: normalizarParalelo(d['paralelo']),
+          cursos: normalizarCursos(d['cursos'])
+        }),
         avatarUrl: d['avatarUrl'] ? String(d['avatarUrl']) : undefined,
-        debeCambiarPassword: d['debeCambiarPassword'] === true
+        debeCambiarPassword: d['debeCambiarPassword'] === true,
+        puntos,
+        nivel: Number(d['nivel']) || 1,
+        tituloNivel: String(d['tituloNivel'] ?? 'Explorador'),
+        resumen: resumenDesdeDoc(d['resumen'])
       };
     } catch {
       return null;
@@ -288,8 +348,13 @@ export class UsuarioService {
       };
       const curso = normalizarCurso(d['curso']);
       const paralelo = normalizarParalelo(d['paralelo']);
+      const cursos = normalizarCursos(d['cursos']);
       if (curso !== undefined) base.curso = curso;
       if (paralelo !== undefined) base.paralelo = paralelo;
+      if (cursos.length) {
+        base.cursos = cursos;
+        base.cursosClaves = cursos.map((c) => claveCurso(c.curso, c.paralelo));
+      }
       if (d['avatarUrl']) base.avatarUrl = String(d['avatarUrl']);
       if (d['debeCambiarPassword'] === true) base.debeCambiarPassword = true;
       return { ...base, creadoEn: d['creadoEn'], ultimoIngreso: d['ultimoIngreso'] };

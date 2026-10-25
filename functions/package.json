@@ -3,6 +3,9 @@
   "description": "Funciones administrativas de Ágilmente",
   "private": true,
   "main": "index.js",
+  "scripts": {
+    "backfill": "node scripts/backfill-resumen.js"
+  },
   "engines": {
     "node": "20"
   },

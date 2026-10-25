@@ -186,12 +186,15 @@ export class DueloMatematico implements OnInit, OnDestroy {
     if (!this.intentoId) return;
     try {
       const lista = this.participantes();
-      const puntaje = Math.max(...lista.map((p) => p.puntos), 0);
+      // Cada acierto del duelo vale 1 en pantalla, pero 10 puntos para el
+      // perfil (igual que el resto de juegos). El servidor recalcula el
+      // puntaje a partir de los aciertos.
+      const aciertos = Math.max(...lista.map((p) => p.puntos), 0);
       await this.attempts.finalizar(this.intentoId, this.intentoInicio, {
         actividadId: this.actividadId || this.tipo,
-        puntaje,
+        puntaje: aciertos * 10,
         nivel: this.nivelActual(),
-        respuestasCorrectas: puntaje,
+        respuestasCorrectas: aciertos,
         respuestasIncorrectas: 0
       });
     } catch (e) {

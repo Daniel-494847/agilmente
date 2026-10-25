@@ -34,12 +34,14 @@ export class Dashboard implements OnInit {
 
     const [com, fotos, contactos] = await Promise.allSettled([
       this.content.listarPublicados<{ id: string; titulo: string; fecha: string }>(
-        NOMBRES_COLECCION.comunicados
+        NOMBRES_COLECCION.comunicados,
+        5
       ),
       this.content.listarPublicados<{ id: string; url: string; alt: string }>(
-        NOMBRES_COLECCION.fotosGaleria
+        NOMBRES_COLECCION.fotosGaleria,
+        4
       ),
-      this.content.listarPublicados<Contacto>(NOMBRES_COLECCION.contactos)
+      this.content.listarPublicados<Contacto>(NOMBRES_COLECCION.contactos, 4)
     ]);
 
     if (com.status === 'fulfilled' && com.value.length) this.comunicados.set(com.value);

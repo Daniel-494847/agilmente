@@ -5,6 +5,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { UsuarioResumen } from '@core/models/usuario.model';
 import { AuthService } from '@core/auth/auth.service';
 import { GameUiService } from '@core/services/game-ui.service';
+import { UsuarioService } from '@core/services/usuario.service';
 import { UserProgressService } from '@core/services/user-progress.service';
 import { Sidebar } from '@layout/sidebar/sidebar';
 import { Topbar } from '@layout/topbar/topbar';
@@ -21,6 +22,7 @@ export class Shell {
   private readonly progress = inject(UserProgressService);
   private readonly gameUi = inject(GameUiService);
   private readonly auth = inject(AuthService);
+  private readonly usuarios = inject(UsuarioService);
 
   protected readonly isAuthenticated = this.auth.isAuthenticated;
   protected readonly jugando = this.gameUi.jugando;
@@ -49,16 +51,15 @@ export class Shell {
       const u = this.auth.user();
       const rol = this.auth.rol();
       if (u) {
-        const nombreGuardado =
-          localStorage.getItem('agilmente_user_name') ?? u.displayName ?? 'Usuario';
-        this.usuario.set({
-          nombre: this.auth.formatearNombre(nombreGuardado),
+        // Nombre provisional (caché o Auth) para pintar de inmediato; luego se
+        // sustituye por el `nombreCompleto` real del documento `usuarios`.
+        this.usuario.update((actual) => ({
+          ...actual,
+          nombre: this.nombreProvisional(u.displayName, u.email),
           rol,
-          puntos: this.progress.progreso().puntos,
-          nivel: this.progress.progreso().nivel,
-          tituloNivel: this.progress.progreso().tituloNivel,
-          avatarUrl: u.photoURL ?? ''
-        });
+          avatarUrl: u.photoURL ?? actual.avatarUrl
+        }));
+        void this.cargarPerfilReal(u.uid);
       } else {
         this.usuario.set({
           nombre: 'Usuario',
@@ -76,5 +77,53 @@ export class Shell {
         // estado ya gestionado por AuthService; noop
       }
     });
+  }
+
+  /**
+   * Nombre que se pinta antes de leer Firestore: la caché local, el
+   * `displayName` de Auth o la parte local del correo. Nunca queda vacío.
+   */
+  private nombreProvisional(displayName: string | null, email: string | null): string {
+    let guardado: string | null = null;
+    try {
+      guardado = localStorage.getItem('agilmente_user_name');
+    } catch {
+      guardado = null;
+    }
+    const crudo =
+      guardado?.trim() || displayName?.trim() || (email ? email.split('@')[0] : '') || 'Usuario';
+    return this.auth.formatearNombre(crudo);
+  }
+
+  /**
+   * Lee el `nombreCompleto` del documento `usuarios`.
+   *
+   * Es la fuente real del nombre (el docente creado por el administrador no
+   * tiene `displayName` en Auth), así que la topbar deja de mostrar «Usuario».
+   */
+  private async cargarPerfilReal(uid: string): Promise<void> {
+    const perfil = await this.usuarios.obtenerPerfil(uid).catch(() => null);
+    // Si la sesión cambió mientras se leía, se descarta el resultado.
+    if (!perfil || this.auth.user()?.uid !== uid) {
+      return;
+    }
+
+    const nombre = perfil.nombreCompleto?.trim();
+    if (nombre) {
+      try {
+        localStorage.setItem('agilmente_user_name', nombre);
+      } catch {
+        // Sin almacenamiento local: solo se pierde la caché del nombre.
+      }
+      this.usuario.update((actual) => ({
+        ...actual,
+        nombre: this.auth.formatearNombre(nombre)
+      }));
+    }
+
+    if (perfil.avatarUrl) {
+      const avatar = perfil.avatarUrl;
+      this.usuario.update((actual) => ({ ...actual, avatarUrl: avatar }));
+    }
   }
 }

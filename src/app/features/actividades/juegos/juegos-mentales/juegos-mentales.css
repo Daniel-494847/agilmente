@@ -25,35 +25,41 @@
   max-width: 680px;
 }
 
-/* 4 modos en una fila cuando hay ancho; en pantallas estrechas se reparten en
-   columnas que quepan. Antes iban fijos `repeat(4, 1fr)` y en móviles (375px)
-   la 4ª tarjeta —«Combinadas»— se salía del viewport (desborde horizontal).
-   `minmax(0, 1fr)` permite además que cada columna encoja de verdad. */
 .jm-modos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
-  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .jm-modo {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1rem 0.5rem;
-  border-radius: 1rem;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.25rem;
+  min-height: 3.75rem;
+  border-radius: 0.75rem;
   font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .jm-modo-icono {
-  font-size: 1.75rem;
+  font-size: clamp(1.25rem, 3.5vw, 1.5rem);
 }
 
 .jm-modo-nombre {
-  font-size: 0.85rem;
+  font-size: clamp(0.72rem, 2.2vw, 0.8rem);
+  line-height: 1.1;
   min-width: 0;
   overflow-wrap: anywhere;
   text-align: center;
+}
+
+@media (max-width: 575.98px) {
+  .jm-modo {
+    min-height: 3.25rem;
+    padding: 0.4rem 0.2rem;
+    gap: 0.25rem;
+  }
 }
 
 .jm-modo-apagado {

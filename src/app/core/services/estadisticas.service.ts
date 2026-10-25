@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -9,6 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
+import { ResumenProgreso, fechaDesdeFirestore, resumenDesdeDoc } from '@core/models/usuario.model';
 import { UserProgressService } from './user-progress.service';
 
 /** Avance de un usuario resumido por actividad (para el desglose y la barra de progreso). */
@@ -113,10 +116,26 @@ export class EstadisticasService {
     return resultado;
   }
 
-  /** Estadísticas del propio usuario (usa la regla de lectura del dueño del intento). */
+  /**
+   * Estadísticas del propio usuario. Primero usa el `resumen` que mantiene el
+   * trigger en el perfil (1 lectura); si aún no existe, recorre sus intentos.
+   */
   async resumenDeUsuario(uid: string): Promise<EstadisticasUsuario> {
     if (!uid) {
       return crearEstadisticasVacias();
+    }
+
+    try {
+      const perfil = await getDoc(doc(db, NOMBRES_COLECCION.usuarios, uid));
+      if (perfil.exists()) {
+        const datos = perfil.data();
+        const resumen = resumenDesdeDoc(datos['resumen']);
+        if (resumen) {
+          return this.desdeResumen(resumen);
+        }
+      }
+    } catch {
+      // Sin permiso o sin conexión: se usa el historial de intentos.
     }
 
     const snapshot = await getDocs(
@@ -134,6 +153,44 @@ export class EstadisticasService {
     return acum ? this.aEstadisticas(acum) : crearEstadisticasVacias();
   }
 
+  /**
+   * Convierte el `resumen` del perfil en las estadísticas de la vista sin
+   * consultar `intentos`. `puntos` es el total del perfil (si no se pasa, se
+   * suma el de las actividades).
+   */
+  desdeResumen(resumen: ResumenProgreso | null | undefined, puntos?: number): EstadisticasUsuario {
+    if (!resumen) {
+      return crearEstadisticasVacias();
+    }
+
+    const total =
+      puntos ?? resumen.porActividad.reduce((suma, actividad) => suma + actividad.puntos, 0);
+    const progreso = this.progreso.calcularDesdePuntos(total);
+
+    return {
+      puntos: progreso.puntos,
+      nivel: progreso.nivel,
+      tituloNivel: progreso.tituloNivel,
+      intentosFinalizados: resumen.intentosFinalizados,
+      actividadesDistintas: resumen.porActividad.length,
+      respuestasCorrectas: resumen.respuestasCorrectas,
+      respuestasIncorrectas: resumen.respuestasIncorrectas,
+      porcentajeAcierto: porcentaje(resumen.respuestasCorrectas, resumen.respuestasIncorrectas),
+      tiempoTotalSegundos: resumen.tiempoTotalSegundos,
+      ultimaActividadEn: resumen.ultimaActividadEn,
+      actividadMasReciente: resumen.actividadMasReciente,
+      porActividad: [...resumen.porActividad]
+        .sort((a, b) => b.puntos - a.puntos)
+        .map((actividad) => ({
+          ...actividad,
+          porcentajeAcierto: porcentaje(
+            actividad.respuestasCorrectas,
+            actividad.respuestasIncorrectas
+          )
+        }))
+    };
+  }
+
   private acumular(acumulado: Map<string, Acumulado>, data: Record<string, unknown>): void {
     const uid = String(data['estudianteUid'] ?? '');
     if (!uid) {
@@ -147,7 +204,7 @@ export class EstadisticasService {
     const segundos = numero(data['duracionSegundos']);
     const nivel = numero(data['nivel']);
     const actividadId = String(data['actividadId'] ?? '');
-    const fecha = aFecha(data['horaFinalizacion']);
+    const fecha = fechaDesdeFirestore(data['horaFinalizacion']);
 
     acum.puntos += puntos;
     acum.intentos += 1;
@@ -251,28 +308,4 @@ function porcentaje(correctas: number, incorrectas: number): number {
 function numero(valor: unknown): number {
   const n = Number(valor ?? 0);
   return Number.isFinite(n) && n > 0 ? n : 0;
-}
-
-/** Acepta Timestamp de Firestore, Date, número o cadena ISO. */
-function aFecha(valor: unknown): Date | null {
-  if (!valor) {
-    return null;
-  }
-  if (valor instanceof Date) {
-    return valor;
-  }
-  if (typeof valor === 'object' && valor !== null && 'toDate' in valor) {
-    const toDate = (valor as { toDate?: unknown }).toDate;
-    if (typeof toDate === 'function') {
-      return (toDate as () => Date).call(valor);
-    }
-  }
-  if (typeof valor === 'number') {
-    return new Date(valor);
-  }
-  if (typeof valor === 'string') {
-    const fecha = new Date(valor);
-    return Number.isNaN(fecha.getTime()) ? null : fecha;
-  }
-  return null;
 }

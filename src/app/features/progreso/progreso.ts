@@ -1,7 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { auth, NOMBRES_COLECCION } from '@core/firebase';
+import { AuthService } from '@core/auth/auth.service';
+import { NOMBRES_COLECCION } from '@core/firebase';
 import { ColorTema } from '@core/models/actividad.model';
 import { ContentService } from '@core/services/content.service';
 import {
@@ -82,6 +83,7 @@ const TEMA_BOTON: Record<ColorTema, string> = {
 })
 export class Progreso implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly actividades = inject(ActividadesService);
   private readonly estadisticas = inject(EstadisticasService);
   private readonly content = inject(ContentService);
@@ -123,8 +125,8 @@ export class Progreso implements OnInit {
       void this.aplicarContenido(contentId);
     }
 
-    await auth.authStateReady();
-    const user = auth.currentUser;
+    await this.authService.ready;
+    const user = this.authService.user();
     if (!user) {
       this.necesitaSesion.set(true);
       this.cargando.set(false);
@@ -132,10 +134,14 @@ export class Progreso implements OnInit {
     }
 
     try {
-      const [catalogo, avance] = await Promise.all([
-        this.actividades.catalogoPorSlug(),
-        this.estadisticas.resumenDeUsuario(user.uid)
-      ]);
+      // El perfil ya trae el resumen; si aún no se calculó, se leen los intentos.
+      const perfil = this.authService.perfil();
+      const catalogoPendiente = this.actividades.catalogoPorSlug();
+      const avance = perfil?.resumen
+        ? this.estadisticas.desdeResumen(perfil.resumen)
+        : await this.estadisticas.resumenDeUsuario(user.uid);
+      const catalogo = await catalogoPendiente;
+
       this.avance.set(avance);
       this.juegos.set(this.construirJuegos(catalogo, avance));
     } catch {

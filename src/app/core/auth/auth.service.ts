@@ -2,9 +2,9 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 
 import { auth } from '@core/firebase';
-import { UserRoleService } from './user-role.service';
 import { RolUsuario, esEmailAdministrador } from '@core/models/usuario.model';
-import { UsuarioService } from '@core/services/usuario.service';
+import { ContentService } from '@core/services/content.service';
+import { PerfilUsuario, UsuarioService } from '@core/services/usuario.service';
 import { UserProgressService } from '@core/services/user-progress.service';
 
 /**
@@ -14,9 +14,9 @@ import { UserProgressService } from '@core/services/user-progress.service';
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly userRole = inject(UserRoleService);
   private readonly usuarios = inject(UsuarioService);
   private readonly progress = inject(UserProgressService);
+  private readonly content = inject(ContentService);
 
   /** Se resuelve tras el primer `onAuthStateChanged`. */
   readonly ready: Promise<void>;
@@ -24,6 +24,8 @@ export class AuthService {
   private resolveReady!: () => void;
 
   readonly user = signal<User | null>(null);
+  /** Perfil completo ya leído al entrar (evita releerlo en cada pantalla). */
+  readonly perfil = signal<PerfilUsuario | null>(null);
   readonly rol = signal<RolUsuario>('estudiante');
   /** `true` cuando el administrador restableció la contraseña y debe cambiarla. */
   readonly debeCambiarPassword = signal(false);
@@ -46,32 +48,51 @@ export class AuthService {
         const perfil = await this.usuarios.obtenerPerfil(u.uid).catch(() => null);
         if (!perfil && !esEmailAdministrador(u.email)) {
           await signOut(auth).catch(() => undefined);
-          this.user.set(null);
-          this.rol.set('estudiante');
-          this.debeCambiarPassword.set(false);
-          this.progress.reset();
+          this.limpiarSesion();
           this.resolveReady();
           return;
         }
 
         this.user.set(u);
+        this.perfil.set(perfil);
+        // La caché de contenido es por sesión: no debe reutilizarse entre cuentas.
+        this.content.limpiarCache();
         this.debeCambiarPassword.set(
           perfil?.debeCambiarPassword === true || (await this.tieneCambioPendiente(u))
         );
-        try {
-          this.rol.set(await this.userRole.obtenerRol(u));
-        } catch {
-          this.rol.set('estudiante');
+        // El rol ya viene en el perfil: no hace falta una segunda lectura.
+        this.rol.set(perfil?.rol ?? 'estudiante');
+
+        // Con el resumen del servidor los puntos ya están en el perfil; si aún
+        // no existe, se calculan desde los intentos (una sola lectura).
+        this.progress.seguir();
+        if (perfil?.resumen) {
+          // Los puntos se derivan del resumen para que coincidan con el desglose.
+          const puntos = perfil.resumen.porActividad.length
+            ? perfil.resumen.porActividad.reduce(
+                (suma, actividad) => suma + actividad.puntos,
+                0
+              )
+            : perfil.puntos;
+          this.progress.establecerDesdePuntos(puntos);
+        } else {
+          await this.progress.refrescar();
         }
-        await this.progress.refrescar();
       } else {
-        this.user.set(null);
-        this.rol.set('estudiante');
-        this.debeCambiarPassword.set(false);
-        this.progress.reset();
+        this.limpiarSesion();
       }
       this.resolveReady();
     });
+  }
+
+  /** Cierra sesión y deja los signals como recién cargados. */
+  private limpiarSesion(): void {
+    this.user.set(null);
+    this.perfil.set(null);
+    this.rol.set('estudiante');
+    this.debeCambiarPassword.set(false);
+    this.content.limpiarCache();
+    this.progress.reset();
   }
 
   async cerrarSesion(): Promise<void> {
@@ -94,7 +115,9 @@ export class AuthService {
       return;
     }
     try {
-      this.rol.set(await this.userRole.obtenerRol(u));
+      const perfil = await this.usuarios.obtenerPerfil(u.uid);
+      this.perfil.set(perfil);
+      this.rol.set(perfil?.rol ?? 'estudiante');
     } catch {
       this.rol.set('estudiante');
     }
@@ -120,6 +143,9 @@ export class AuthService {
     // El perfil es el respaldo si la función alcanzó a marcarlo pero el token
     // todavía no trae la reclamación.
     const perfil = await this.usuarios.obtenerPerfil(u.uid).catch(() => null);
+    if (perfil) {
+      this.perfil.set(perfil);
+    }
     this.debeCambiarPassword.set(perfil?.debeCambiarPassword === true);
   }
 

@@ -5,6 +5,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@core/firebase';
 import {
   DOMINIO_ESTUDIANTES,
+  DOMINIO_ESTUDIANTES_LEGADO,
   esEmailAdministrador
 } from '@core/models/usuario.model';
 
@@ -13,10 +14,13 @@ export type ResultadoReset =
   | { tipo: 'correo'; email: string }
   | { tipo: 'temporal'; password: string };
 
-/** `true` si la cuenta usa el correo interno que genera la importación. */
+/** `true` si la cuenta usa un correo interno generado por la importación. */
 export function esCorreoInterno(email: string): boolean {
   const correo = email.trim().toLowerCase();
-  return correo.endsWith(`@${DOMINIO_ESTUDIANTES}`);
+  return (
+    correo.endsWith(`@${DOMINIO_ESTUDIANTES}`) ||
+    correo.endsWith(`@${DOMINIO_ESTUDIANTES_LEGADO}`)
+  );
 }
 
 /** Código de error de Firebase Auth o de una función invocable. */

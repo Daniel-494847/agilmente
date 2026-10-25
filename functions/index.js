@@ -1,14 +1,43 @@
 const crypto = require('crypto');
 const admin = require('firebase-admin');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { puntosPorAcierto, enteroNoNegativo, sumarAlResumen } = require('./resumen');
 
 admin.initializeApp();
 
 const ADMIN_EMAIL = 'pcdoctorbermejo@gmail.com';
 const COLECCION_USUARIOS = 'usuarios';
+const COLECCION_INTENTOS = 'intentos';
 const ALFABETO_TEMPORAL = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const LONGITUD_TEMPORAL = 10;
 const LONGITUD_MINIMA = 8;
+
+// Progreso del usuario: debe coincidir con `calcularNivelYTitulo` del cliente.
+const PUNTOS_POR_NIVEL_USUARIO = 100;
+const TITULOS_NIVEL = [
+  { minNivel: 1, titulo: 'Explorador' },
+  { minNivel: 3, titulo: 'Aprendiz' },
+  { minNivel: 5, titulo: 'Pensador' },
+  { minNivel: 8, titulo: 'Estratega' },
+  { minNivel: 12, titulo: 'Maestro lógico' },
+  { minNivel: 20, titulo: 'Leyenda' }
+];
+
+// Puntos por respuesta correcta: ver `resumen.js` (compartido con el backfill).
+
+/** Nivel y título que corresponden a una cantidad de puntos. */
+function calcularNivelYTitulo(puntos) {
+  const seguros = Math.max(0, Math.floor(Number(puntos) || 0));
+  const nivel = Math.max(1, Math.floor(seguros / PUNTOS_POR_NIVEL_USUARIO) + 1);
+  let tituloNivel = TITULOS_NIVEL[0].titulo;
+  for (const t of TITULOS_NIVEL) {
+    if (nivel >= t.minNivel) {
+      tituloNivel = t.titulo;
+    }
+  }
+  return { nivel, tituloNivel };
+}
 
 /** `true` si el correo es el del administrador único. */
 function esCorreoAdministrador(email) {
@@ -150,3 +179,75 @@ exports.cambiarPasswordPropia = onCall(async (request) => {
 
   return { ok: true };
 });
+
+/**
+ * Cierra un intento en el servidor: recalcula el puntaje desde las respuestas
+ * correctas (nunca confía en el puntaje del cliente), lo deja escrito en el
+ * intento y suma los puntos al perfil del estudiante.
+ *
+ * `puntosAplicados` hace el trigger idempotente: si Firestore lo reintenta,
+ * la transacción detecta la marca y no vuelve a sumar los puntos.
+ */
+exports.procesarIntentoFinalizado = onDocumentUpdated(
+  `${COLECCION_INTENTOS}/{intentoId}`,
+  async (event) => {
+    const antes = event.data?.before.data();
+    const despues = event.data?.after.data();
+    if (!antes || !despues) return;
+
+    // Solo la transición en_progreso → finalizado.
+    if (antes.estado !== 'en_progreso' || despues.estado !== 'finalizado') return;
+    if (despues.puntosAplicados === true) return;
+
+    const estudianteUid = String(despues.estudianteUid || '');
+    if (!estudianteUid) return;
+
+    const db = admin.firestore();
+    const intentoRef = db.doc(`${COLECCION_INTENTOS}/${event.params.intentoId}`);
+    const usuarioRef = db.doc(`${COLECCION_USUARIOS}/${estudianteUid}`);
+
+    await db.runTransaction(async (tx) => {
+      // Todas las lecturas van antes de las escrituras (requisito de Firestore).
+      const intentoSnap = await tx.get(intentoRef);
+      if (!intentoSnap.exists) return;
+
+      const intento = intentoSnap.data();
+      if (intento.estado !== 'finalizado' || intento.puntosAplicados === true) {
+        return;
+      }
+
+      // Puntaje recalculado desde el documento fresco del intento.
+      const actividadId = String(intento.actividadId || '');
+      const nivel = Math.max(1, Math.floor(Number(intento.nivel) || 1));
+      const correctas = enteroNoNegativo(intento.respuestasCorrectas);
+      const puntaje = correctas * puntosPorAcierto(actividadId, nivel);
+
+      const usuarioSnap = await tx.get(usuarioRef);
+      tx.update(intentoRef, { puntaje, puntosAplicados: true });
+
+      if (!usuarioSnap.exists) {
+        // Sin perfil no hay dónde sumar; el intento queda cerrado igualmente.
+        return;
+      }
+
+      const perfil = usuarioSnap.data();
+      const puntosActuales = enteroNoNegativo(perfil.puntos);
+      const puntosNuevos = puntosActuales + puntaje;
+      const { nivel: nuevoNivel, tituloNivel } = calcularNivelYTitulo(puntosNuevos);
+
+      const cambios = {
+        puntos: puntosNuevos,
+        nivel: nuevoNivel,
+        tituloNivel
+      };
+
+      // El resumen solo se actualiza si el backfill ya lo creó. Antes de eso
+      // quedaría parcial y subestimaría el historial anterior del estudiante.
+      if (perfil.resumen && perfil.resumen.completo === true) {
+        cambios.resumen = sumarAlResumen(perfil.resumen, intento, puntaje);
+      }
+
+      tx.update(usuarioRef, cambios);
+    });
+  }
+);

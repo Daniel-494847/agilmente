@@ -24,20 +24,22 @@
           </div>
 
           <h2 class="h6 text-uppercase text-secondary fw-bold mb-2">Tipo de operación</h2>
-          <div class="jm-modos" role="group" aria-label="Tipo de operación">
+          <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 g-1 g-sm-2 jm-modos" role="group" aria-label="Tipo de operación">
             @for (m of modos; track m.id) {
-              <button
-                type="button"
-                [class]="
-                  'btn jm-modo ' +
-                  (modo() === m.id ? 'btn-' + m.variante : 'jm-modo-apagado jm-modo-' + m.variante)
-                "
-                [attr.aria-pressed]="modo() === m.id"
-                (click)="elegirModo(m.id)"
-              >
-                <i class="bi {{ m.icono }} jm-modo-icono" aria-hidden="true"></i>
-                <span class="jm-modo-nombre">{{ m.nombre }}</span>
-              </button>
+              <div class="col">
+                <button
+                  type="button"
+                  [class]="
+                    'btn w-100 h-100 jm-modo ' +
+                    (modo() === m.id ? 'btn-' + m.variante : 'jm-modo-apagado jm-modo-' + m.variante)
+                  "
+                  [attr.aria-pressed]="modo() === m.id"
+                  (click)="elegirModo(m.id)"
+                >
+                  <i class="bi {{ m.icono }} jm-modo-icono" aria-hidden="true"></i>
+                  <span class="jm-modo-nombre">{{ m.nombre }}</span>
+                </button>
+              </div>
             }
           </div>
           <p class="jm-nota mb-3 mt-2">

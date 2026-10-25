@@ -40,18 +40,62 @@ service cloud.firestore {
 
     /**
      * Un docente solo puede leer los intentos de los estudiantes que están en
-     * el mismo curso y paralelo que él. El `get` del docente se cachea por
-     * consulta; por eso el panel del docente consulta los intentos estudiante
-     * por estudiante y no todos los del curso en una sola consulta.
+     * alguno de sus cursos. Los docentes con varios cursos guardan la lista en
+     * `cursosClaves` («1-A», «2-B»…); los de un solo curso usan
+     * `curso`/`paralelo`. Se aceptan ambos formatos.
      */
+    function tieneCurso(docenteData, curso, paralelo) {
+      return ('cursosClaves' in docenteData
+              && (string(curso) + '-' + paralelo) in docenteData.cursosClaves)
+        || (docenteData.curso == curso && docenteData.paralelo == paralelo);
+    }
+
     function esDocenteDe(estudianteUid) {
       return esDocente()
         && exists(/databases/$(database)/documents/usuarios/$(estudianteUid))
         && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.rol == 'estudiante'
-        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.curso
-             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
-        && get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.paralelo
-             == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo;
+        && tieneCurso(
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+             get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.curso,
+             get(/databases/$(database)/documents/usuarios/$(estudianteUid)).data.paralelo
+           );
+    }
+
+    /**
+     * Puntos que otorga cada respuesta correcta. Debe coincidir con el trigger
+     * `procesarIntentoFinalizado` (functions/index.js) y con la generación de
+     * cada juego:
+     *   - Juegos por nivel: 10 / 15 / 20 puntos según el nivel.
+     *   - Juegos Mentales: 10 + 5 por cifra (15 / 20 / 25).
+     *   - Resto (incluidos los duelos de Matemáticas Interactivas): 10.
+     */
+    function puntosPorAcierto(actividadId, nivel) {
+      return actividadId == 'juegos-mentales'
+        ? 10 + nivel * 5
+        : (actividadId in [
+             'conjuntos',
+             'razonamiento-aplicado',
+             'juegos-logicos',
+             'piramides',
+             'cuadrados-magicos'
+           ]
+            ? (nivel == 1 ? 10 : nivel == 2 ? 15 : nivel == 3 ? 20 : 10)
+            : 10);
+    }
+
+    /**
+     * `true` si quien llama es un estudiante matriculado en ese curso y paralelo.
+     * Se usa para que el estudiante reciba las actividades que su docente le asignó.
+     */
+    function esEstudianteDe(curso, paralelo) {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol
+             == 'estudiante'
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
+             == curso
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo
+             == paralelo;
     }
 
     // ==================================================================
@@ -67,10 +111,11 @@ service cloud.firestore {
         // El docente asignado a un curso puede leer los perfiles de sus estudiantes.
         || (esDocente()
             && resource.data.rol == 'estudiante'
-            && resource.data.curso
-                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.curso
-            && resource.data.paralelo
-                 == get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.paralelo)
+            && tieneCurso(
+                 get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                 resource.data.curso,
+                 resource.data.paralelo
+               ))
       );
 
       // Solo el administrador crea cuentas (importación o «Añadir estudiante»).
@@ -104,7 +149,12 @@ service cloud.firestore {
                 && request.resource.data.curso >= 1
                 && request.resource.data.curso <= 6))
         && (!('paralelo' in request.resource.data)
-            || request.resource.data.paralelo in ['A', 'B']);
+            || request.resource.data.paralelo in ['A', 'B'])
+        // Cursos múltiples de un docente (lista de {curso, paralelo}).
+        && (!('cursos' in request.resource.data)
+            || request.resource.data.cursos is list)
+        && (!('cursosClaves' in request.resource.data)
+            || request.resource.data.cursosClaves is list);
 
       allow update: if (
           esAdministrador()
@@ -126,16 +176,20 @@ service cloud.firestore {
                   && request.resource.data.curso <= 6))
           && (!('paralelo' in request.resource.data)
               || request.resource.data.paralelo in ['A', 'B'])
+          && (!('cursos' in request.resource.data)
+              || request.resource.data.cursos is list)
+          && (!('cursosClaves' in request.resource.data)
+              || request.resource.data.cursosClaves is list)
         )
         || (autenticado()
           && request.auth.uid == uid
           && request.resource.data.rol == resource.data.rol
           && request.resource.data.email == resource.data.email
-          // El propio usuario solo puede incrementar sus puntos (no decrecer ni inflar).
-          && request.resource.data.puntos >= resource.data.puntos
-          && request.resource.data.puntos <= resource.data.puntos + 500
+          // `puntos`, `nivel` y `tituloNivel` solo los escribe el servidor
+          // (trigger de intentos). El usuario únicamente edita sus datos
+          // personales; no puede inflar su progreso desde el cliente.
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['nombreCompleto', 'avatarUrl', 'ultimoIngreso', 'puntos', 'nivel', 'tituloNivel']))
+               .hasOnly(['nombreCompleto', 'avatarUrl', 'ultimoIngreso']))
         // El administrador único puede reparar y fijar su propio rol al iniciar sesión.
         || (autenticado()
           && request.auth.uid == uid
@@ -208,44 +262,109 @@ service cloud.firestore {
     }
 
     // Asignaciones de actividades que el docente hace a su curso asignado.
+    // El estudiante lee las de su propio curso (así recibe la notificación);
+    // el docente lee las suyas. La lectura usaba `request.resource.data`, que
+    // no existe en las lecturas y dejaba la consulta siempre denegada.
     match /asignaciones/{id} {
-      allow read: if autenticado()
-        && (esAdministrador() || request.resource.data.docenteUid == request.auth.uid);
+      allow read: if esAdministrador()
+        || (esDocente() && resource.data.docenteUid == request.auth.uid)
+        || esEstudianteDe(resource.data.curso, resource.data.paralelo);
+
       allow create: if autenticado()
         && (esAdministrador()
-            || (esDocente() && request.resource.data.docenteUid == request.auth.uid));
-      allow update, delete: if esAdministrador();
+            || (esDocente()
+                && request.resource.data.docenteUid == request.auth.uid
+                && tieneCurso(
+                     get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                     request.resource.data.curso,
+                     request.resource.data.paralelo
+                   )))
+        && request.resource.data.keys().hasAll([
+             'actividadId', 'ruta', 'titulo', 'docenteUid', 'curso', 'paralelo', 'creadoEn'
+           ])
+        && request.resource.data.curso is int
+        && request.resource.data.curso >= 1
+        && request.resource.data.curso <= 6
+        && request.resource.data.paralelo in ['A', 'B'];
+
+      // Volver a asignar la misma actividad actualiza el documento.
+      allow update: if esAdministrador()
+        || (esDocente()
+            && resource.data.docenteUid == request.auth.uid
+            && request.resource.data.docenteUid == request.auth.uid
+            && tieneCurso(
+                 get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data,
+                 request.resource.data.curso,
+                 request.resource.data.paralelo
+               ));
+
+      allow delete: if esAdministrador()
+        || (esDocente() && resource.data.docenteUid == request.auth.uid);
     }
 
     // ==================================================================
     // 3. PARTIDAS  (intentos de juego)
-    //    El estudiante crea su intento, lo finaliza con su propio
-    //    puntaje y solo lee los suyos; el administrador los lee todos.
+    //    El estudiante crea su intento y lo finaliza con un puntaje que debe
+    //    coincidir con sus respuestas correctas; solo lee los suyos. El
+    //    administrador los lee todos y el docente, los de su curso.
     // ==================================================================
     match /intentos/{id} {
       allow create: if autenticado()
         // Solo las cuentas creadas por el administrador (con perfil) pueden jugar.
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && request.resource.data.keys().hasAll([
+             'estudianteUid', 'actividadId', 'estado', 'horaIngreso'
+           ])
+        && request.resource.data.keys().hasOnly([
+             'estudianteUid', 'actividadId', 'estado', 'horaIngreso'
+           ])
         && request.resource.data.estudianteUid == request.auth.uid
         && request.resource.data.estado == 'en_progreso'
-        && !request.resource.data.keys().hasAny(['puntaje', 'nivel', 'horaFinalizacion'])
-        && request.resource.data.actividadId is string;
+        && request.resource.data.actividadId is string
+        && request.resource.data.horaIngreso is timestamp;
 
       allow read: if esAdministrador()
         || (autenticado() && resource.data.estudianteUid == request.auth.uid)
         // El docente asignado al curso puede leer el avance de sus estudiantes.
         || esDocenteDe(resource.data.estudianteUid);
 
+      // El estudiante solo puede cerrar su intento (en_progreso → finalizado).
+      // El puntaje debe ser exactamente el de sus respuestas correctas; así el
+      // cliente no puede declarar puntos que no ganó. El trigger del servidor
+      // vuelve a calcularlo y suma los puntos al perfil.
       allow update: if esAdministrador()
         || (autenticado()
           && resource.data.estudianteUid == request.auth.uid
+          && resource.data.estado == 'en_progreso'
           && request.resource.data.estudianteUid == resource.data.estudianteUid
+          && request.resource.data.actividadId == resource.data.actividadId
+          && request.resource.data.estado == 'finalizado'
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly([
-                 'actividadId', 'puntaje', 'nivel',
-                 'respuestasCorrectas', 'respuestasIncorrectas',
+                 'puntaje', 'nivel', 'respuestasCorrectas', 'respuestasIncorrectas',
                  'estado', 'horaFinalizacion', 'duracionSegundos'
-               ]));
+               ])
+          && request.resource.data.respuestasCorrectas is int
+          && request.resource.data.respuestasCorrectas >= 0
+          && request.resource.data.respuestasCorrectas <= 100
+          && request.resource.data.respuestasIncorrectas is int
+          && request.resource.data.respuestasIncorrectas >= 0
+          && request.resource.data.respuestasIncorrectas <= 100
+          && request.resource.data.respuestasCorrectas
+             + request.resource.data.respuestasIncorrectas <= 100
+          && request.resource.data.nivel is int
+          && request.resource.data.nivel >= 1
+          && request.resource.data.nivel <= 5
+          && request.resource.data.puntaje is int
+          && request.resource.data.puntaje
+             == request.resource.data.respuestasCorrectas
+                * puntosPorAcierto(
+                    request.resource.data.actividadId,
+                    request.resource.data.nivel
+                  )
+          && request.resource.data.duracionSegundos is int
+          && request.resource.data.duracionSegundos >= 0
+          && request.resource.data.horaFinalizacion is timestamp);
 
       allow delete: if esAdministrador();
     }

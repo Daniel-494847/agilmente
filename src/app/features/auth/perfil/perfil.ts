@@ -1,16 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { doc, getDoc } from 'firebase/firestore';
 
-import { auth, db, NOMBRES_COLECCION } from '@core/firebase';
-import { UserRoleService } from '@core/auth/user-role.service';
-import {
-  Paralelo,
-  RolUsuario,
-  nombreCurso,
-  normalizarCurso,
-  normalizarParalelo
-} from '@core/models/usuario.model';
+import { AuthService } from '@core/auth/auth.service';
+import { Paralelo, RolUsuario, nombreCurso } from '@core/models/usuario.model';
 import { UserProgressService } from '@core/services/user-progress.service';
 
 interface EnlaceSeccion {
@@ -32,7 +24,7 @@ interface EnlaceSeccion {
 })
 export class Perfil implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly roles = inject(UserRoleService);
+  private readonly authService = inject(AuthService);
   private readonly progreso = inject(UserProgressService);
 
   readonly cargando = signal(true);
@@ -60,8 +52,8 @@ export class Perfil implements OnInit {
     this.badge.set((data['badge'] as string) ?? this.badge());
     this.enlaces.set((data['items'] as EnlaceSeccion[]) ?? []);
 
-    await auth.authStateReady();
-    const user = auth.currentUser;
+    await this.authService.ready;
+    const user = this.authService.user();
     if (!user) {
       this.necesitaSesion.set(true);
       this.cargando.set(false);
@@ -72,33 +64,20 @@ export class Perfil implements OnInit {
     this.avatarUrl.set(user.photoURL ?? '');
     this.nombre.set(user.displayName ?? 'Estudiante');
 
-    try {
-      const docSnap = await getDoc(doc(db, NOMBRES_COLECCION.usuarios, user.uid));
-      const datos = docSnap.data();
-      if (datos) {
-        this.nombre.set(String(datos['nombreCompleto'] ?? user.displayName ?? 'Estudiante'));
-        this.avatarUrl.set(String(datos['avatarUrl'] ?? user.photoURL ?? ''));
-        this.curso.set(normalizarCurso(datos['curso']));
-        this.paralelo.set(normalizarParalelo(datos['paralelo']));
-      }
-    } catch {
-      // Sin documento de perfil: se usan los datos de la sesión.
+    // El perfil lo carga `AuthService` al iniciar sesión: no se vuelve a leer.
+    const perfil = this.authService.perfil();
+    if (perfil) {
+      this.nombre.set(perfil.nombreCompleto || user.displayName || 'Estudiante');
+      this.avatarUrl.set(perfil.avatarUrl ?? user.photoURL ?? '');
+      this.curso.set(perfil.curso);
+      this.paralelo.set(perfil.paralelo);
+      this.rol.set(perfil.rol);
     }
 
-    try {
-      this.rol.set(await this.roles.obtenerRol(user));
-    } catch {
-      this.rol.set('estudiante');
-    }
-
-    try {
-      const avance = await this.progreso.refrescar();
-      this.puntos.set(avance.puntos);
-      this.nivel.set(avance.nivel);
-      this.tituloNivel.set(avance.tituloNivel);
-    } catch {
-      // Se mantienen los valores por defecto.
-    }
+    const avance = this.progreso.progreso();
+    this.puntos.set(avance.puntos);
+    this.nivel.set(avance.nivel);
+    this.tituloNivel.set(avance.tituloNivel);
 
     this.cargando.set(false);
   }
