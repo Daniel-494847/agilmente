@@ -11,11 +11,11 @@ import { EJERCICIOS, TipoEjercicio } from './actividades-mentales.data';
 describe('Actividades Mentales (banco de ejercicios)', () => {
   const porNivel = (nivel: number) => EJERCICIOS.filter((e) => e.nivel === nivel);
 
-  it('tiene 15 ejercicios en cada uno de los 3 niveles', () => {
-    expect(EJERCICIOS).toHaveLength(45);
-    expect(porNivel(1)).toHaveLength(15);
-    expect(porNivel(2)).toHaveLength(15);
-    expect(porNivel(3)).toHaveLength(15);
+  it('tiene 8 ejercicios en cada uno de los 3 niveles', () => {
+    expect(EJERCICIOS).toHaveLength(24);
+    expect(porNivel(1)).toHaveLength(8);
+    expect(porNivel(2)).toHaveLength(8);
+    expect(porNivel(3)).toHaveLength(8);
   });
 
   it('todos los ids son únicos', () => {
@@ -44,8 +44,8 @@ describe('Actividades Mentales (banco de ejercicios)', () => {
     expect(new Set(posiciones).size).toBe(4);
   });
 
-  it('cada nivel trabaja los cuatro tipos prometidos', () => {
-    const tipos: TipoEjercicio[] = ['serie', 'conteo', 'comparacion', 'patron'];
+  it('cada nivel trabaja los tipos prometidos', () => {
+    const tipos: TipoEjercicio[] = ['conteo', 'comparacion'];
     for (const nivel of [1, 2, 3]) {
       const delNivel = new Set(porNivel(nivel).map((e) => e.tipo));
       for (const tipo of tipos) {
@@ -56,7 +56,7 @@ describe('Actividades Mentales (banco de ejercicios)', () => {
 
   it('los ejercicios con dibujo usan un SVG válido y los de texto no', () => {
     for (const e of EJERCICIOS) {
-      if (e.tipo === 'serie' || e.tipo === 'conteo' || e.tipo === 'patron') {
+      if (e.tipo === 'conteo') {
         expect(e.imagen, e.id).toBeTruthy();
         expect(e.imagen!.startsWith('data:image/svg+xml;utf8,')).toBe(true);
         expect(decodeURIComponent(e.imagen!)).toContain('<svg');

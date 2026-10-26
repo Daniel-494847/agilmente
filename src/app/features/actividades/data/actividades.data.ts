@@ -41,7 +41,7 @@ export const ACTIVIDADES_INICIALES: ActividadResumen[] = [
   {
     id: 5,
     titulo: 'Actividades Mentales',
-    descripcion: 'Entrena tu cálculo mental con series, conteo rápido, comparaciones y patrones.',
+    descripcion: 'Entrena tu agilidad mental con conteo rápido y comparaciones.',
     icono: 'bi-brain',
     imagen: 'images/agilmente.webp',
     colorTema: 'green',

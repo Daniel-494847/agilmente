@@ -364,10 +364,6 @@ function patronCrece(cantidades: number[], pide: number): Base {
 // ================== Niveles ==================
 const NIVEL_1: Base[] = [
   // --- series ---
-  serie([2, 4, 6, 8, 10]),
-  serie([10, 8, 6, 4, 2]),
-  serie([1, 3, 5, 7, 9]),
-  serie([5, 10, 15, 20, 25]),
   // --- conteo rápido ---
   conteo([0, 1, 2, 1], 'total'),
   conteo([1, 2, 0, 1, 2], 'total'),
@@ -379,17 +375,10 @@ const NIVEL_1: Base[] = [
   menor([34, 21, 43, 12]),
   entre(20, 30, 25),
   // --- patrones ---
-  patronCiclo([0, 2], 5),
-  patronCiclo([1, 3], 5),
-  patronCiclo([0, 1, 2], 7)
 ];
 
 const NIVEL_2: Base[] = [
   // --- series ---
-  serie([2, 5, 8, 11, 14]),
-  serie([1, 4, 9, 16, 25], 'Son los cuadrados: 1×1, 2×2, 3×3, 4×4 y 5×5 = 25.'),
-  serie([1, 2, 3, 5, 8, 13]),
-  serie([3, 6, 12, 24, 48]),
   // --- conteo rápido ---
   conteo([0, 1, 2, 0, 1, 0, 2, 1, 0, 2], 'tipo', 0),
   conteo([1, 2, 3, 1, 2, 3, 1, 2], 'total'),
@@ -406,21 +395,15 @@ const NIVEL_2: Base[] = [
     { texto: '45 − 9', valor: 36 }
   ]),
   // --- patrones ---
-  patronCiclo([0, 1, 2], 8),
-  patronLugar([1, 2, 3], 10),
-  patronCrece([1, 2, 3], 5)
 ];
 
 const NIVEL_3: Base[] = [
   // --- series ---
-  serie([1, 2, 4, 7, 11, 16]),
-  serie([2, 6, 18, 54, 162]),
-  serie([3, 7, 15, 31, 63], 'Se multiplica por 2 y se suma 1: 31 × 2 + 1 = 63.'),
-  serieFaltante([4, 10, 16, 22, 28], 1, 'Se suma 6 cada vez: 4 + 6 = 10 (y 10 + 6 = 16).'),
   // --- conteo rápido ---
   conteo([0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1], 'tipo', 0),
   conteo([0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3], 'total'),
   conteo([2, 2, 1, 3, 1, 2, 3, 1, 2, 1, 3, 2], 'tipo', 1),
+  conteo([0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3], 'total'),
   // --- comparaciones ---
   mayor([1204, 1189, 1456, 1237]),
   menor([3210, 2987, 3456, 2650]),
@@ -432,10 +415,6 @@ const NIVEL_3: Base[] = [
     { texto: '96 − 18', valor: 78 }
   ]),
   // --- patrones ---
-  patronCiclo([0, 2, 1, 3], 8),
-  patronLugar([0, 1, 2, 3], 14),
-  patronCrece([1, 2, 3], 8),
-  patronCiclo([3, 1], 9)
 ];
 
 /** Monta un nivel: baraja las opciones de cada ejercicio. */

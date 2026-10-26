@@ -554,11 +554,7 @@
 .quiz-page .qz-explicacion {
   flex: 1 1 0;
   min-width: 0;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  line-clamp: 1;
-  overflow: hidden;
+  overflow-wrap: anywhere;
   line-height: 1.2;
 }
 

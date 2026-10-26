@@ -206,7 +206,7 @@
           <div class="alert mb-0 border-0 rounded-4 d-flex flex-wrap align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
             <p class="fw-bold mb-0 qz-feedback-titulo">
               @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
-              @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! Sigue intentando }
+              @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! }
             </p>
             @if (pregunta.explicacion) {
               <p class="small mb-0 qz-explicacion" [title]="pregunta.explicacion">{{ pregunta.explicacion }}</p>

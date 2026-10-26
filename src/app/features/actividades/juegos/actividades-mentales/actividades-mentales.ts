@@ -32,10 +32,10 @@ export class ActividadesMentales extends JuegoQuizBase {
 
   protected readonly config: ConfiguracionQuiz = {
     titulo: "Actividades Mentales",
-    descripcion: "Entrena tu cálculo mental con series, conteo rápido, comparaciones y patrones.",
+    descripcion: "Entrena tu agilidad mental con conteo rapido y comparaciones.",
     colorTema: "green",
     niveles: 3,
-    preguntasPorNivel: 15,
+    preguntasPorNivel: 8,
     etiquetasNiveles: ["Inicial", "Intermedio", "Avanzado"],
     preguntas: [],
   };
