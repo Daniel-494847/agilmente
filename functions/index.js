@@ -136,6 +136,64 @@ exports.resetearPasswordUsuario = onCall(async (request) => {
 });
 
 /**
+ * Elimina definitivamente una cuenta: su acceso, su perfil, su historial de
+ * intentos y las asignaciones que hizo como docente. Solo el administrador
+ * único puede hacerlo y nunca sobre su propia cuenta.
+ */
+exports.eliminarUsuario = onCall(async (request) => {
+  await exigirAdministrador(request);
+
+  const uid = String(request.data?.uid || '').trim();
+  if (!uid) {
+    throw new HttpsError('invalid-argument', 'Falta el usuario que se quiere eliminar.');
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError('failed-precondition', 'No puedes eliminar tu propia cuenta.');
+  }
+
+  const [target, targetDoc] = await Promise.all([
+    admin.auth().getUser(uid).catch(() => null),
+    admin.firestore().doc(`${COLECCION_USUARIOS}/${uid}`).get()
+  ]);
+
+  if (!target && !targetDoc.exists) {
+    throw new HttpsError('not-found', 'El usuario no existe.');
+  }
+  if (esCorreoAdministrador(target?.email) || esCorreoAdministrador(targetDoc.data()?.email)) {
+    throw new HttpsError('failed-precondition', 'No se puede eliminar al administrador.');
+  }
+
+  // 1. Se elimina el acceso para que la cuenta no pueda volver a entrar ni
+  //    recrear su perfil al iniciar sesión.
+  if (target) {
+    await admin.auth().deleteUser(uid);
+  }
+
+  const db = admin.firestore();
+  const [intentos, asignaciones] = await Promise.all([
+    db.collection(COLECCION_INTENTOS).where('estudianteUid', '==', uid).get(),
+    db.collection('asignaciones').where('docenteUid', '==', uid).get()
+  ]);
+
+  // 2. Se borran los documentos relacionados en lotes de 450 (límite de 500).
+  const relacionados = [...intentos.docs, ...asignaciones.docs];
+  for (let i = 0; i < relacionados.length; i += 450) {
+    const lote = db.batch();
+    for (const documento of relacionados.slice(i, i + 450)) {
+      lote.delete(documento.ref);
+    }
+    await lote.commit();
+  }
+
+  // 3. Se borra el perfil.
+  if (targetDoc.exists) {
+    await targetDoc.ref.delete();
+  }
+
+  return { ok: true };
+});
+
+/**
  * Cambia la contraseña del usuario autenticado cuando tiene un cambio
  * pendiente. Al terminarlo se borra la marca y la temporal deja de servir.
  */

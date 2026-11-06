@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AttemptsService } from '@core/services/attempts.service';
 import { FullscreenService } from '@core/services/fullscreen.service';
 import { GameUiService } from '@core/services/game-ui.service';
+import { QuizSonidoService } from '@core/services/quiz-sonido.service';
 import { Quiz } from '@shared/components/quiz/quiz';
 import { QuizViewModel } from '@shared/components/quiz/quiz.model';
 
@@ -46,6 +47,7 @@ export class JuegosMentales implements OnDestroy {
   private readonly fullscreen = inject(FullscreenService);
   private readonly attempts = inject(AttemptsService);
   private readonly router = inject(Router);
+  private readonly sonido = inject(QuizSonidoService);
 
   /** Pausa antes de cada ejercicio: da tiempo a leer el rótulo «Ejercicio N». */
   private static readonly PAUSA_EJERCICIO_MS = 3000;
@@ -242,6 +244,7 @@ export class JuegosMentales implements OnDestroy {
      ================================================================ */
 
   async iniciar(): Promise<void> {
+    this.sonido.detenerVoz();
     this.normalizarAjustes();
 
     const total = this.totalEjercicios();
@@ -287,11 +290,13 @@ export class JuegosMentales implements OnDestroy {
     this.ejerciciosSesion.update((valor) => valor + detalle.length);
     this.fase.set('resultado');
     this.tocar(aciertos === detalle.length ? 'acierto' : 'error');
+    this.anunciarResultado(aciertos, detalle.length);
     void this.guardarIntento();
   }
 
   salir(): void {
     this.token++;
+    this.sonido.detenerVoz();
     this.gameUi.setJugando(false);
     void this.fullscreen.salir();
     this.limpiarRonda();
@@ -539,6 +544,30 @@ export class JuegosMentales implements OnDestroy {
      Sonido
      ================================================================ */
 
+  /**
+   * Anuncia por voz el resumen de la ronda, p. ej. «Acertaste 5 correctas y
+   * 2 incorrectas». Se dice dentro del clic de «Comprobar resultados», que es
+   * lo que exigen los navegadores para permitir la síntesis de voz.
+   */
+  private anunciarResultado(aciertos: number, total: number): void {
+    if (!this.sonidoActivo()) return;
+
+    const incorrectas = total - aciertos;
+    const correctasTexto = `${aciertos} ${aciertos === 1 ? 'correcta' : 'correctas'}`;
+    const incorrectasTexto = `${incorrectas} ${incorrectas === 1 ? 'incorrecta' : 'incorrectas'}`;
+
+    let texto: string;
+    if (incorrectas === 0) {
+      texto = `¡Excelente! Acertaste ${total === 1 ? 'el ejercicio' : `los ${total} ejercicios`}.`;
+    } else if (aciertos === 0) {
+      texto = `No acertaste ninguna. Tuviste ${incorrectasTexto}.`;
+    } else {
+      texto = `Acertaste ${correctasTexto} y ${incorrectasTexto}.`;
+    }
+
+    this.sonido.decir(texto);
+  }
+
   private tocar(tipo: 'tecla' | 'inicio' | 'acierto' | 'error'): void {
     if (!this.sonidoActivo()) return;
 
@@ -599,6 +628,7 @@ export class JuegosMentales implements OnDestroy {
 
   ngOnDestroy(): void {
     this.token++;
+    this.sonido.detenerVoz();
     this.gameUi.setJugando(false);
     void this.fullscreen.salir();
     void this.cerrarIntento();

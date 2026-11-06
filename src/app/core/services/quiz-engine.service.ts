@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AttemptsService } from './attempts.service';
@@ -43,7 +43,7 @@ const VISTA_INICIAL: QuizViewModel = {
  * juego tenga su propia instancia.
  */
 @Injectable()
-export class QuizEngine {
+export class QuizEngine implements OnDestroy {
   private readonly attempts = inject(AttemptsService);
   private readonly router = inject(Router);
 
@@ -53,9 +53,11 @@ export class QuizEngine {
   private actividadId = '';
   private intentoId: string | null = null;
   private intentoInicio = 0;
+  private temporizador: ReturnType<typeof setInterval> | null = null;
 
   /** Inicializa el motor con la configuración del juego y el slug de intento. */
   init(config: ConfiguracionQuiz, actividadId: string, nivel = 1): void {
+    this.detenerTemporizador();
     this.config = config;
     this.actividadId = actividadId;
     this.config.preguntas = this.config.preguntas ?? [];
@@ -101,18 +103,20 @@ export class QuizEngine {
       esCorrecta: null,
       mostrarConfeti: false,
       sonidosActivos: this.vista().sonidosActivos ?? true,
-      segundosRestantes: 0
+      segundosRestantes: this.config.tiempoLimiteSegundos ?? 0
     };
   }
 
   empezar(): void {
     this.vista.update((s) => ({ ...s, estado: 'jugando' }));
+    this.iniciarTemporizador();
   }
 
   responder(id: string): void {
     const v = this.vista();
     const p = v.preguntaActual;
-    if (!p) return;
+    if (!p || v.estado !== 'jugando') return;
+    this.detenerTemporizador();
     const es = id === p.respuestaCorrectaId;
     this.vista.update((s) => ({
       ...s,
@@ -147,7 +151,9 @@ export class QuizEngine {
         seleccionada: null,
         esCorrecta: null
       }));
+      this.iniciarTemporizador();
     } else {
+      this.detenerTemporizador();
       const c = v.resultado.correctas;
       const t = list.length;
       const pct = t === 0 ? 0 : Math.round((c / t) * 100);
@@ -168,22 +174,27 @@ export class QuizEngine {
   }
 
   reiniciar(): void {
+    this.detenerTemporizador();
     this.vista.set(this.inicial(this.vista().nivelSeleccionado));
   }
 
   nivelElegido(n: number): void {
+    this.detenerTemporizador();
     this.vista.set(this.inicial(n));
   }
 
   alternarSonido(): void {
-    this.vista.update((s) => ({ ...s, sonidosActivos: !s.sonidosActivos }));
+    const activo = !this.vista().sonidosActivos;
+    this.vista.update((s) => ({ ...s, sonidosActivos: activo }));
   }
 
   volver(): void {
+    this.detenerTemporizador();
     void this.router.navigateByUrl('/razonamiento-logico');
   }
 
   finalizarIntento(): void {
+    this.detenerTemporizador();
     if (this.intentoId) {
       void this.attempts.finalizar(this.intentoId, this.intentoInicio, {
         actividadId: this.actividadId,
@@ -193,6 +204,68 @@ export class QuizEngine {
         respuestasIncorrectas: this.vista().resultado.incorrectas
       });
     }
+  }
+
+  ngOnDestroy(): void {
+    this.detenerTemporizador();
+  }
+
+  /* ================================================================
+     Temporizador por pregunta
+     ================================================================ */
+
+  /**
+   * Arranca la cuenta atrás de la pregunta actual. Solo actúa si el juego
+   * declaró `tiempoLimiteSegundos`; cada pregunta vuelve a empezar con el
+   * tiempo completo.
+   */
+  private iniciarTemporizador(): void {
+    this.detenerTemporizador();
+    const limite = this.config?.tiempoLimiteSegundos ?? 0;
+    if (limite <= 0) return;
+
+    this.vista.update((s) => ({ ...s, segundosRestantes: limite }));
+    this.temporizador = setInterval(() => {
+      const restantes = this.vista().segundosRestantes - 1;
+      this.vista.update((s) => ({ ...s, segundosRestantes: Math.max(0, restantes) }));
+      if (restantes <= 0) {
+        this.agotarTiempo();
+      }
+    }, 1000);
+  }
+
+  private detenerTemporizador(): void {
+    if (this.temporizador !== null) {
+      clearInterval(this.temporizador);
+      this.temporizador = null;
+    }
+  }
+
+  /**
+   * El tiempo de la pregunta terminó: se cuenta como respuesta incorrecta,
+   * sin opción marcada, para que la retroalimentación muestre la correcta.
+   */
+  private agotarTiempo(): void {
+    this.detenerTemporizador();
+    const v = this.vista();
+    const p = v.preguntaActual;
+    if (!p || v.estado !== 'jugando') return;
+
+    this.vista.update((s) => ({
+      ...s,
+      estado: 'feedback',
+      seleccionada: null,
+      esCorrecta: false,
+      resultado: {
+        ...s.resultado,
+        incorrectas: s.resultado.incorrectas + 1,
+        puntaje: s.resultado.puntaje,
+        respuestas: [
+          ...s.resultado.respuestas,
+          { preguntaId: p.id, opcionId: '', correcta: false }
+        ]
+      }
+    }));
   }
 
   private mezclar<T>(a: T[]): T[] {

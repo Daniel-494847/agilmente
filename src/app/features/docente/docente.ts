@@ -1,8 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { ColorTema } from '@core/models/actividad.model';
+import { ActividadResumen, ColorTema } from '@core/models/actividad.model';
+import { ActivityCard } from '@shared/components/activity-card/activity-card';
 import { SvgSeguroPipe } from '@shared/pipes/svg-seguro.pipe';
+import { ActividadesService } from '@features/actividades/services/actividades.service';
 import { EjerciciosDocenteService } from './services/ejercicios-docente.service';
 import {
   HojaDocente,
@@ -81,17 +83,21 @@ const SALTO_PAGINA_WORD = `<span style='font-size:12.0pt;font-family:"Arial",san
  */
 @Component({
   selector: 'app-docente',
-  imports: [RouterLink, SvgSeguroPipe],
+  imports: [RouterLink, SvgSeguroPipe, ActivityCard],
   templateUrl: './docente.html',
   styleUrl: './docente.css'
 })
 export class Docente implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
   private readonly generador = inject(EjerciciosDocenteService);
+  private readonly actividadesService = inject(ActividadesService);
 
   readonly tipos = TIPOS_ACTIVIDAD_DOCENTE;
   readonly niveles = NIVELES_DOCENTE;
   readonly cantidades = [5, 10, 15, 20];
+
+  /** Catálogo de juegos: cada tarjeta trae «Jugar» y «Compartir». */
+  readonly actividades = signal<ActividadResumen[]>([]);
 
   readonly titulo = signal('Módulo Docente');
   readonly descripcion = signal(
@@ -129,10 +135,11 @@ export class Docente implements OnInit {
     () => this.hojas().length + (this.generado() && this.incluirRespuestas() ? 1 : 0)
   );
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const data = this.ruta.snapshot.data;
     this.titulo.set((data['title'] as string) ?? this.titulo());
     this.descripcion.set((data['description'] as string) ?? this.descripcion());
+    this.actividades.set(await this.actividadesService.listar());
   }
 
   seleccionarTipo(ev: Event): void {

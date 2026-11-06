@@ -3,13 +3,23 @@
     <a routerLink="/" class="btn btn-link text-decoration-none fw-semibold px-0">
       <i class="bi bi-arrow-left me-1"></i> Volver a inicio
     </a>
-    <h1 class="h3 fw-bold mt-2 mb-1">Gestión de usuarios</h1>
-    <p class="text-secondary mb-0">
-      Consulta el puntaje de cada usuario y pulsa «Ver más» para ver su avance, su rol y su
-      curso. Entra a un curso para añadir estudiantes (o docentes), quitar estudiantes y
-      asignarle un docente. El administrador es único: Daniel Llanos Pallares
-      ({{ adminEmail }}); nadie más puede tener ese rol.
-    </p>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mt-2">
+      <div>
+        <h1 class="h3 fw-bold mb-1">Gestión de usuarios</h1>
+        <p class="text-secondary mb-0">
+          Consulta el puntaje de cada usuario y pulsa «Ver más» para ver su avance, su rol y su
+          curso. Puedes añadir estudiantes o docentes y eliminar cuentas definitivamente. El
+          administrador es único: Daniel Llanos Pallares ({{ adminEmail }}); nadie más puede
+          tener ese rol.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="btn btn-success flex-shrink-0"
+        (click)="abrirNuevo('estudiante')">
+        <i class="bi bi-person-plus me-1"></i>Añadir usuario
+      </button>
+    </div>
   </header>
 
   @if (mensaje()) {
@@ -22,6 +32,156 @@
     <div class="alert alert-warning" role="alert">
       <i class="bi bi-exclamation-triangle me-1"></i>{{ avisoEstadisticas() }}
     </div>
+  }
+
+  @if (mostrarNuevo()) {
+    <section class="card shadow-sm mb-3" aria-labelledby="titulo-nuevo-usuario">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <h2 id="titulo-nuevo-usuario" class="h5 fw-bold mb-0">
+              {{ rolNuevo() === 'docente' ? 'Nuevo docente' : 'Nuevo usuario' }}
+            </h2>
+            <p class="text-secondary small mb-0">
+              Se creará en {{ cursoNuevoTexto() }}. Si dejas el correo vacío se genera un usuario
+              interno.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-dark"
+            (click)="cerrarNuevo()"
+            [disabled]="creando()">
+            <i class="bi bi-x-lg me-1"></i>Cerrar
+          </button>
+        </div>
+
+        <form
+          class="row g-2 align-items-end mt-2"
+          (submit)="
+            crearUsuario(nombreInput.value, correoInput.value, passwordInput.value);
+            $event.preventDefault()
+          ">
+          <div class="col-12 col-md-3">
+            <label class="form-label" for="nuevo-rol">Rol</label>
+            <select
+              id="nuevo-rol"
+              class="form-select"
+              [value]="rolNuevo()"
+              (change)="cambiarRolNuevo($any($event.target).value)">
+              <option value="estudiante">Estudiante</option>
+              <option value="docente">Docente</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label" for="nuevo-curso">Curso</label>
+            <select
+              id="nuevo-curso"
+              class="form-select"
+              [value]="cursoNuevo()"
+              (change)="cambiarCursoNuevo($any($event.target).value)">
+              @for (c of cursos; track c.valor) {
+                <option [value]="c.valor">{{ c.etiqueta }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label" for="nuevo-paralelo">Paralelo</label>
+            <select
+              id="nuevo-paralelo"
+              class="form-select"
+              [value]="paraleloNuevo()"
+              (change)="cambiarParaleloNuevo($any($event.target).value)">
+              @for (p of paralelos; track p) {
+                <option [value]="p">{{ p }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label" for="nuevo-nombre">Nombre completo</label>
+            <input
+              id="nuevo-nombre"
+              #nombreInput
+              class="form-control"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label" for="nuevo-correo">Correo (opcional)</label>
+            <input
+              id="nuevo-correo"
+              #correoInput
+              type="email"
+              class="form-control"
+              autocomplete="off"
+            />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="nuevo-password">Contraseña (opcional)</label>
+            <input
+              id="nuevo-password"
+              #passwordInput
+              class="form-control"
+              autocomplete="new-password"
+            />
+          </div>
+          <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-success" [disabled]="creando()">
+              {{
+                creando()
+                  ? 'Creando…'
+                  : (rolNuevo() === 'docente' ? 'Crear docente' : 'Crear usuario')
+              }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-dark"
+              (click)="cerrarNuevo()"
+              [disabled]="creando()">
+              Cancelar
+            </button>
+          </div>
+          <div class="col-12">
+            <p class="form-text mb-0">
+              @if (rolNuevo() === 'docente') {
+                Queda asignado como docente de {{ cursoNuevoTexto() }} (verá su curso en
+                «Mi curso» y podrá asignar actividades).
+              } @else {
+                Se matricula en {{ cursoNuevoTexto() }}. Si el nombre ya existe, escribe un correo
+                distinto o usa «Añadir existente» desde el curso.
+              }
+              Si dejas la contraseña vacía, se genera automáticamente.
+            </p>
+          </div>
+        </form>
+
+        @if (errorFormulario()) {
+          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ errorFormulario() }}</div>
+        }
+
+        @if (credenciales(); as c) {
+          <div class="alert alert-success mt-3 mb-0" role="status">
+            <p class="mb-1">
+              <strong>
+                {{ rolNuevo() === 'docente' ? 'Docente' : 'Estudiante' }}
+                {{ c.estado === 'creado' ? 'añadido' : 'actualizado' }}:
+              </strong>
+              {{ c.nombre }} · {{ c.cursoTexto }}
+            </p>
+            <p class="mb-0">
+              Usuario: <code>{{ c.usuario }}</code>
+              @if (c.correoInterno !== c.usuario) {
+                · Correo: <code>{{ c.correoInterno }}</code>
+              }
+              @if (c.estado === 'creado') {
+                · Contraseña: <code>{{ c.password }}</code>
+              }
+            </p>
+          </div>
+        }
+      </div>
+    </section>
   }
 
   @if (cargando()) {
@@ -170,99 +330,6 @@
               </button>
             </div>
           </div>
-
-          @if (mostrarNuevo()) {
-            <h3 class="h6 fw-bold mt-3 mb-0">
-              {{ rolNuevo() === 'docente' ? 'Nuevo docente' : 'Nuevo estudiante' }}
-              <span class="badge text-bg-light border ms-1">{{ tituloFiltro() }}</span>
-            </h3>
-            <form
-              class="row g-2 align-items-end mt-2"
-              (submit)="
-                crearUsuario(nombreInput.value, correoInput.value, passwordInput.value);
-                $event.preventDefault()
-              ">
-              <div class="col-12 col-md-4">
-                <label class="form-label" for="nuevo-nombre">Nombre completo</label>
-                <input
-                  id="nuevo-nombre"
-                  #nombreInput
-                  class="form-control"
-                  autocomplete="off"
-                  required
-                />
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label" for="nuevo-correo">Correo (opcional)</label>
-                <input
-                  id="nuevo-correo"
-                  #correoInput
-                  type="email"
-                  class="form-control"
-                  autocomplete="off"
-                />
-              </div>
-              <div class="col-12 col-md-3">
-                <label class="form-label" for="nuevo-password">Contraseña (opcional)</label>
-                <input
-                  id="nuevo-password"
-                  #passwordInput
-                  class="form-control"
-                  autocomplete="new-password"
-                />
-              </div>
-              <div class="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-success" [disabled]="creando()">
-                  {{ creando() ? 'Creando…' : (rolNuevo() === 'docente' ? 'Crear docente' : 'Crear estudiante') }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-outline-dark"
-                  (click)="cerrarNuevo()"
-                  [disabled]="creando()">
-                  Cancelar
-                </button>
-              </div>
-              <div class="col-12">
-                <p class="form-text mb-0">
-                  @if (rolNuevo() === 'docente') {
-                    Queda asignado como docente de {{ tituloFiltro() }} (verá su curso en
-                    «Mi curso» y podrá asignar actividades). Si dejas el correo vacío, se genera un
-                    usuario interno.
-                  } @else {
-                    Se matricula en {{ tituloFiltro() }}. Si dejas el correo vacío, se genera un
-                    usuario interno. Si el nombre ya existe, escribe un correo distinto o usa
-                    «Añadir existente».
-                  }
-                </p>
-              </div>
-            </form>
-          }
-
-          @if (errorFormulario()) {
-            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ errorFormulario() }}</div>
-          }
-
-          @if (credenciales(); as c) {
-            <div class="alert alert-success mt-3 mb-0" role="status">
-              <p class="mb-1">
-                <strong>
-                  {{ rolNuevo() === 'docente' ? 'Docente' : 'Estudiante' }}
-                  {{ c.estado === 'creado' ? 'añadido' : 'actualizado' }}:
-                </strong>
-                {{ c.nombre }} · {{ c.cursoTexto }}
-              </p>
-              <p class="mb-0">
-                Usuario: <code>{{ c.usuario }}</code>
-                @if (c.correoInterno !== c.usuario) {
-                  · Correo: <code>{{ c.correoInterno }}</code>
-                }
-                @if (c.estado === 'creado') {
-                  · Contraseña: <code>{{ c.password }}</code>
-                }
-              </p>
-            </div>
-          }
 
           @if (mostrarExistente()) {
             <div class="row g-2 align-items-end mt-2">
@@ -638,6 +705,32 @@
                     }
                   }
                 }
+              </div>
+
+              <div class="border-top mt-3 pt-3 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <div class="me-auto">
+                    <h3 class="h6 fw-bold mb-0 text-danger">
+                      <i class="bi bi-trash me-1"></i>Eliminar usuario
+                    </h3>
+                    <p class="form-text mb-0">
+                      Borra su cuenta de acceso, su perfil y su historial de intentos. Esta acción
+                      no se puede deshacer.
+                    </p>
+                  </div>
+                  @if (u.uid !== miUid() && !esAdminEmail(u.email)) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      [disabled]="eliminando() === u.uid"
+                      (click)="eliminarUsuario(u)">
+                      <i class="bi bi-trash me-1"></i>
+                      {{ eliminando() === u.uid ? 'Eliminando…' : 'Eliminar usuario' }}
+                    </button>
+                  } @else {
+                    <span class="badge text-bg-light border">Cuenta protegida</span>
+                  }
+                </div>
               </div>
 
               <div class="row row-cols-2 row-cols-sm-4 g-2 g-sm-3">

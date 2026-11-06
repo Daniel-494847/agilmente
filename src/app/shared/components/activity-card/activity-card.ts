@@ -40,7 +40,8 @@ const TEMA_BTN: Record<ActividadResumen['colorTema'], string> = {
 @Component({
   selector: 'app-activity-card',
   imports: [RouterLink],
-  templateUrl: './activity-card.html'
+  templateUrl: './activity-card.html',
+  styleUrl: './activity-card.css'
 })
 export class ActivityCard {
   @Input({ required: true }) actividad!: ActividadResumen;
@@ -54,8 +55,13 @@ export class ActivityCard {
 
   @ViewChild('menu') private menuRef?: ElementRef<HTMLElement>;
 
-  /** Docente o administrador: ven «Asignar» en lugar de «Compartir». */
-  readonly esDocente = computed(() => this.auth.esDocente());
+  /**
+   * Docente o administrador CON sesión iniciada. Solo ellos ven la opción
+   * «Asignar» dentro del menú de compartir.
+   */
+  readonly esDocente = computed(
+    () => this.auth.isAuthenticated() && this.auth.esDocente()
+  );
   readonly user = this.auth.user;
 
   /** Perfil del docente (curso y paralelo asignados por el administrador). */
@@ -128,17 +134,12 @@ export class ActivityCard {
     return TEMA_BTN[this.actividad.colorTema] ?? 'btn-primary';
   }
 
-  /** Texto del botón principal según el rol del usuario. */
+  /**
+   * Texto del botón secundario: siempre «Compartir». Las opciones de
+   * asignación aparecen dentro del menú, y solo para docentes/administradores.
+   */
   textoBoton(): string {
-    return this.esDocente() ? 'Asignar' : 'Compartir';
-  }
-
-  /** Texto del botón de asignación: solo «Asignada» o «Asignar». */
-  textoAsignar(): string {
-    if (this.asignando()) {
-      return 'Guardando…';
-    }
-    return this.asignada() ? 'Asignada' : 'Asignar';
+    return 'Compartir';
   }
 
   /** Etiqueta de accesibilidad del botón principal. */
@@ -148,7 +149,9 @@ export class ActivityCard {
 
   /** Etiqueta de accesibilidad del grupo de acciones. */
   ariaGrupo(): string {
-    return this.esDocente() ? 'Asignar actividad' : 'Compartir actividad';
+    return this.esDocente()
+      ? 'Compartir o asignar actividad'
+      : 'Compartir actividad';
   }
 
   /**
@@ -284,9 +287,5 @@ export class ActivityCard {
 
   enlaceFacebook(): string {
     return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(this.urlCompartible())}`;
-  }
-
-  enlaceTelegram(): string {
-    return `https://t.me/share/url?url=${encodeURIComponent(this.urlCompartible())}&text=${encodeURIComponent(this.textoCompartir())}`;
   }
 }

@@ -1,0 +1,11 @@
+/* Menú de compartir compacto: solo medidas; colores y estados siguen en
+   Bootstrap. Se ajustan las variables del propio componente para no pintar
+   ninguna variante de botón. */
+.activity-share-menu {
+  --bs-dropdown-font-size: 0.875rem;
+  --bs-dropdown-padding-y: 0.25rem;
+  --bs-dropdown-item-padding-y: 0.25rem;
+  --bs-dropdown-item-padding-x: 0.75rem;
+  --bs-dropdown-header-padding-y: 0.25rem;
+  --bs-dropdown-divider-margin-y: 0.25rem;
+}

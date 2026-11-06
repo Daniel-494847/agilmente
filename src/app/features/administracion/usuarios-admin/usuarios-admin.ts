@@ -95,10 +95,13 @@ export class UsuariosAdmin implements OnInit {
   /** UID del usuario cuyos cursos se están guardando. */
   readonly guardandoCursos = signal<string | null>(null);
   readonly mostrarImportador = signal(false);
-  /** Formulario para crear un estudiante dentro del curso abierto. */
+  /** Formulario para crear un estudiante o docente (desde la cabecera o un curso). */
   readonly mostrarNuevo = signal(false);
   /** Rol que se creará con el formulario abierto (estudiante o docente). */
   readonly rolNuevo = signal<RolUsuario>('estudiante');
+  /** Curso y paralelo elegidos en el formulario de alta. */
+  readonly cursoNuevo = signal(1);
+  readonly paraleloNuevo = signal<Paralelo>('A');
   /** Selector para mover un estudiante existente al curso abierto. */
   readonly mostrarExistente = signal(false);
   readonly creando = signal(false);
@@ -107,6 +110,8 @@ export class UsuariosAdmin implements OnInit {
   /** Restablecimiento en curso (UID) y credenciales temporales generadas. */
   readonly reseteando = signal<string | null>(null);
   readonly resetCredenciales = signal<ResetCredenciales | null>(null);
+  /** UID del usuario que se está eliminando. */
+  readonly eliminando = signal<string | null>(null);
   /** Curso seleccionado para ver solo a sus estudiantes. */
   readonly cursoSeleccionado = signal<FiltroCurso | null>(null);
   /** UID del administrador que ve la página (no puede cambiarse el propio rol). */
@@ -180,6 +185,11 @@ export class UsuariosAdmin implements OnInit {
 
   /** `true` cuando se entró a un curso concreto (no a «Sin curso»). */
   readonly esModuloCurso = computed(() => this.cursoSeleccionado()?.tipo === 'curso');
+
+  /** Curso elegido en el formulario de alta, legible («Primero A»). */
+  readonly cursoNuevoTexto = computed(() =>
+    codigoCurso(this.cursoNuevo(), this.paraleloNuevo())
+  );
 
   /** Datos del curso abierto, o `null` si no hay ninguno. */
   readonly cursoActivo = computed(() => {
@@ -405,8 +415,18 @@ export class UsuariosAdmin implements OnInit {
     this.credenciales.set(null);
   }
 
-  /** Abre el formulario de alta con el rol indicado (estudiante o docente). */
+  /**
+   * Abre el formulario de alta con el rol indicado (estudiante o docente).
+   * Si hay un curso abierto, el formulario se rellena con ese curso; si no,
+   * el administrador puede elegir cualquiera desde la cabecera.
+   */
   abrirNuevo(rol: RolUsuario = 'estudiante'): void {
+    const seleccion = this.cursoSeleccionado();
+    if (seleccion?.tipo === 'curso') {
+      this.cursoNuevo.set(seleccion.curso);
+      this.paraleloNuevo.set(seleccion.paralelo);
+    }
+
     // Si ya estaba abierto con el mismo rol, se cierra.
     if (this.mostrarNuevo() && this.rolNuevo() === rol) {
       this.mostrarNuevo.set(false);
@@ -418,6 +438,27 @@ export class UsuariosAdmin implements OnInit {
     this.mostrarImportador.set(false);
     this.errorFormulario.set('');
     this.credenciales.set(null);
+  }
+
+  /** Cambia el rol desde el propio formulario (estudiante o docente). */
+  cambiarRolNuevo(valor: string): void {
+    this.rolNuevo.set(valor === 'docente' ? 'docente' : 'estudiante');
+  }
+
+  /** Cambia el curso desde el propio formulario. */
+  cambiarCursoNuevo(valor: string | number): void {
+    const curso = Number(valor);
+    if (Number.isInteger(curso) && curso >= 1 && curso <= 6) {
+      this.cursoNuevo.set(curso);
+    }
+  }
+
+  /** Cambia el paralelo desde el propio formulario. */
+  cambiarParaleloNuevo(valor: string): void {
+    const paralelo = valor.trim().toUpperCase();
+    if (paralelo === 'A' || paralelo === 'B') {
+      this.paraleloNuevo.set(paralelo);
+    }
   }
 
   cerrarNuevo(): void {
@@ -437,12 +478,17 @@ export class UsuariosAdmin implements OnInit {
     this.mostrarExistente.set(false);
   }
 
-  /** Crea un estudiante o docente nuevo y lo asigna al curso abierto. */
+  /** Crea un estudiante o docente nuevo y lo asigna al curso elegido. */
   async crearUsuario(nombre: string, correo: string, password: string): Promise<void> {
-    const seleccion = this.cursoSeleccionado();
     const rol = this.rolNuevo();
     const etiqueta = rol === 'docente' ? 'docente' : 'estudiante';
-    if (seleccion?.tipo !== 'curso' || this.creando()) {
+    const curso = this.cursoNuevo();
+    const paralelo = this.paraleloNuevo();
+    if (this.creando()) {
+      return;
+    }
+    if (!Number.isInteger(curso) || curso < 1 || curso > 6) {
+      this.errorFormulario.set('Selecciona un curso válido (Primero a Sexto).');
       return;
     }
 
@@ -471,8 +517,8 @@ export class UsuariosAdmin implements OnInit {
         ['Nombre', 'Curso', 'Paralelo', 'Correo', 'Usuario', 'Contraseña'],
         [
           nombreLimpio,
-          String(seleccion.curso),
-          seleccion.paralelo,
+          String(curso),
+          paralelo,
           correoLimpio,
           '',
           passwordLimpio
@@ -502,12 +548,12 @@ export class UsuariosAdmin implements OnInit {
         return;
       }
 
+      const destino = codigoCurso(curso, paralelo);
       this.credenciales.set(resultado);
-      this.mostrarNuevo.set(false);
       this.mensaje.set(
         resultado.estado === 'creado'
-          ? `${resultado.nombre} añadido como ${etiqueta} en ${this.tituloFiltro()}.`
-          : `${resultado.nombre} ya existía; se actualizó a ${etiqueta} en ${this.tituloFiltro()}.`
+          ? `${resultado.nombre} añadido como ${etiqueta} en ${destino}.`
+          : `${resultado.nombre} ya existía; se actualizó a ${etiqueta} en ${destino}.`
       );
       this.error.set('');
       await this.cargar(false);
@@ -645,6 +691,78 @@ export class UsuariosAdmin implements OnInit {
       this.error.set(mensajeErrorReset(error));
     } finally {
       this.reseteando.set(null);
+    }
+  }
+
+  /**
+   * Elimina definitivamente un usuario: cuenta de acceso, perfil, intentos y
+   * asignaciones. Solo el administrador puede hacerlo y nunca sobre sí mismo.
+   */
+  async eliminarUsuario(usuario: UsuarioConEstadisticas): Promise<void> {
+    if (usuario.uid === this.miUid() || this.esAdminEmail(usuario.email)) {
+      this.error.set('No se puede eliminar la cuenta del administrador.');
+      return;
+    }
+    if (this.eliminando()) {
+      return;
+    }
+
+    const nombre = usuario.nombreCompleto || usuario.email;
+    const confirmacion = window.confirm(
+      `¿Eliminar definitivamente a ${nombre}?\n\nSe borrarán su cuenta de acceso, su perfil y todo su historial de intentos. Esta acción no se puede deshacer.`
+    );
+    if (!confirmacion) {
+      return;
+    }
+
+    this.eliminando.set(usuario.uid);
+    this.error.set('');
+    this.mensaje.set('');
+
+    try {
+      await this.roles.eliminarUsuario(usuario.uid);
+      this.usuarios.update((lista) => lista.filter((u) => u.uid !== usuario.uid));
+      this.abiertos.update((actuales) => {
+        const copia = new Set(actuales);
+        copia.delete(usuario.uid);
+        return copia;
+      });
+      this.cursosSeleccionados.update((mapa) => {
+        const copia = { ...mapa };
+        delete copia[usuario.uid];
+        return copia;
+      });
+      this.mensaje.set(`${nombre} fue eliminado definitivamente.`);
+    } catch (error) {
+      this.error.set(this.mensajeErrorEliminar(error));
+    } finally {
+      this.eliminando.set(null);
+    }
+  }
+
+  /** Traduce los errores de la función de eliminación a un mensaje legible. */
+  private mensajeErrorEliminar(error: unknown): string {
+    const codigo = (error as { code?: string } | null)?.code ?? '';
+    switch (codigo) {
+      case 'functions/unauthenticated':
+        return 'Tu sesión expiró. Vuelve a iniciar sesión.';
+      case 'functions/permission-denied':
+        return 'No tienes permiso para eliminar usuarios.';
+      case 'functions/not-found':
+        return 'El usuario ya no existe.';
+      case 'functions/failed-precondition':
+        return 'No se puede eliminar la cuenta del administrador.';
+      case 'functions/unavailable':
+      case 'functions/deadline-exceeded':
+      case 'functions/internal':
+        return 'No se pudo conectar con la función de eliminación. Verifica que esté desplegada (requiere el plan Blaze).';
+      default: {
+        const mensaje =
+          error instanceof Error
+            ? error.message.replace(/^FirebaseError:\s*/i, '').trim()
+            : '';
+        return mensaje || 'No se pudo eliminar el usuario. Inténtalo de nuevo.';
+      }
     }
   }
 

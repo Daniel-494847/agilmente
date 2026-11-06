@@ -2,7 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { FirebaseError } from 'firebase/app';
-import { UserCredential, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import {
+  UserCredential,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
 
 import { AuthService } from '@core/auth/auth.service';
 import { auth } from '@core/firebase';
@@ -10,6 +15,10 @@ import {
   DOMINIO_ESTUDIANTES_LEGADO,
   esEmailAdministrador
 } from '@core/models/usuario.model';
+import {
+  esCorreoInterno,
+  mensajeErrorReset
+} from '@core/services/password.service';
 import { UsuarioService } from '@core/services/usuario.service';
 import { correoDeUsuario } from '@features/administracion/importar-estudiantes/importacion-estudiantes.util';
 
@@ -29,6 +38,11 @@ export class Login {
   readonly form;
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal('');
+  readonly recuperando = signal(false);
+  readonly avisoRecuperacion = signal<{
+    tipo: 'ok' | 'info' | 'error';
+    texto: string;
+  } | null>(null);
 
   constructor(
     private readonly fb: FormBuilder,
@@ -81,6 +95,61 @@ export class Login {
       this.errorMessage.set(this.mensajeError(error));
     } finally {
       this.isSubmitting.set(false);
+    }
+  }
+
+  /**
+   * «¿Olvidaste tu contraseña?»: envía el enlace de restablecimiento de
+   * Firebase al correo real del usuario. Las cuentas creadas por el
+   * administrador usan un correo interno (@agilmente) que no recibe mensajes;
+   * para ellas el administrador genera una contraseña temporal desde
+   * «Gestión de usuarios».
+   */
+  async recuperarPassword(): Promise<void> {
+    if (this.recuperando()) return;
+
+    const texto = this.form.controls.usuario.value.trim();
+    if (!texto) {
+      this.form.controls.usuario.markAsTouched();
+      this.avisoRecuperacion.set({
+        tipo: 'error',
+        texto: 'Escribe arriba tu usuario o correo y vuelve a intentarlo.'
+      });
+      return;
+    }
+
+    const email = texto.includes('@') ? texto : correoDeUsuario(texto);
+    if (esEmailAdministrador(email)) {
+      this.avisoRecuperacion.set({
+        tipo: 'info',
+        texto: 'La cuenta del administrador no se restablece desde aquí.'
+      });
+      return;
+    }
+    if (esCorreoInterno(email)) {
+      this.avisoRecuperacion.set({
+        tipo: 'info',
+        texto:
+          'Tu cuenta usa un usuario interno, que no recibe correos. Pide al administrador que te asigne una contraseña temporal.'
+      });
+      return;
+    }
+
+    this.recuperando.set(true);
+    this.avisoRecuperacion.set(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      this.avisoRecuperacion.set({
+        tipo: 'ok',
+        texto: `Te enviamos un enlace para elegir una contraseña nueva a ${email}. Revisa también la carpeta de spam.`
+      });
+    } catch (error) {
+      this.avisoRecuperacion.set({
+        tipo: 'error',
+        texto: mensajeErrorReset(error)
+      });
+    } finally {
+      this.recuperando.set(false);
     }
   }
 

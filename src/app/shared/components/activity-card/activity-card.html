@@ -32,105 +32,101 @@
   <p class="text-secondary small mb-3" style="min-height: 34px">{{ actividad.descripcion }}</p>
 
   <div class="d-flex gap-2 mt-auto position-relative z-3">
-    <a class="btn btn-sm rounded-pill align-self-start px-3 fw-bold" [class]="claseBoton()" [routerLink]="actividad.ruta">
+    <a
+      class="btn btn-sm rounded-pill align-self-start px-3 fw-bold"
+      [class]="claseBoton()"
+      [routerLink]="actividad.ruta"
+      [attr.aria-label]="'Jugar ' + actividad.titulo"
+    >
       Jugar
     </a>
 
-    @if (esDocente()) {
-      <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
-        <button
-          type="button"
-          class="btn btn-sm rounded-pill px-3 fw-bold dropdown-toggle"
-          [class]="claseBoton()"
-          [attr.aria-expanded]="menuAbierto()"
-          [attr.aria-controls]="'asignar-' + actividad.id"
-          (click)="alternarMenu($event)"
-          [attr.aria-label]="ariaBoton()"
-          [disabled]="!puedeAsignar() || asignando()">
-          @if (asignada() && !asignando()) {
-            <i class="bi bi-check-circle-fill me-1" aria-hidden="true"></i>
-          }
-          {{ textoAsignar() }}
-        </button>
-        <ul
-          #menu
-          class="dropdown-menu dropdown-menu-end"
-          data-bs-popper="static"
-          [class.show]="menuAbierto()"
-          [id]="'asignar-' + actividad.id">
-          <li><span class="dropdown-header">Asignar a tus cursos</span></li>
-          @for (c of cursosDocente(); track c.curso + '-' + c.paralelo) {
-            <li>
-              <button
-                type="button"
-                class="dropdown-item d-flex align-items-center gap-2"
-                (click)="alternarAsignacion($event, c)">
-                <i
-                  class="bi"
-                  [class.bi-check-square-fill]="asignadaEn(c)"
-                  [class.bi-square]="!asignadaEn(c)"
-                  aria-hidden="true"></i>
-                <span>{{ codigoCurso(c.curso, c.paralelo) }}</span>
-                <span class="ms-auto small text-secondary">
-                  {{ asignadaEn(c) ? 'Quitar' : 'Asignar' }}
-                </span>
-              </button>
-            </li>
-          }
-        </ul>
-      </div>
-    } @else {
-      <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
-        <button
-          class="btn btn-sm rounded-pill px-3 fw-bold dropdown-toggle"
-          [class]="claseBoton()"
-          type="button"
-          [attr.aria-expanded]="menuAbierto()"
-          [attr.aria-controls]="'compartir-' + actividad.id"
-          (click)="alternarMenu($event)"
-          [attr.aria-label]="ariaBoton()"
-        >
-          {{ textoBoton() }}
-        </button>
-        <ul
-          #menu
-          class="dropdown-menu dropdown-menu-end"
-          data-bs-popper="static"
-          [class.show]="menuAbierto()"
-          [id]="'compartir-' + actividad.id"
-        >
-          @if (puedeCompartirNativo) {
-            <li>
-              <button type="button" class="dropdown-item" (click)="compartir($event)">
-                <i class="bi bi-share me-2" aria-hidden="true"></i>Compartir
-              </button>
-            </li>
-            <li><hr class="dropdown-divider" /></li>
-          }
+    <div class="dropdown" role="group" [attr.aria-label]="ariaGrupo()">
+      <button
+        class="btn btn-sm rounded-pill px-3 fw-bold dropdown-toggle"
+        [class]="claseBoton()"
+        type="button"
+        [attr.aria-expanded]="menuAbierto()"
+        [attr.aria-controls]="'compartir-' + actividad.id"
+        (click)="alternarMenu($event)"
+        [attr.aria-label]="ariaBoton()"
+      >
+        {{ textoBoton() }}
+      </button>
+      <ul
+        #menu
+        class="dropdown-menu dropdown-menu-end activity-share-menu"
+        data-bs-popper="static"
+        [class.show]="menuAbierto()"
+        [id]="'compartir-' + actividad.id"
+      >
+        @if (puedeCompartirNativo) {
           <li>
-            <a class="dropdown-item" [href]="enlaceWhatsapp()" target="_blank" rel="noopener">
-              <i class="bi bi-whatsapp me-2" aria-hidden="true"></i>WhatsApp
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item" [href]="enlaceFacebook()" target="_blank" rel="noopener">
-              <i class="bi bi-facebook me-2" aria-hidden="true"></i>Facebook
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item" [href]="enlaceTelegram()" target="_blank" rel="noopener">
-              <i class="bi bi-telegram me-2" aria-hidden="true"></i>Telegram
-            </a>
-          </li>
-          <li><hr class="dropdown-divider" /></li>
-          <li>
-            <button type="button" class="dropdown-item" (click)="copiar($event)">
-              <i class="bi bi-copy me-2" aria-hidden="true"></i>Copiar enlace
+            <button type="button" class="dropdown-item" (click)="compartir($event)">
+              <i class="bi bi-share me-2" aria-hidden="true"></i>Compartir
             </button>
           </li>
-        </ul>
-      </div>
-    }
+          <li><hr class="dropdown-divider" /></li>
+        }
+        <li>
+          <a class="dropdown-item" [href]="enlaceWhatsapp()" target="_blank" rel="noopener">
+            <i class="bi bi-whatsapp me-2" aria-hidden="true"></i>WhatsApp
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item" [href]="enlaceFacebook()" target="_blank" rel="noopener">
+            <i class="bi bi-facebook me-2" aria-hidden="true"></i>Facebook
+          </a>
+        </li>
+        <li><hr class="dropdown-divider" /></li>
+        <li>
+          <button type="button" class="dropdown-item" (click)="copiar($event)">
+            <i class="bi bi-copy me-2" aria-hidden="true"></i>Copiar enlace
+          </button>
+        </li>
+
+        <!-- Asignar solo para docentes/administradores con sesión iniciada. -->
+        @if (esDocente()) {
+          <li><hr class="dropdown-divider" /></li>
+          <li>
+            <span class="dropdown-header d-flex align-items-center gap-2">
+              <span>Asignar a tus cursos</span>
+              @if (asignada()) {
+                <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
+                <span class="visually-hidden">Ya asignada a todos tus cursos</span>
+              }
+            </span>
+          </li>
+          @if (cursosDocente().length) {
+            @for (c of cursosDocente(); track c.curso + '-' + c.paralelo) {
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item d-flex align-items-center gap-2"
+                  [disabled]="asignando()"
+                  (click)="alternarAsignacion($event, c)">
+                  <i
+                    class="bi"
+                    [class.bi-check-square-fill]="asignadaEn(c)"
+                    [class.bi-square]="!asignadaEn(c)"
+                    aria-hidden="true"></i>
+                  <span>{{ codigoCurso(c.curso, c.paralelo) }}</span>
+                  <span class="ms-auto small text-secondary">
+                    {{ asignadaEn(c) ? 'Quitar' : 'Asignar' }}
+                  </span>
+                </button>
+              </li>
+            }
+          } @else {
+            <li>
+              <span class="dropdown-item-text small text-secondary">
+                No tienes cursos asignados.
+              </span>
+            </li>
+          }
+        }
+      </ul>
+    </div>
   </div>
 
   @if (errorAsignacion()) {

@@ -65,6 +65,11 @@
           <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
             <i class="bi bi-star"></i> ¡Gana puntos!
           </span>
+          @if (vista.config.tiempoLimiteSegundos) {
+            <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+              <i class="bi bi-alarm"></i> {{ vista.config.tiempoLimiteSegundos }} s por pregunta
+            </span>
+          }
         </div>
 
         @if ((vista.config.niveles ?? 1) > 1) {
@@ -145,7 +150,7 @@
                       [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
                       [attr.aria-selected]="vista.seleccionada === op.id"
                       [disabled]="vista.estado === 'feedback'"
-                      (click)="respuestaSeleccionada.emit(op.id)"
+                      (click)="seleccionar(op.id)"
                     >
                       <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
                       <span class="flex-grow-1 qz-answer-text">{{ op.texto }}</span>
@@ -185,7 +190,7 @@
                     [class.btn-light]="vista.estado === 'feedback' && vista.seleccionada !== op.id && op.id !== pregunta.respuestaCorrectaId"
                     [attr.aria-selected]="vista.seleccionada === op.id"
                     [disabled]="vista.estado === 'feedback'"
-                    (click)="respuestaSeleccionada.emit(op.id)"
+                    (click)="seleccionar(op.id)"
                   >
                     <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 qz-option-letter">{{ 'ABCD'.charAt(i) }}</span>
                     <span class="flex-grow-1 qz-answer-text">{{ op.texto }}</span>
@@ -206,6 +211,7 @@
           <div class="alert mb-0 border-0 rounded-4 d-flex flex-wrap align-items-center gap-2 gap-md-3" [class.alert-success]="vista.esCorrecta" [class.alert-warning]="!vista.esCorrecta">
             <p class="fw-bold mb-0 qz-feedback-titulo">
               @if (vista.esCorrecta) { <i class="bi bi-stars me-1"></i> ¡Muy bien! }
+              @else if (vista.seleccionada === null) { <i class="bi bi-alarm me-1"></i> ¡Se acabó el tiempo! }
               @else { <i class="bi bi-lightbulb me-1"></i> ¡Casi! }
             </p>
             @if (pregunta.explicacion) {

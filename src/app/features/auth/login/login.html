@@ -36,7 +36,7 @@
             <div class="form-text text-danger">Escribe tu usuario o correo.</div>
           }
         </div>
-        <div class="mb-4">
+        <div class="mb-2">
           <label class="form-label" for="password">Contraseña</label>
           <input
             id="password"
@@ -50,6 +50,27 @@
             <div class="form-text text-danger">Escribe tu contraseña (mínimo 6 caracteres).</div>
           }
         </div>
+        <div class="d-flex justify-content-end mb-4">
+          <button
+            type="button"
+            class="btn btn-link p-0 small"
+            [disabled]="recuperando()"
+            (click)="recuperarPassword()"
+          >
+            {{ recuperando() ? 'Enviando…' : '¿Olvidaste tu contraseña?' }}
+          </button>
+        </div>
+        @if (avisoRecuperacion(); as aviso) {
+          <div
+            class="alert small"
+            role="status"
+            [class.alert-success]="aviso.tipo === 'ok'"
+            [class.alert-info]="aviso.tipo === 'info'"
+            [class.alert-danger]="aviso.tipo === 'error'"
+          >
+            {{ aviso.texto }}
+          </div>
+        }
         @if (errorMessage()) {
           <div class="alert alert-danger">{{ errorMessage() }}</div>
         }

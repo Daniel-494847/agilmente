@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { collection, deleteDoc, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
 
 import { db, NOMBRES_COLECCION } from '@core/firebase';
-import { ActividadResumen } from '@core/models/actividad.model';
+import { ActividadResumen, estaPublicada } from '@core/models/actividad.model';
 import { ACTIVIDADES_INICIALES, compararActividades, fusionarActividades } from '@features/actividades/data/actividades.data';
 
 /** Actividad con el slug con el que guarda sus intentos (lo que llega en `intentos.actividadId`). */
@@ -40,6 +40,11 @@ export class ActividadesService {
       this.enVuelo = null;
     });
     return this.enVuelo;
+  }
+
+  /** Catálogo visible para estudiantes y visitantes (sin las despublicadas). */
+  async listarPublicadas(): Promise<ActividadResumen[]> {
+    return (await this.listar()).filter(estaPublicada);
   }
 
   private async cargarCatalogo(): Promise<ActividadResumen[]> {
@@ -138,6 +143,18 @@ export class ActividadesService {
   }
 
   /**
+   * Publica o despublica una actividad. Las despublicadas se ocultan del
+   * catálogo de estudiantes, pero el administrador las sigue viendo para
+   * poder volver a publicarlas.
+   */
+  async cambiarPublicacion(
+    actividad: ActividadResumen,
+    publicado: boolean
+  ): Promise<void> {
+    await this.guardar({ ...actividad, publicado });
+  }
+
+  /**
    * Borra las fichas que apuntan a la misma ruta con otro id. Así una ficha
    * vieja (p. ej. `actividades/5` guardada como «Operadores Matemáticos»)
    * deja de aparecer duplicada cuando se guarda la actividad correcta.
@@ -161,9 +178,16 @@ export class ActividadesService {
     this.cache = null;
   }
 
-  /** Vuelca el catálogo del código en Firestore (resuelve los ids descolocados). */
+  /**
+   * Vuelca el catálogo del código en Firestore (resuelve los ids descolocados).
+   * Usa `merge` para no perder el estado de publicación que puso el administrador.
+   */
   async guardarIniciales(): Promise<void> {
-    await Promise.all(ACTIVIDADES_INICIALES.map((a) => setDoc(doc(db, this.collectionName, String(a.id)), a)));
+    await Promise.all(
+      ACTIVIDADES_INICIALES.map((a) =>
+        setDoc(doc(db, this.collectionName, String(a.id)), a, { merge: true })
+      )
+    );
     this.cache = null;
   }
 

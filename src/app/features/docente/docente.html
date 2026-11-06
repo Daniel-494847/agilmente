@@ -102,6 +102,35 @@
       </div>
     </section>
 
+    <!-- Actividades jugables del módulo. Cada tarjeta trae «Jugar» y
+         «Compartir»; docentes y administradores ven «Asignar» dentro del menú. -->
+    <section class="mb-4 d-print-none" aria-labelledby="doc-actividades">
+      <div class="d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3">
+        <div>
+          <h2 id="doc-actividades" class="h5 fw-bold mb-1">
+            <i class="bi bi-controller me-1" aria-hidden="true"></i> Actividades para jugar
+          </h2>
+          <p class="text-secondary mb-0 small">
+            Abre cualquier juego o compártelo con tus estudiantes.
+          </p>
+        </div>
+        <a routerLink="/razonamiento-logico" class="btn btn-outline-primary btn-sm">
+          Ver todas
+        </a>
+      </div>
+      @if (actividades().length) {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+          @for (actividad of actividades(); track actividad.id; let i = $index) {
+            <div class="col">
+              <app-activity-card [actividad]="actividad" [numero]="i + 1" />
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-secondary small mb-0" role="status">Cargando actividades…</p>
+      }
+    </section>
+
     @if (generado()) {
       <!-- Acciones sobre el cuadernillo -->
       <div class="d-flex flex-wrap gap-2 justify-content-center mb-4 d-print-none">

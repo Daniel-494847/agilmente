@@ -38,6 +38,9 @@ export class ActividadesMentales extends JuegoQuizBase {
     preguntasPorNivel: 8,
     etiquetasNiveles: ["Inicial", "Intermedio", "Avanzado"],
     preguntas: [],
+    // Cálculo mental: una cuenta atrás por pregunta (la plantilla la descuenta
+    // y, al llegar a 0, marca la pregunta como no respondida).
+    tiempoLimiteSegundos: 30,
   };
   protected readonly slug = 'actividades-mentales';
 
