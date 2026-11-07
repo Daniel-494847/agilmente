@@ -139,7 +139,7 @@ export class Docente implements OnInit {
     const data = this.ruta.snapshot.data;
     this.titulo.set((data['title'] as string) ?? this.titulo());
     this.descripcion.set((data['description'] as string) ?? this.descripcion());
-    this.actividades.set(await this.actividadesService.listar());
+    this.actividades.set(await this.actividadesService.listarPublicadas());
   }
 
   seleccionarTipo(ev: Event): void {

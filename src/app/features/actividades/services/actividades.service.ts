@@ -42,7 +42,10 @@ export class ActividadesService {
     return this.enVuelo;
   }
 
-  /** Catálogo visible para estudiantes y visitantes (sin las despublicadas). */
+  /**
+   * Catálogo visible para estudiantes, docentes y visitantes (sin las
+   * despublicadas). El panel de administración es el único que usa `listar()`.
+   */
   async listarPublicadas(): Promise<ActividadResumen[]> {
     return (await this.listar()).filter(estaPublicada);
   }
@@ -143,9 +146,12 @@ export class ActividadesService {
   }
 
   /**
-   * Publica o despublica una actividad. Las despublicadas se ocultan del
-   * catálogo de estudiantes, pero el administrador las sigue viendo para
-   * poder volver a publicarlas.
+   * Publica o despublica una actividad. **Solo la usa el administrador**:
+   * el panel vive en `/razonamiento-logico/administrar` (`requireAdmin`) y
+   * `firestore.rules` solo permite escribir `actividades` a `esAdministrador()`.
+   * Las despublicadas se ocultan del catálogo público, pero el administrador
+   * las sigue viendo en el panel (con la etiqueta «despublicada») para poder
+   * volver a publicarlas.
    */
   async cambiarPublicacion(
     actividad: ActividadResumen,

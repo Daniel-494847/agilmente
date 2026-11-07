@@ -18,7 +18,7 @@ export class Actividades implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      this.actividades.set(await this.service.listar());
+      this.actividades.set(await this.service.listarPublicadas());
     } finally {
       this.cargando.set(false);
     }

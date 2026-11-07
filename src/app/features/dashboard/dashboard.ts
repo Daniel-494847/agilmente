@@ -30,7 +30,7 @@ export class Dashboard implements OnInit {
   readonly contactos = signal<Contacto[]>([]);
 
   async ngOnInit(): Promise<void> {
-    this.actividades.set(await this.activitiesService.listar());
+    this.actividades.set(await this.activitiesService.listarPublicadas());
 
     const [com, fotos, contactos] = await Promise.allSettled([
       this.content.listarPublicados<{ id: string; titulo: string; fecha: string }>(

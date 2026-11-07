@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ActividadResumen } from '@core/models/actividad.model';
+import { ActividadResumen, estaPublicada } from '@core/models/actividad.model';
 import { ACTIVIDADES_INICIALES, fusionarActividades } from './actividades.data';
 
 /** Ficha guardada en Firestore desde el panel de administración. */
@@ -73,5 +73,27 @@ describe('Catálogo de actividades: fusión con lo guardado en Firestore', () =>
     const ids = lista.map((a) => a.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.every((id) => typeof id === 'number')).toBe(true);
+  });
+
+  it('conserva la despublicación hecha desde el panel', () => {
+    const lista = fusionarActividades([
+      { ...ficha(7, '/razonamiento-logico/conjuntos', 'Conjuntos'), publicado: false }
+    ]);
+    const conjuntos = lista.find((a) => a.ruta === '/razonamiento-logico/conjuntos');
+
+    // La ficha despublicada sigue en el catálogo completo (el admin la ve)…
+    expect(conjuntos?.publicado).toBe(false);
+    // …pero queda fuera de lo que se muestra a estudiantes y docentes.
+    expect(lista.filter(estaPublicada).map((a) => a.ruta)).not.toContain(
+      '/razonamiento-logico/conjuntos'
+    );
+    expect(lista.filter(estaPublicada)).toHaveLength(14);
+  });
+
+  it('estaPublicada: visible si el campo falta, oculta solo con false explícito', () => {
+    expect(estaPublicada({})).toBe(true);
+    expect(estaPublicada({ publicado: undefined })).toBe(true);
+    expect(estaPublicada({ publicado: true })).toBe(true);
+    expect(estaPublicada({ publicado: false })).toBe(false);
   });
 });
