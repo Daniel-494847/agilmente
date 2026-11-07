@@ -8,6 +8,7 @@ import { ContenidoAdminBase } from '@shared/components/contenido-admin-base';
 export interface ComunicadoAdmin {
   id?: string;
   titulo: string;
+  cuerpo: string;
   fecha: string;
   colorDot: 'red' | 'blue' | 'green';
   publicado: boolean;
@@ -32,6 +33,7 @@ export class AvisosAdmin extends ContenidoAdminBase<ComunicadoAdmin> implements 
 
   readonly form = this.fb.nonNullable.group({
     titulo: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]],
+    cuerpo: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
     fecha: ['Hoy', [Validators.required, Validators.maxLength(40)]],
     colorDot: this.fb.nonNullable.control<'red' | 'blue' | 'green'>('blue'),
     publicado: [true],
@@ -58,6 +60,7 @@ export class AvisosAdmin extends ContenidoAdminBase<ComunicadoAdmin> implements 
     this.editandoId.set(item.id ?? null);
     this.form.setValue({
       titulo: item.titulo,
+      cuerpo: item.cuerpo ?? '',
       fecha: item.fecha || 'Hoy',
       colorDot: item.colorDot || 'blue',
       publicado: item.publicado !== false,
@@ -71,6 +74,7 @@ export class AvisosAdmin extends ContenidoAdminBase<ComunicadoAdmin> implements 
     this.editandoId.set(null);
     this.form.reset({
       titulo: '',
+      cuerpo: '',
       fecha: 'Hoy',
       colorDot: 'blue',
       publicado: true,

@@ -6,6 +6,7 @@ import { ContentService } from '@core/services/content.service';
 interface Comunicado {
   id: string;
   titulo: string;
+  cuerpo?: string;
   fecha: string;
   colorDot?: 'red' | 'blue' | 'green';
   publicado?: boolean;

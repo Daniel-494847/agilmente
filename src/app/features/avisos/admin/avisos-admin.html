@@ -20,6 +20,21 @@
             }
           </div>
           <div class="mb-3">
+            <label class="form-label fw-semibold" for="cuerpo">Cuerpo del comunicado</label>
+            <textarea
+              id="cuerpo"
+              class="form-control"
+              formControlName="cuerpo"
+              rows="6"
+              maxlength="2000"
+              placeholder="Escribe aquí el contenido del comunicado..."
+            ></textarea>
+            <div class="form-text">Entre 10 y 2000 caracteres.</div>
+            @if (form.controls.cuerpo.touched && form.controls.cuerpo.invalid) {
+              <div class="text-danger small mt-1">Escribe el cuerpo del comunicado (mínimo 10 caracteres).</div>
+            }
+          </div>
+          <div class="mb-3">
             <label class="form-label fw-semibold" for="fecha">Fecha / etiqueta</label>
             <input id="fecha" class="form-control" formControlName="fecha" placeholder="Hoy, Ayer, 02 ago..." />
           </div>
@@ -77,6 +92,9 @@
                 ></span>
                 <div class="flex-grow-1">
                   <div class="fw-semibold">{{ item.titulo }}</div>
+                  @if (item.cuerpo) {
+                    <small class="text-body-secondary d-block text-truncate" style="max-width: 340px">{{ item.cuerpo }}</small>
+                  }
                   <small class="text-body-secondary">{{ item.fecha }}</small>
                 </div>
                 <span class="badge" [class.text-bg-success]="item.publicado" [class.text-bg-secondary]="!item.publicado">

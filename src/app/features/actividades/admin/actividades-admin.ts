@@ -63,8 +63,25 @@ export class ActividadesAdmin implements OnInit {
     }
   }
 
+  /** Publica o despublica una actividad del catálogo. */
+  async alternarPublicacion(a: ActividadResumen): Promise<void> {
+    const publicado = !(a.publicado ?? true);
+    try {
+      await this.service.cambiarPublicacion(a, publicado);
+      this.mensaje.set(publicado ? 'Actividad publicada.' : 'Actividad despublicada: ya no la ven los estudiantes.');
+      await this.cargar();
+    } catch {
+      this.mensaje.set('No se pudo cambiar la publicación.');
+    }
+  }
+
+  /** True si la ficha aún no tiene estado de publicación guardado. */
+  estaPublicada(a: ActividadResumen): boolean {
+    return a.publicado ?? true;
+  }
+
   async eliminar(a: ActividadResumen): Promise<void> {
-    if (!confirm(`¿Eliminar "${a.titulo}"?`)) return;
+    if (!confirm(`¿Eliminar "${a.titulo}" del catálogo? Ya no aparecerá para los estudiantes.`)) return;
     try {
       await this.service.eliminar(a.id);
       this.mensaje.set('Actividad eliminada.');

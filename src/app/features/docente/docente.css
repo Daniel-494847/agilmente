@@ -78,7 +78,11 @@
 @media print {
   @page {
     size: letter portrait;
-    margin: 0;
+    /* Margen de impresión: la mayoría de impresoras no puede pintar hasta
+       el borde del papel; con margin: 0 se recortaba el lado derecho de la
+       hoja (encabezado de la Unidad Educativa cortado) y se veía el borde
+       de la tarjeta como una línea vertical. */
+    margin: 10mm;
   }
 
   /* El papel debe salir blanco: el degradado del fondo no se imprime. */
@@ -92,16 +96,23 @@
   }
 
   .hoja-carta {
-    /* En papel: hoja carta vertical exacta (216 × 279 mm), una por página. */
-    width: 216mm;
-    height: 279mm;                 /* altura exacta: el pie siempre cae al final */
-    max-width: 216mm;
+    /* En papel la hoja llena el área imprimible de la carta (216 × 279 mm
+       menos el margen de @page), sin ancho fijo: así nunca se sale del papel
+       ni se recorta el contenido. El pie se ancla al fondo con la altura
+       mínima de la hoja. */
+    width: 100%;
+    min-height: calc(279mm - 20mm);
     margin-inline: auto;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     break-after: page;
     page-break-after: always;
+  }
+
+  /* El margen inferior de 1 cm ya lo aporta @page; no se duplica en papel. */
+  .hoja-carta footer {
+    margin-bottom: 0;
   }
 
   /* El anclaje del pie al fondo (flex + margen inferior de 1 cm) es común a

@@ -20,10 +20,16 @@
       }
       <div>
         <h2 class="h5 fw-bold mb-0">¡Hola, {{ usuario.nombre }}!
-          @if (esAdministrador()) {
-            <span class="badge rounded-pill text-bg-danger ms-2">administrador</span>
-          } @else if (usuario.rol === 'docente') {
-            <span class="badge rounded-pill text-bg-info ms-2">{{ usuario.rol }}</span>
+          @switch (usuario.rol) {
+            @case ('administrador') {
+              <span class="badge rounded-pill text-bg-danger ms-2" aria-label="Rol: administrador"><i class="bi bi-shield-lock-fill me-1"></i>administrador</span>
+            }
+            @case ('docente') {
+              <span class="badge rounded-pill text-bg-info ms-2" aria-label="Rol: docente"><i class="bi bi-person-video3 me-1"></i>docente</span>
+            }
+            @default {
+              <span class="badge rounded-pill text-bg-success ms-2" aria-label="Rol: estudiante"><i class="bi bi-mortarboard-fill me-1"></i>estudiante</span>
+            }
           }
         </h2>
         <small class="text-body-secondary">Sigue aprendiendo cada día</small>

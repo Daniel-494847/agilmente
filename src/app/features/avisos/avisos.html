@@ -19,6 +19,9 @@
             <span class="rounded-circle mt-1 flex-shrink-0" [class]="colorClass(c.colorDot)" style="width: 10px; height: 10px"></span>
             <div>
               <div class="fw-semibold">{{ c.titulo }}</div>
+              @if (c.cuerpo) {
+                <p class="mb-1 text-body-secondary" style="white-space: pre-line">{{ c.cuerpo }}</p>
+              }
               <small class="text-muted">{{ c.fecha }}</small>
               @if (c.destacado) {
                 <span class="badge text-bg-warning ms-2">Destacado</span>
