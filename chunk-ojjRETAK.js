@@ -1,0 +1,1 @@
+var t=[{path:``,loadComponent:()=>import(`./chunk-C7XMZ8_F.js`).then(o=>o.Dashboard)}];export{t as DASHBOARD_ROUTES};
