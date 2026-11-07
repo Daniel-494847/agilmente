@@ -65,7 +65,7 @@ describe('Módulo Docente (vista)', () => {
     expect(tipo.value).toBe('sucesiones');
   });
 
-  it('ofrece Descargar PDF y Descargar Word, sin HTML ni impresión', async () => {
+  it('ofrece solo Descargar PDF, sin Word, HTML ni impresión', async () => {
     const harness = await montar();
     const docente = harness.routeNativeElement as HTMLElement;
 
@@ -79,7 +79,7 @@ describe('Módulo Docente (vista)', () => {
       b.textContent?.replace(/\s+/g, ' ').trim() ?? ''
     );
     expect(textos.some((t) => t.includes('Descargar PDF'))).toBe(true);
-    expect(textos.some((t) => t.includes('Descargar Word'))).toBe(true);
+    expect(textos.some((t) => t.includes('Descargar Word'))).toBe(false);
     expect(textos.some((t) => t.includes('Descargar HTML'))).toBe(false);
     expect(textos.some((t) => t.includes('Imprimir'))).toBe(false);
   });

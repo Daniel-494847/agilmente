@@ -56,22 +56,6 @@
   margin-bottom: 1cm;
 }
 
-/* Mientras se exporta el PDF la tarjeta se captura como una hoja de papel:
-   sin borde, sin esquinas redondeadas y sin sombra (igual que en @media print).
-   Si se dejaran, la captura arrastraba el filo gris de la tarjeta y el
-   encabezado parecía sobresalir del borde de la página. */
-.hoja-carta.captura-pdf {
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-/* En la captura el margen inferior del pie lo aporta la página del PDF (1 cm),
-   igual que en @media print: así el pie no queda más adentro que el borde. */
-.hoja-carta.captura-pdf footer {
-  margin-bottom: 0;
-}
-
 /* El encabezado reparte logo/título y unidad educativa. En hojas estrechas
    (móvil o ventana pequeña) el bloque derecho baja a la línea siguiente en
    lugar de salirse de la hoja y quedar recortado en el PDF. */
