@@ -1,9 +1,26 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { QuizViewModel } from './quiz.model';
 import { SvgSeguroPipe } from '@shared/pipes/svg-seguro.pipe';
 import { QuizSonidoService } from '@core/services/quiz-sonido.service';
+
+/** Una pieza de una explosión de confeti. */
+interface PiezaConfeti {
+  dx: number;
+  dy: number;
+  giro: number;
+  color: string;
+  retraso: number;
+  tamano: number;
+  redonda: boolean;
+}
+
+/** Explosión de confeti lanzada al acertar una respuesta. */
+interface ExplosionConfeti {
+  id: number;
+  piezas: PiezaConfeti[];
+}
 
 @Component({
   selector: 'app-quiz',
@@ -34,6 +51,15 @@ export class Quiz implements OnChanges, OnDestroy {
   @Output() alternarSonido = new EventEmitter<void>();
 
   /**
+   * Explosiones de confeti de los aciertos. Se guardan en una lista para que
+   * cada respuesta correcta cree nodos nuevos y la animación vuelva a empezar
+   * (si solo se alternara un booleano, CSS no reiniciaría el keyframes).
+   */
+  readonly confetiAciertos = signal<ExplosionConfeti[]>([]);
+  private siguienteExplosion = 0;
+  private readonly temporizadoresConfeti = new Set<ReturnType<typeof setTimeout>>();
+
+  /**
    * Toda la retroalimentación sonora vive en la plantilla (no en `QuizEngine`)
    * para que también la tengan los juegos que gestionan su propia vista
    * (Pirámides y Cuadrados Mágicos). Al responder se habla dentro del propio
@@ -46,11 +72,14 @@ export class Quiz implements OnChanges, OnDestroy {
     if (!actual) return;
     this.reproducirEfectos(this.vistaAnterior, actual);
     this.reproducirVoz(this.vistaAnterior, actual);
+    this.detectarAcierto(this.vistaAnterior, actual);
     this.vistaAnterior = actual;
   }
 
   ngOnDestroy(): void {
     this.sonido.detenerVoz();
+    for (const t of this.temporizadoresConfeti) clearTimeout(t);
+    this.temporizadoresConfeti.clear();
   }
 
   /** Responde la opción y pronuncia el resultado dentro del gesto del clic. */
@@ -64,6 +93,49 @@ export class Quiz implements OnChanges, OnDestroy {
     if (vm.sonidosActivos) {
       this.sonido.hablar(esCorrecta ? 'acierto' : 'error');
     }
+  }
+
+  /**
+   * Detecta el paso de «jugando» a «feedback» con respuesta correcta y lanza
+   * confeti. Vive en la plantilla (no en `QuizEngine`) para que también lo
+   * tengan los juegos que gestionan su propia vista (Pirámides y Cuadrados
+   * Mágicos) sin tocar cada juego.
+   */
+  private detectarAcierto(anterior: QuizViewModel | undefined, actual: QuizViewModel): void {
+    if (
+      actual.estado === 'feedback' &&
+      anterior?.estado === 'jugando' &&
+      actual.esCorrecta === true
+    ) {
+      this.lanzarConfeti();
+    }
+  }
+
+  /** Crea una explosión de confeti con piezas en todas las direcciones. */
+  private lanzarConfeti(): void {
+    const id = ++this.siguienteExplosion;
+    const cantidad = 28;
+    const piezas = Array.from({ length: cantidad }, (_, i): PiezaConfeti => {
+      const angulo = (i / cantidad) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+      const distancia = 110 + Math.random() * 150;
+      return {
+        dx: Math.round(Math.cos(angulo) * distancia),
+        // +90 de sesgo hacia abajo: imita la gravedad del confeti real.
+        dy: Math.round(Math.sin(angulo) * distancia + 90),
+        giro: Math.round((Math.random() - 0.5) * 1080),
+        color: `hsl(${Math.round(Math.random() * 360)}, 90%, 58%)`,
+        retraso: Math.round(Math.random() * 90),
+        tamano: 6 + Math.round(Math.random() * 6),
+        redonda: Math.random() < 0.35
+      };
+    });
+
+    this.confetiAciertos.update((lista) => [...lista, { id, piezas }]);
+    const t = setTimeout(() => {
+      this.confetiAciertos.update((lista) => lista.filter((e) => e.id !== id));
+      this.temporizadoresConfeti.delete(t);
+    }, 1300);
+    this.temporizadoresConfeti.add(t);
   }
 
   /**

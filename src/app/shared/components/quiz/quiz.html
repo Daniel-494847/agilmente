@@ -7,6 +7,24 @@
     </div>
   }
 
+  <!-- Explosión de confeti en cada acierto (todos los juegos). -->
+  @for (explosion of confetiAciertos(); track explosion.id) {
+    <div class="confeti confeti-burst" aria-hidden="true">
+      @for (pieza of explosion.piezas; track $index) {
+        <span
+          class="confeti-piece"
+          [style.--dx]="pieza.dx + 'px'"
+          [style.--dy]="pieza.dy + 'px'"
+          [style.--giro]="pieza.giro + 'deg'"
+          [style.--color]="pieza.color"
+          [style.--tamano]="pieza.tamano + 'px'"
+          [style.--radio]="pieza.redonda ? '50%' : '2px'"
+          [style.animation-delay]="pieza.retraso + 'ms'"
+        ></span>
+      }
+    </div>
+  }
+
   <div class="container-xl h-100 d-flex flex-column">
     <!-- Cabecera en UNA sola fila. La distribución la pone el CSS de `.qz-header`
          (no utilidades de Bootstrap) porque cambia por tamaño: en escritorio

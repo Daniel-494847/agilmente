@@ -722,6 +722,35 @@
   }
 }
 
+/* Explosión de confeti al acertar. Sale del centro de la pantalla en todas las
+   direcciones; la plantilla dispara una por respuesta correcta en cualquier
+   juego. Los valores (--dx, --dy, --giro, --color, --tamano, --radio) llegan
+   por estilo desde `quiz.html`. */
+.confeti-burst .confeti-piece {
+  left: 50%;
+  top: 50%;
+  width: var(--tamano, 10px);
+  height: var(--tamano, 10px);
+  border-radius: var(--radio, 2px);
+  background: var(--color, hsl(45, 90%, 55%));
+  opacity: 0;
+  animation: confeti-burst 1s cubic-bezier(0.16, 0.84, 0.32, 1) forwards;
+}
+
+@keyframes confeti-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1) rotate(var(--giro, 0deg));
+    opacity: 0;
+  }
+}
+
 /* ----------------------------------------------------------------------------
    Accesibilidad — respeta a quien desactivó las animaciones
    -------------------------------------------------------------------------- */
@@ -729,6 +758,11 @@
   .qz-timer-urgent,
   .confeti-piece {
     animation: none;
+  }
+
+  /* Sin animación el confeti de acierto quedaría congelado en el centro. */
+  .confeti-burst {
+    display: none;
   }
 }
 
