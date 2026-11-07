@@ -56,9 +56,54 @@
   margin-bottom: 1cm;
 }
 
+/* Mientras se exporta el PDF la tarjeta se captura como una hoja de papel:
+   sin borde, sin esquinas redondeadas y sin sombra (igual que en @media print).
+   Si se dejaran, la captura arrastraba el filo gris de la tarjeta y el
+   encabezado parecía sobresalir del borde de la página. */
+.hoja-carta.captura-pdf {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* En la captura el margen inferior del pie lo aporta la página del PDF (1 cm),
+   igual que en @media print: así el pie no queda más adentro que el borde. */
+.hoja-carta.captura-pdf footer {
+  margin-bottom: 0;
+}
+
+/* El encabezado reparte logo/título y unidad educativa. En hojas estrechas
+   (móvil o ventana pequeña) el bloque derecho baja a la línea siguiente en
+   lugar de salirse de la hoja y quedar recortado en el PDF. */
+.doc-cabecera {
+  flex-wrap: wrap;
+}
+
+/* Los enunciados largos y las palabras sin espacios (fórmulas, URLs) se
+   parten dentro de la hoja en vez de desbordar el borde derecho. */
+.hoja-carta .card-body,
+.hoja-carta li {
+  overflow-wrap: anywhere;
+}
+
 .linea-manuscrita {
   min-height: 1.3em;
   border-bottom: 1.5px solid #495057;
+}
+
+/* Línea de «Curso». Antes llevaba `style="min-width: 55mm"` inline: en una
+   ventana estrecha esos 55 mm empujaban la fila fuera de la hoja y el PDF
+   capturaba la hoja a ese ancho. Aquí conserva los 55 mm en escritorio y se
+   encoge cuando no caben. */
+.linea-curso {
+  min-width: 55mm;
+}
+
+@media (max-width: 575.98px) {
+  .linea-curso {
+    min-width: 0;
+    flex-basis: 40mm;
+  }
 }
 
 .ej-imagen {

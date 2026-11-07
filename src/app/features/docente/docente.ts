@@ -203,6 +203,13 @@ export class Docente implements OnInit {
    * Se captura a JPEG (calidad 0.93, 2×): con PNG, jsPDF recodifica el canal
    * alfa de cada captura y un cuadernillo de 3 hojas salía de ~28 MB; en JPEG
    * pesa ~1 MB manteniendo la nitidez.
+   *
+   * Márgenes: la hoja se coloca dentro de un área útil de 1 cm (el mismo
+   * margen que `@page` en la impresión del navegador). Sin ese margen la
+   * tarjeta quedaba pegada al borde del papel y el encabezado se recortaba
+   * con la zona no imprimible de la impresora. Durante la captura también se
+   * quita el borde y la sombra de la tarjeta (`captura-pdf`), que en papel no
+   * deben verse, igual que en `@media print`.
    */
   async descargarPdf(): Promise<void> {
     if (!this.generado() || this.exportando()) return;
@@ -225,29 +232,53 @@ export class Docente implements OnInit {
       });
       const anchoPagina = pdf.internal.pageSize.getWidth();
       const altoPagina = pdf.internal.pageSize.getHeight();
+      // 1 cm = 28.35 pt: el mismo margen que la regla `@page` de la impresión.
+      const margen = 28.35;
+      const anchoUtil = anchoPagina - margen * 2;
+      const altoUtil = altoPagina - margen * 2;
 
-      for (let i = 0; i < nodos.length; i++) {
-        const captura = await toJpeg(nodos[i], {
-          backgroundColor: '#ffffff',
-          pixelRatio: 2,
-          quality: 0.93
-        });
-        const caja = nodos[i].getBoundingClientRect();
-        if (!caja.width || !caja.height) continue;
-        // Escala "contain": la hoja entra completa en la carta y, si sobra
-        // alto (hojas con menos ejercicios), queda centrada.
-        const escala = Math.min(anchoPagina / caja.width, altoPagina / caja.height);
-        const ancho = caja.width * escala;
-        const alto = caja.height * escala;
-        if (i > 0) pdf.addPage();
-        pdf.addImage(
-          captura,
-          'JPEG',
-          (anchoPagina - ancho) / 2,
-          (altoPagina - alto) / 2,
-          ancho,
-          alto
-        );
+      // La captura va sin borde ni sombra: en el papel la hoja debe salir
+      // limpia y el contenido dentro de los márgenes. Además se fuerza el
+      // ancho real de la carta (216 mm): así el PDF no depende del tamaño de
+      // la ventana y, si la vista previa se veía angosta, el encabezado no
+      // se parte ni se sale de la hoja.
+      for (const nodo of nodos) {
+        nodo.classList.add('captura-pdf');
+        // `!important` porque las utilidades de Bootstrap (`w-100`) ya lo son.
+        nodo.style.setProperty('width', '216mm', 'important');
+        nodo.style.setProperty('max-width', '216mm', 'important');
+      }
+
+      try {
+        for (let i = 0; i < nodos.length; i++) {
+          const captura = await toJpeg(nodos[i], {
+            backgroundColor: '#ffffff',
+            pixelRatio: 2,
+            quality: 0.93
+          });
+          const caja = nodos[i].getBoundingClientRect();
+          if (!caja.width || !caja.height) continue;
+          // Escala "contain" dentro del área útil: la hoja entra completa y,
+          // si sobra alto (hojas con menos ejercicios), queda centrada.
+          const escala = Math.min(anchoUtil / caja.width, altoUtil / caja.height);
+          const ancho = caja.width * escala;
+          const alto = caja.height * escala;
+          if (i > 0) pdf.addPage();
+          pdf.addImage(
+            captura,
+            'JPEG',
+            margen + (anchoUtil - ancho) / 2,
+            margen + (altoUtil - alto) / 2,
+            ancho,
+            alto
+          );
+        }
+      } finally {
+        for (const nodo of nodos) {
+          nodo.classList.remove('captura-pdf');
+          nodo.style.removeProperty('width');
+          nodo.style.removeProperty('max-width');
+        }
       }
 
       pdf.save(
