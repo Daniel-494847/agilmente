@@ -171,8 +171,8 @@ export class Docente implements OnInit {
    * pesa ~1 MB manteniendo la nitidez.
    *
    * La captura no se modifica (mismo ancho, mismo marco y mismos saltos de
-   * línea que la vista previa); solo se coloca dentro de un área útil de 1 cm
-   * (el mismo margen que `@page` en la impresión del navegador), escala
+   * línea que la vista previa); solo se coloca dentro de un área útil con
+   * margen de 1 cm en ambos lados, escala
    * "contain" y se centra. Sin ese margen la hoja quedaba pegada al borde del
    * papel y el encabezado se recortaba con la zona no imprimible.
    */
@@ -197,19 +197,26 @@ export class Docente implements OnInit {
       });
       const anchoPagina = pdf.internal.pageSize.getWidth();
       const altoPagina = pdf.internal.pageSize.getHeight();
-      // 1 cm = 28.35 pt: el mismo margen que la regla `@page` de la impresión.
+      // 1 cm = 28.35 pt: margen de 1 cm en ambos lados de la hoja.
       const margen = 28.35;
       const anchoUtil = anchoPagina - margen * 2;
       const altoUtil = altoPagina - margen * 2;
 
       for (let i = 0; i < nodos.length; i++) {
+        const caja = nodos[i].getBoundingClientRect();
+        if (!caja.width || !caja.height) continue;
+        // Se fija el tamaño de la captura con las medidas reales del nodo y se
+        // anula margen/transform en el clon: sin esto, html-to-image medía el
+        // nodo con valores fraccionarios o desplazados (scroll) y recortaba el
+        // encabezado de la hoja.
         const captura = await toJpeg(nodos[i], {
           backgroundColor: '#ffffff',
           pixelRatio: 2,
-          quality: 0.93
+          quality: 0.93,
+          width: Math.ceil(caja.width),
+          height: Math.ceil(caja.height),
+          style: { margin: '0', transform: 'none' }
         });
-        const caja = nodos[i].getBoundingClientRect();
-        if (!caja.width || !caja.height) continue;
         // Escala "contain" dentro del área útil: la hoja entra completa y,
         // si sobra alto (hojas con menos ejercicios), queda centrada.
         const escala = Math.min(anchoUtil / caja.width, altoUtil / caja.height);

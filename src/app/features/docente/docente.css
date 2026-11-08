@@ -35,10 +35,13 @@
 
 .hoja-carta {
   /* Carta vertical: 216 × 279 mm. En pantalla se limita al ancho y a una
-     proporción vertical para previsualizar la hoja tal como saldrá impresa. */
+     proporción vertical para previsualizar la hoja tal como saldrá impresa.
+     Sin borde: el borde de la tarjeta se ve como una línea vertical a los
+     lados de la hoja (también en el PDF impreso). */
   width: 100%;
   max-width: 216mm;
   min-height: 279mm;
+  border: 0 !important;
 }
 
 /* La hoja se comporta como flexbox (la tarjeta .card ya lo es): el cuerpo
